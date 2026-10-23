@@ -3,6 +3,7 @@ import "./style.css";
 import { supabase } from "./supabase";
 import type { Session } from "@supabase/supabase-js";
 import { renderUmpireDirectory } from "./umpires";
+import { renderLeagueSetup } from "./league_setup";
 
 type AccountStatus = "pending" | "approved" | "rejected" | "suspended";
 
@@ -332,6 +333,8 @@ function renderAdminDashboard(profile: Profile) {
 
         <hr class="directory-divider" />
 
+        <div id="league-setup-container"></div>
+
         <div id="umpire-directory-container"></div>
 
         <p class="security-note">
@@ -377,10 +380,17 @@ function renderAdminDashboard(profile: Profile) {
   void loadPendingAccounts();
 
   const directoryContainer =
-    document.querySelector<HTMLElement>("#umpire-directory-container");
+  document.querySelector<HTMLElement>("#umpire-directory-container");
 
   if (directoryContainer) {
-      renderUmpireDirectory(directoryContainer);
+    renderUmpireDirectory(directoryContainer);
+  }
+
+  const leagueSetupContainer =
+    document.querySelector<HTMLElement>("#league-setup-container");
+
+  if (leagueSetupContainer) {
+    void renderLeagueSetup(leagueSetupContainer);
   }
 }
 
