@@ -1,0 +1,23 @@
+{
+  "name": "rwcll-umpire-scheduler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rwclldb/rwcll-umpire-scheduler.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rwclldb/rwcll-umpire-scheduler/issues"
+  },
+  "homepage": "https://github.com/rwclldb/rwcll-umpire-scheduler#readme",
+  "devDependencies": {
+    "supabase": "^2.122.0"
+  }
+}
