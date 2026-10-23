@@ -79,6 +79,7 @@ function renderRows(searchTerm = "") {
             <th>Phone</th>
             <th>Eligibility</th>
             <th>Account</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -96,6 +97,16 @@ function renderRows(searchTerm = "") {
                 </span>
               </td>
               <td>${umpire.profile_id ? "Linked" : "Not linked"}</td>
+                <td>
+                <button type="button" class="secondary-button"
+                    data-edit-umpire="${umpire.id}">
+                    Edit
+                </button>
+                <button type="button" class="secondary-button"
+                    data-link-umpire="${umpire.id}">
+                    ${umpire.profile_id ? "Change link" : "Link account"}
+                </button>
+                </td>
             </tr>
           `).join("")}
         </tbody>
@@ -147,9 +158,386 @@ async function loadUmpires() {
   }
 }
 
-export function renderUmpireDirectory(container: HTMLElement) {
-  directoryElement = container;
 
+async function createUmpire(form: HTMLFormElement) {
+  const message = document.querySelector<HTMLParagraphElement>(
+    "#create-umpire-message"
+  );
+  const saveButton = document.querySelector<HTMLButtonElement>(
+    "#save-umpire-button"
+  );
+
+  const data = new FormData(form);
+
+  const displayName = String(data.get("display_name") ?? "").trim();
+  const umpireNumber = String(data.get("umpire_number") ?? "").trim();
+  const classification = String(data.get("classification") ?? "");
+  const phone = String(data.get("phone") ?? "").trim();
+  const eligibility = String(data.get("eligibility_status") ?? "");
+
+  if (!displayName) {
+    if (message) {
+      message.textContent = "Please enter the umpire's full name.";
+      message.className = "message error";
+    }
+    return;
+  }
+
+  if (!["youth", "adult"].includes(classification)) {
+    if (message) {
+      message.textContent = "Please select a valid classification.";
+      message.className = "message error";
+    }
+    return;
+  }
+
+  if (!["active", "inactive", "suspended"].includes(eligibility)) {
+    if (message) {
+      message.textContent = "Please select a valid eligibility status.";
+      message.className = "message error";
+    }
+    return;
+  }
+
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.textContent = "Creating…";
+  }
+
+  if (message) {
+    message.textContent = "";
+    message.className = "message";
+  }
+
+  try {
+    const { error } = await supabase.from("umpires").insert({
+      display_name: displayName,
+      umpire_number: umpireNumber || null,
+      classification,
+      phone: phone || null,
+      eligibility_status: eligibility,
+      profile_id: null
+    });
+
+    if (error) throw error;
+
+    if (message) {
+      message.textContent = "Umpire created successfully.";
+      message.className = "message success";
+    }
+
+    form.reset();
+    await loadUmpires();
+  } catch (error) {
+    if (message) {
+      const errorMessage = error instanceof Error
+        ? error.message
+        : "An unexpected error occurred.";
+
+      message.textContent = errorMessage.includes("umpires_umpire_number_key")
+        ? "That umpire number is already in use. Please choose another."
+        : `Unable to create umpire: ${errorMessage}`;
+
+      message.className = "message error";
+    }
+  } finally {
+    if (saveButton) {
+      saveButton.disabled = false;
+      saveButton.textContent = "Create umpire";
+    }
+  }
+}
+
+
+function showEditor(html: string) {
+  const editor = document.querySelector<HTMLDivElement>("#umpire-editor");
+  if (!editor) return;
+
+  editor.innerHTML = html;
+  editor.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  editor.querySelector<HTMLButtonElement>("[data-cancel-editor]")
+    ?.addEventListener("click", () => {
+      editor.replaceChildren();
+    });
+}
+
+
+async function showEditForm(umpireId: string) {
+  const umpire = allUmpires.find((item) => item.id === umpireId);
+
+  if (!umpire) {
+    showEditor("<p>Umpire record not found.</p>");
+    return;
+  }
+
+  const { data: privateDetails, error } = await supabase
+    .from("umpire_private_details")
+    .select(
+      "emergency_contact_name, emergency_contact_phone, admin_notes"
+    )
+    .eq("umpire_id", umpireId)
+    .maybeSingle();
+
+  if (error) {
+    showEditor(
+      `<p class="error-message">Could not load private details: ${escapeHtml(error.message)}</p>`
+    );
+    return;
+  }
+
+  showEditor(`
+    <form id="edit-umpire-form" class="create-umpire-form">
+      <h3>Edit Umpire</h3>
+
+      <label for="edit-display-name">Display Name</label>
+      <input id="edit-display-name" name="display_name" required
+        value="${escapeHtml(umpire.display_name)}">
+
+      <label for="edit-umpire-number">Umpire Number</label>
+      <input id="edit-umpire-number" name="umpire_number"
+        value="${escapeHtml(umpire.umpire_number ?? "")}">
+
+      <label for="edit-classification">Classification</label>
+      <select id="edit-classification" name="classification" required>
+        <option value="youth" ${umpire.classification === "youth" ? "selected" : ""}>Youth</option>
+        <option value="adult" ${umpire.classification === "adult" ? "selected" : ""}>Adult</option>
+      </select>
+
+      <label for="edit-phone">Phone</label>
+      <input id="edit-phone" name="phone"
+        value="${escapeHtml(umpire.phone ?? "")}">
+
+      <label for="edit-eligibility">Eligibility</label>
+      <select id="edit-eligibility" name="eligibility_status" required>
+        <option value="active" ${umpire.eligibility_status === "active" ? "selected" : ""}>Active</option>
+        <option value="inactive" ${umpire.eligibility_status === "inactive" ? "selected" : ""}>Inactive</option>
+        <option value="suspended" ${umpire.eligibility_status === "suspended" ? "selected" : ""}>Suspended</option>
+      </select>
+
+      <hr class="directory-divider">
+      <h3>Private Details — Administrators Only</h3>
+
+      <label for="edit-emergency-contact-name">Emergency Contact Name</label>
+      <input id="edit-emergency-contact-name"
+        name="emergency_contact_name"
+        value="${escapeHtml(privateDetails?.emergency_contact_name ?? "")}">
+
+      <label for="edit-emergency-contact-phone">Emergency Contact Phone</label>
+      <input id="edit-emergency-contact-phone"
+        name="emergency_contact_phone"
+        value="${escapeHtml(privateDetails?.emergency_contact_phone ?? "")}">
+
+      <label for="edit-admin-notes">Administrative Notes</label>
+      <textarea id="edit-admin-notes" name="admin_notes"
+        rows="4">${escapeHtml(privateDetails?.admin_notes ?? "")}</textarea>
+
+      <div class="account-actions">
+        <button type="submit">Save Changes</button>
+        <button type="button" class="secondary-button" data-cancel-editor>Cancel</button>
+      </div>
+    </form>
+  `);
+
+  const form = document.querySelector<HTMLFormElement>("#edit-umpire-form");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await saveUmpireEdits(umpireId, new FormData(form));
+  });
+}
+
+
+
+async function saveUmpireEdits(
+  umpireId: string,
+  formData: FormData
+) {
+  const displayName = String(formData.get("display_name") ?? "").trim();
+  const umpireNumber = String(formData.get("umpire_number") ?? "").trim();
+  const classification = String(formData.get("classification") ?? "");
+  const phone = String(formData.get("phone") ?? "").trim();
+  const eligibility = String(formData.get("eligibility_status") ?? "");
+
+  const emergencyContactName = String(
+    formData.get("emergency_contact_name") ?? ""
+  ).trim();
+  const emergencyContactPhone = String(
+    formData.get("emergency_contact_phone") ?? ""
+  ).trim();
+  const adminNotes = String(formData.get("admin_notes") ?? "").trim();
+
+  if (!displayName) {
+    showEditor("<p>Please enter a display name.</p>");
+    return;
+  }
+
+  if (!["youth", "adult"].includes(classification)) {
+    showEditor("<p>Please choose a valid classification.</p>");
+    return;
+  }
+
+  if (!["active", "inactive", "suspended"].includes(eligibility)) {
+    showEditor("<p>Please choose a valid eligibility status.</p>");
+    return;
+  }
+
+  const saveButton = document.querySelector<HTMLButtonElement>(
+    '#edit-umpire-form button[type="submit"]'
+  );
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.textContent = "Saving...";
+  }
+
+  const { error: umpireError } = await supabase
+    .from("umpires")
+    .update({
+      display_name: displayName,
+      umpire_number: umpireNumber || null,
+      classification,
+      phone: phone || null,
+      eligibility_status: eligibility,
+    })
+    .eq("id", umpireId);
+
+  if (umpireError) {
+    showEditor(
+      `<p class="error-message">Could not save umpire: ${escapeHtml(umpireError.message)}</p>`
+    );
+    return;
+  }
+
+  const { error: privateError } = await supabase
+    .from("umpire_private_details")
+    .upsert(
+      {
+        umpire_id: umpireId,
+        emergency_contact_name: emergencyContactName || null,
+        emergency_contact_phone: emergencyContactPhone || null,
+        admin_notes: adminNotes || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "umpire_id" }
+    );
+
+  if (privateError) {
+    showEditor(
+      `<p class="error-message">The main umpire details were saved, but the private details could not be saved: ${escapeHtml(privateError.message)}</p>`
+    );
+    return;
+  }
+
+  showEditor("<p>Umpire details saved successfully.</p>");
+  await loadUmpires();
+}
+
+
+async function showLinkForm(umpireId: string) {
+  const umpire = allUmpires.find((item) => item.id === umpireId);
+  if (!umpire) return;
+
+  const editor = document.querySelector<HTMLDivElement>("#umpire-editor");
+  if (!editor) return;
+
+  editor.textContent = "Loading available accounts…";
+
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, email, account_status")
+    .eq("account_status", "approved")
+    .order("display_name");
+
+  if (error) {
+    editor.textContent = `Unable to load accounts: ${error.message}`;
+    return;
+  }
+
+  const linkedProfileIds = new Set(
+    allUmpires
+      .filter((item) => item.id !== umpireId && item.profile_id)
+      .map((item) => item.profile_id!)
+  );
+
+  const availableProfiles = (profiles ?? []).filter((profile) =>
+    profile.id === umpire.profile_id || !linkedProfileIds.has(profile.id)
+  );
+
+  showEditor(`
+    <form id="link-umpire-form" class="create-umpire-form">
+      <h3>Link account: ${escapeHtml(umpire.display_name)}</h3>
+      <p>Select an approved user account to associate with this umpire.
+        Linking does not change the user's roles or approval status.</p>
+
+      <label for="umpire-profile">Approved account</label>
+      <select id="umpire-profile" name="profile_id">
+        <option value="">No account linked</option>
+        ${availableProfiles.map((profile) => `
+          <option value="${escapeHtml(profile.id)}"
+            ${profile.id === umpire.profile_id ? "selected" : ""}>
+            ${escapeHtml(profile.display_name || "Unnamed user")}
+            — ${escapeHtml(profile.email || "No email")}
+          </option>
+        `).join("")}
+      </select>
+
+      <p id="link-umpire-message" class="message" role="status"></p>
+
+      <div class="account-actions">
+        <button class="primary-button" type="submit">Save link</button>
+        <button class="secondary-button" type="button" data-cancel-editor>Cancel</button>
+      </div>
+    </form>
+  `);
+
+  const form = document.querySelector<HTMLFormElement>("#link-umpire-form");
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void saveUmpireLink(umpireId, form);
+  });
+}
+
+async function saveUmpireLink(
+  umpireId: string,
+  form: HTMLFormElement
+) {
+  const message = document.querySelector<HTMLParagraphElement>(
+    "#link-umpire-message"
+  );
+  const button = form.querySelector<HTMLButtonElement>(
+    'button[type="submit"]'
+  );
+  const profileId = String(new FormData(form).get("profile_id") ?? "");
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Saving…";
+  }
+
+  const { error } = await supabase
+    .from("umpires")
+    .update({ profile_id: profileId || null })
+    .eq("id", umpireId);
+
+  if (error) {
+    if (message) {
+      message.textContent = `Unable to save account link: ${error.message}`;
+      message.className = "message error";
+    }
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Save link";
+    }
+    return;
+  }
+
+  showEditor(`
+    <p class="message success">Account link updated successfully.</p>
+  `);
+  await loadUmpires();
+}
+
+
+export function renderUmpireDirectory(container: HTMLElement) {
   container.innerHTML = `
     <section class="directory-section">
       <div class="directory-header">
@@ -157,31 +545,107 @@ export function renderUmpireDirectory(container: HTMLElement) {
           <p class="eyebrow">RWCLL · ADMINISTRATION</p>
           <h2>Umpire Directory</h2>
           <p class="directory-description">
-            View and search registered league umpires.
+            View, search, and manage registered league umpires.
           </p>
         </div>
       </div>
 
+      <button id="toggle-create-umpire" class="primary-button" type="button"
+        aria-expanded="false">
+        + Create Umpire
+      </button>
+
+      <form id="create-umpire-form" class="create-umpire-form" hidden>
+        <h3>New umpire</h3>
+
+        <label for="new-umpire-name">Full name *</label>
+        <input id="new-umpire-name" name="display_name"
+          type="text" maxlength="100" required
+          placeholder="Umpire's full name" />
+
+        <label for="new-umpire-number">Umpire number</label>
+        <input id="new-umpire-number" name="umpire_number"
+          type="text" maxlength="50"
+          placeholder="Optional league number" />
+
+        <label for="new-umpire-classification">Classification *</label>
+        <select id="new-umpire-classification" name="classification" required>
+          <option value="youth">Youth</option>
+          <option value="adult">Adult</option>
+        </select>
+
+        <label for="new-umpire-phone">Phone</label>
+        <input id="new-umpire-phone" name="phone"
+          type="tel" maxlength="30"
+          placeholder="Optional phone number" />
+
+        <label for="new-umpire-eligibility">Eligibility *</label>
+        <select id="new-umpire-eligibility" name="eligibility_status" required>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="suspended">Suspended</option>
+        </select>
+
+        <p id="create-umpire-message" class="message"
+          role="status" aria-live="polite"></p>
+
+        <div class="account-actions">
+          <button id="save-umpire-button" class="primary-button"
+            type="submit">Create umpire</button>
+          <button id="cancel-create-umpire" class="secondary-button"
+            type="button">Cancel</button>
+        </div>
+      </form>
+
       <label for="umpire-search">Search umpires</label>
-      <input
-        id="umpire-search"
-        type="search"
+      <input id="umpire-search" type="search"
         placeholder="Search name, number, phone, or status"
-        autocomplete="off"
-      />
+        autocomplete="off" />
 
       <p id="umpire-directory-message" class="message"
         role="status" aria-live="polite"></p>
 
-      <div id="umpire-results">
-        Loading umpire records…
-      </div>
+        <div id="umpire-editor"></div>
+
+      <div id="umpire-results">Loading umpire records…</div>
 
       <button id="refresh-umpires" class="secondary-button" type="button">
         Refresh directory
       </button>
     </section>
   `;
+
+  const form = container.querySelector<HTMLFormElement>(
+    "#create-umpire-form"
+  );
+  const toggle = container.querySelector<HTMLButtonElement>(
+    "#toggle-create-umpire"
+  );
+
+  toggle?.addEventListener("click", () => {
+    if (!form || !toggle) return;
+
+    form.hidden = !form.hidden;
+    toggle.setAttribute("aria-expanded", String(!form.hidden));
+    toggle.textContent = form.hidden ? "+ Create Umpire" : "− Close Form";
+
+    if (!form.hidden) {
+      container.querySelector<HTMLInputElement>("#new-umpire-name")?.focus();
+    }
+  });
+
+  container.querySelector<HTMLButtonElement>("#cancel-create-umpire")
+    ?.addEventListener("click", () => {
+      form?.reset();
+      if (form) form.hidden = true;
+      toggle?.setAttribute("aria-expanded", "false");
+      if (toggle) toggle.textContent = "+ Create Umpire";
+    });
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void createUmpire(form);
+  });
 
   container.querySelector<HTMLInputElement>("#umpire-search")
     ?.addEventListener("input", (event) => {
@@ -195,6 +659,18 @@ export function renderUmpireDirectory(container: HTMLElement) {
     ?.addEventListener("click", () => {
       void loadUmpires();
     });
+
+  container.querySelector<HTMLDivElement>("#umpire-results")
+  ?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLButtonElement)) return;
+
+    const editId = target.dataset.editUmpire;
+    const linkId = target.dataset.linkUmpire;
+
+    if (editId) void showEditForm(editId);
+    if (linkId) void showLinkForm(linkId);
+  });
 
   void loadUmpires();
 }
