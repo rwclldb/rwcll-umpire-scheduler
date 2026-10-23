@@ -2,6 +2,7 @@
 import "./style.css";
 import { supabase } from "./supabase";
 import type { Session } from "@supabase/supabase-js";
+import { renderUmpireDirectory } from "./umpires";
 
 type AccountStatus = "pending" | "approved" | "rejected" | "suspended";
 
@@ -329,6 +330,10 @@ function renderAdminDashboard(profile: Profile) {
         <button id="refresh-accounts" class="secondary-button"
           type="button">Refresh list</button>
 
+        <hr class="directory-divider" />
+
+        <div id="umpire-directory-container"></div>
+
         <p class="security-note">
           Signed in as ${escapeHtml(profile.display_name || "Administrator")}
         </p>
@@ -370,6 +375,13 @@ function renderAdminDashboard(profile: Profile) {
   );
 
   void loadPendingAccounts();
+
+  const directoryContainer =
+    document.querySelector<HTMLElement>("#umpire-directory-container");
+
+  if (directoryContainer) {
+      renderUmpireDirectory(directoryContainer);
+  }
 }
 
 function escapeHtml(value: string): string {

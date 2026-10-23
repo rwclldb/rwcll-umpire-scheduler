@@ -333,3 +333,9 @@ input:focus {
   background: #f8fafc;
   border-radius: 8px;
 }
+
+.directory-divider {
+  margin: 28px 0;
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+}
