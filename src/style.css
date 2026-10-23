@@ -446,3 +446,35 @@ input:focus {
     grid-template-columns: 1fr;
   }
 }
+
+.season-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.season-dates {
+  margin: 6px 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.season-edit-button {
+  width: auto;
+  min-height: 36px;
+  margin: 0;
+  padding: 8px 12px;
+}
+
+.season-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.season-checkbox-label input {
+  width: auto;
+  min-height: auto;
+}
