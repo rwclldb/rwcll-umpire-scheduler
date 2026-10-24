@@ -221,7 +221,7 @@ input:focus {
 
 
 .admin-card {
-  max-width: 680px;
+  max-width: 1040px;
 }
 
 .pending-account {
@@ -441,7 +441,7 @@ input:focus {
   font-size: 0.85rem;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 820px) {
   .setup-grid {
     grid-template-columns: 1fr;
   }
@@ -462,7 +462,7 @@ input:focus {
 
 .season-edit-button {
   width: auto;
-  min-height: 36px;
+  min-height: 44px;
   margin: 0;
   padding: 8px 12px;
 }
@@ -477,4 +477,146 @@ input:focus {
 .season-checkbox-label input {
   width: auto;
   min-height: auto;
+}
+
+
+/* ================================================================
+   Polish pass (October 2026): form controls, touch targets, phones.
+   These rules come last on purpose so they override the older ones.
+   ================================================================ */
+
+/* A grid child will not shrink below its widest content unless told it
+   may. Without this, a wide table made the whole page scroll sideways
+   on phones. Now the table scrolls inside its own box instead. */
+.auth-card {
+  min-width: 0;
+}
+
+.table-scroll {
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Dropdowns and text areas match the text inputs. */
+select,
+textarea {
+  font: inherit;
+  color: #172033;
+  background: #fff;
+  border: 1px solid #cbd4e1;
+  border-radius: 8px;
+}
+
+select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 11px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+select:focus,
+textarea:focus {
+  border-color: #3974c6;
+  outline: 3px solid rgb(57 116 198 / 16%);
+}
+
+.create-umpire-form textarea {
+  display: block;
+  padding: 10px;
+  border-color: #cbd5e1;
+  border-radius: 6px;
+}
+
+/* Labels that sit directly in a panel (the Teams season filter). */
+.setup-panel > label {
+  display: block;
+  margin: 16px 0 6px;
+}
+
+.setup-panel > select {
+  margin-bottom: 8px;
+}
+
+/* Checkboxes: bigger, and beside their text instead of above it. */
+input[type="checkbox"] {
+  accent-color: #2459a9;
+}
+
+.create-umpire-form .season-checkbox-label,
+.season-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin: 16px 0 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.create-umpire-form .season-checkbox-label input[type="checkbox"],
+.season-checkbox-label input[type="checkbox"] {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  margin: 0;
+}
+
+/* Delete buttons are the dangerous ones, so they look different. */
+button[id^="delete-"] {
+  color: #a32323;
+  border-color: #e3b4b4;
+}
+
+button[id^="delete-"]:hover {
+  background: #fdf0f0;
+}
+
+/* Umpire table: keep the last column a normal table cell and the
+   buttons compact and side by side, so rows stay short. */
+.umpire-table td:last-child {
+  display: table-cell;
+  white-space: nowrap;
+}
+
+.umpire-table td .secondary-button,
+.umpire-table td .primary-button {
+  width: auto;
+  min-height: 40px;
+  margin: 0 8px 0 0;
+  padding: 8px 12px;
+}
+
+/* Keyboard users can see where they are. */
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgb(57 116 198 / 45%);
+  outline-offset: 2px;
+}
+
+/* Section headers: the Refresh button keeps its natural size. */
+.directory-header .secondary-button {
+  flex: 0 0 auto;
+  width: auto;
+  margin-top: 0;
+}
+
+/* Phones: stack action buttons full width so they are easy to tap. */
+@media (max-width: 480px) {
+  .account-actions button {
+    flex: 1 1 100%;
+  }
+
+  .directory-header {
+    flex-wrap: wrap;
+  }
 }
