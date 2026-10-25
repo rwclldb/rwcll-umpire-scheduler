@@ -1151,3 +1151,184 @@ input[type="radio"] {
     padding-bottom: 12px;
   }
 }
+
+/* Import from a spreadsheet */
+.importer {
+  margin: 16px 0;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.importer h3 {
+  margin-top: 0;
+}
+
+.importer h4 {
+  margin: 24px 0 6px;
+}
+
+.importer h5 {
+  margin: 14px 0 6px;
+  font-size: 0.95rem;
+}
+
+.imp-table select,
+.imp-table input[type="text"] {
+  max-width: 300px;
+}
+
+.imp-table input[type="text"] {
+  margin-top: 6px;
+}
+
+.imp-summary {
+  color: #2f3b52;
+  font-weight: 600;
+}
+
+.imp-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.imp-badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: #384358;
+  background: #eef2f7;
+  font-size: 0.9rem;
+}
+
+.imp-new {
+  color: #1b6b3a;
+  background: #e7f6ec;
+}
+
+.imp-changed {
+  color: #8a4b00;
+  background: #fff1d6;
+}
+
+.imp-problem {
+  color: #9b2c25;
+  background: #fdeceb;
+}
+
+.imp-creates {
+  color: #384358;
+}
+
+.imp-section {
+  margin: 14px 0;
+}
+
+.imp-problems h5 {
+  color: #9b2c25;
+}
+
+.imp-list {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.imp-list li {
+  margin: 4px 0;
+}
+
+.imp-list ul {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+  color: #384358;
+}
+
+.imp-warn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #8a4b00;
+  background: #fff1d6;
+}
+
+.imp-umpires {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: #9b2c25;
+  background: #fdeceb;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* On a narrow screen the import tables become stacked cards too. */
+@media (max-width: 700px) {
+  .imp-table thead {
+    display: none;
+  }
+
+  .imp-table,
+  .imp-table tbody,
+  .imp-table tr,
+  .imp-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .imp-table tr {
+    margin: 0 0 10px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .imp-table td {
+    padding: 6px 12px;
+    border-bottom: 0;
+    white-space: normal;
+  }
+
+  .imp-table td[data-label]::before {
+    display: block;
+    color: #566176;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    content: attr(data-label);
+  }
+
+  .imp-table select,
+  .imp-table input[type="text"] {
+    max-width: 100%;
+  }
+}
+
+/* League Setup header: more than one button */
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.header-actions .secondary-button {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .header-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .header-actions .secondary-button {
+    flex: 1 1 100%;
+  }
+}

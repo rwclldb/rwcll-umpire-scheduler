@@ -1,6 +1,7 @@
 import { escapeHtml } from "./ui";
 import { loadContext, loadSeasonGames } from "./games/data";
 import { renderGameForm } from "./games/form";
+import { renderImporter } from "./games/importer";
 import { formatDate, formatTime, localDateKey } from "./games/format";
 import { computeWarnings } from "./games/warnings";
 import type { Warning } from "./games/warnings";
@@ -24,6 +25,10 @@ type Filters = {
 
 // Kept while the person moves between pages, so they come back to the same view.
 let remembered: Filters | null = null;
+
+// A message to show once, at the top, after the page is drawn again (for
+// example "Imported 45 games").
+let flash: string | null = null;
 
 const STATUS_LABELS: Record<GameStatus, string> = {
   draft: "Draft",
@@ -182,10 +187,13 @@ export async function renderGames(container: HTMLElement): Promise<void> {
 
       <div class="account-actions">
         <button id="add-game" class="primary-button" type="button">Add game</button>
+        <button id="import-games" class="secondary-button" type="button">Import from spreadsheet</button>
         <button id="refresh-games" class="secondary-button" type="button">Refresh</button>
       </div>
 
       <p id="games-message" class="message" role="status" aria-live="polite"></p>
+
+      <div id="importer-container"></div>
 
       <div id="game-form-container"></div>
 
@@ -426,7 +434,30 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   bind("gf-search", "input", (t) => { filters.search = t.value; renderList(); });
   bind("gf-warnings", "change", (t) => { filters.onlyWarnings = t.checked; renderList(); });
 
-  get<HTMLElement>("add-game").addEventListener("click", () => { say(""); openForm(null); });
+  get<HTMLElement>("add-game").addEventListener("click", () => {
+    say("");
+    get<HTMLElement>("importer-container").innerHTML = "";
+    openForm(null);
+  });
+
+  get<HTMLElement>("import-games").addEventListener("click", () => {
+    say("");
+    closeForm();
+
+    const importer = get<HTMLElement>("importer-container");
+    renderImporter(importer, {
+      context,
+      seasonId: filters.seasonId,
+      onClose: () => { importer.innerHTML = ""; },
+      onImported: (text) => {
+        // Everything is read again, so the new teams and fields have names.
+        flash = text;
+        void renderGames(container);
+      },
+    });
+
+    importer.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   get<HTMLElement>("refresh-games").addEventListener("click", () => { say(""); void reload(); });
 
   get<HTMLElement>("game-list").addEventListener("click", (event) => {
@@ -441,6 +472,11 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   });
 
   await reload();
+
+  if (flash) {
+    say(flash);
+    flash = null;
+  }
 }
 
 // Forgets the filters, so the next person (after a sign-out) starts fresh.

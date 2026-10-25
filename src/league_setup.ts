@@ -1,11 +1,16 @@
 import { renderDivisionForm, renderDivisions, wireDivisionForm } from "./setup/divisions";
 import { renderLeagueForm, renderLeagues, wireLeagueForm } from "./setup/leagues";
 import { renderLocationForm, renderLocations, wireLocationForm } from "./setup/locations";
+import { renderSeasonImport } from "./setup/season-import";
 import { renderSeasonForm, renderSeasons, wireSeasonForm } from "./setup/seasons";
 import { registerReloader, state } from "./setup/state";
 import { supabase } from "./supabase";
 import { openTeamEditor, renderTeamForm, renderTeamsPanel, wireTeamForm } from "./setup/teams";
 import type { AgeChartRecord, DivisionRecord, LocationRecord, SeasonRecord, SetupRecord, TeamRecord } from "./setup/types";
+
+// A message to show once, at the top, after the screen is drawn again (for
+// example "Created the season ...").
+let flashMessage: string | null = null;
 
 export async function renderLeagueSetup(
   container: HTMLElement,
@@ -106,12 +111,18 @@ export async function renderLeagueSetup(
             Configure leagues, seasons, divisions, and game locations.
           </p>
         </div>
-        <button id="refresh-league-setup"
-          class="secondary-button" type="button">Refresh</button>
+        <div class="header-actions">
+          <button id="import-season-button"
+            class="secondary-button" type="button">Create a season from a file</button>
+          <button id="refresh-league-setup"
+            class="secondary-button" type="button">Refresh</button>
+        </div>
       </div>
 
       <p id="league-setup-message" class="message"
         role="status" aria-live="polite"></p>
+
+      <div id="season-import-editor"></div>
 
       <div id="league-editor">
         ${leagueEditor ? renderLeagueForm(leagueEditor) : ""}
@@ -153,6 +164,31 @@ export async function renderLeagueSetup(
       state.editingLocationId = null;
       state.editingTeamId = null;
       void renderLeagueSetup(container);
+    });
+
+  // ----- Create a season from the registration files -----
+  container.querySelector("#import-season-button")
+    ?.addEventListener("click", () => {
+      const holder = container.querySelector<HTMLElement>("#season-import-editor");
+      if (!holder) return;
+
+      renderSeasonImport(holder, {
+        leagues,
+        seasons,
+        divisions,
+        teams,
+        onClose: () => {
+          holder.innerHTML = "";
+        },
+        onImported: (text, seasonId) => {
+          flashMessage = text;
+          // show the new season's teams in the Teams list
+          if (seasonId) state.teamSeasonFilter = seasonId;
+          void renderLeagueSetup(container);
+        },
+      });
+
+      holder.scrollIntoView({ behavior: "smooth", block: "start" });
     });
 
   // ----- Leagues -----
@@ -339,6 +375,17 @@ export async function renderLeagueSetup(
 
   if (editor) {
     wireSeasonForm(container);
+  }
+
+  if (flashMessage) {
+    const message = container.querySelector<HTMLParagraphElement>(
+      "#league-setup-message",
+    );
+    if (message) {
+      message.textContent = flashMessage;
+      message.className = "message success";
+    }
+    flashMessage = null;
   }
 }
 

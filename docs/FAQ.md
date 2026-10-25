@@ -61,6 +61,8 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 28. [Rules about teams and games](#28-rules-about-teams-and-games)
 29. [Menus and pages: who sees what](#29-menus-and-pages-who-sees-what)
 30. [The Games tab](#30-the-games-tab)
+31. [Importing games from the master calendar](#31-importing-games-from-the-master-calendar)
+32. [Creating a season from the registration files](#32-creating-a-season-from-the-registration-files)
 
 ---
 
@@ -182,6 +184,8 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
+| `import_season_check.sql` | Creating a season from a file works and is all-or-nothing (a refused import saves nothing; only scheduling admins can run it) | `Failures: 0` |
+| `import_games_check.sql` | The spreadsheet import works and is all-or-nothing (a failed import saves nothing; only scheduling admins can run it) | `Failures: 0` |
 | `games_master_id_check.sql` | The master calendar Game ID rules work (optional, unique within a season, no stray spaces) | `Failures: 0` |
 | `games_rules_check.sql` | The team and game rules work (a team's division is in its league; a game's teams are in its season and division; bracket slots; game types) | `Failures: 0` |
 | `email_outbox_check.sql` | The Outbox works and stays private (only scheduling admins can queue or read, no direct writes, the internal path cannot be called from the app) | `Failures: 0` |
@@ -370,6 +374,8 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
+| `supabase\tests\import_season_check.sql` | Tests the season import function (builds its own tiny leagues; your data is not used) | No (always rolls back) |
+| `supabase\tests\import_games_check.sql` | Tests the spreadsheet import function (builds its own tiny league; your data is not used) | No (always rolls back) |
 | `supabase\tests\games_master_id_check.sql` | Tests the master calendar Game ID rules (builds its own tiny league; your data is not used) | No (always rolls back) |
 | `supabase\tests\games_rules_check.sql` | Tests the team and game rules (builds its own tiny league; your data is not used) | No (always rolls back) |
 | `supabase\tests\registration_check.sql` | Tests sign-up, invitations and approval (creates temporary test accounts) | No (always rolls back) |
@@ -416,6 +422,9 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `npm run build` prints errors | A code problem | Copy the errors exactly and send them to Claude |
 | `git push` is rejected | GitHub has changes you do not | Ask Claude before doing anything else |
 | The Outbox looks empty after inviting someone | Older versions only reloaded when opened. The current version updates by itself and has a **Refresh** button. | Press **Refresh**. If it is still empty, run this in the SQL Editor to see what really exists: `select created_at, kind, to_email, subject, status from public.email_outbox order by created_at desc limit 10;` |
+| VS Code shows a red underline (for example "Cannot find module") but `npm run build` is fine | VS Code's TypeScript checker is out of date. It often misses files that were just added, moved or replaced. | Press `Ctrl+Shift+P`, type **TypeScript: Restart TS Server**, and press Enter. The real compiler (`npm run build`) is the one to trust. |
+| `Cannot find module "../supabase"` (or `"../ui"`, `"./types"`) in a file inside a folder | The file is in the wrong folder, or VS Code rewrote its `import` lines when the file was dragged. `./` means the same folder, `../` means one folder up. | Check the file's folder against the layout in section 22. When VS Code asks "Update imports for moved file?", answer **No**, or re-copy the file. |
+| The season import says "A season called ... already exists" | You chose **Create a new season** but one with that name is already there | In the **Season** list, choose **Add to: that season** (to add teams to it), or give the new season a different name. |
 | Signing up on **live** says the email "cannot be used as it is not authorized" | Supabase's built-in email sender only reaches your own team's addresses (error code `email_address_not_authorized`). Sign-up needs a confirmation email, so everyone else is refused. | A real email provider has to be connected (see section 26). Until then only team members can register on live. |
 | Someone signed up as an umpire but is not in **Umpire registrations** | They must confirm their email and then sign in once; the record is created at that sign-in | Ask them to confirm the email and sign in. People who never confirm never appear (this keeps spam out). |
 | An invited person registered but was not approved automatically | The email must match the invitation exactly, be **confirmed**, and the invitation must be open (not expired or revoked) and the record not already linked. They must also **sign in once** after confirming. | Open Edit on their umpire record: the Invitation panel shows the status. Renew it if it expired. |
@@ -460,10 +469,11 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts` (the five files in the `games` folder) | `src\games` (a new folder) |
+| `season-plan.ts`, `season-import.ts` (the two season import files) | `src\setup` (the folder that already holds the other setup files) |
+| `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the ten files in the `games` folder) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
 | `style.css` | `src` (it replaces `src\style.css`) |
 | `FAQ.md`, `RECOVERY.md`, `EMAIL-SETUP.md` | `docs` |
@@ -718,6 +728,72 @@ Canceled games never cause or receive conflicts. A game with only one of its two
 
 **What comes next on this tab**
 
-1. **Import from a spreadsheet:** a preview first (new games, changed games, unchanged games, and problems), then apply. Games are matched on the master Game ID.
-2. **Export and print** the calendar with fields, teams and umpire assignments.
-3. **Assigning umpires**, and umpires entering their availability.
+1. **Export and print** the calendar with fields, teams and umpire assignments.
+2. **Assigning umpires**, and umpires entering their availability.
+
+**Importing from the master calendar spreadsheet** is built: see section 31.
+
+## 31. Importing games from the master calendar
+
+**Where:** Games tab, **Import from spreadsheet**. **Who:** super admins, umpire chiefs and schedulers.
+
+**Get the file.** Export the master calendar and save it as **CSV** (in Excel or Google Sheets: File, Save as or Download, *Comma-separated values*). Excel files (`.xlsx`) are not read directly.
+
+**The steps on screen**
+
+1. Choose the **season** to import into, then choose the **file**. Nothing is saved yet.
+2. **What is in the file.** Every kind of row (for example `Games - MAJ`, `Practices`) is listed. **Practices are skipped automatically**, because a practice has the word "Practice" where the opponent would be. Untick any other kind you do not want.
+3. **Matches.** The screen matches the file's names to yours and you can change any of them:
+   - **Divisions:** `MAJ` is matched to *Majors*, `TEE` to *Tee Ball*, and so on. If a name cannot be matched, choose the division yourself; games without a division are held back and listed as problems.
+   - **Fields:** a field you already have is matched. Otherwise it is set to **Create a new field**, named after the location in the file (you can type a different name).
+   - **Teams:** a team with the same name as one of this season's teams is matched. A name that looks like a league team (`MAJ 02 - Kays`) is set to **Create a new team**, in the game's division. Any other name (another club) is set to **Outside team (name only)**, which keeps the name on the game without making a team record.
+4. **Preview.** It counts the games that are **new**, **changed** (and says exactly how), **unchanged**, have **problems**, or are **not in the file**. It also says which teams and fields will be created.
+5. **Import.** One button says exactly what it will do. Everything is saved together, or, if anything is wrong, **nothing is saved** and the message names the game.
+
+**How games are matched.** By the master calendar's **Game ID** (the `Match ID` column) within the season. A game that is already here is **updated** (teams, field, time, division, and status if the file gives one). A game that is not here is **added**. A game made by hand has no Game ID and is never touched. **Notes and Game IDs are never changed by an import.**
+
+**Importing the same file again changes nothing:** it shows 0 new, 0 changed, and the button says "Nothing to import". This is safe to do whenever you are unsure.
+
+**When the master calendar changes**, export it again and import it. The preview lists each change in words, for example `Time: Sun, Oct 4, 9:00 AM - 11:00 AM -> 9:30 AM - 11:30 AM`. A changed game that **already has umpires assigned** is flagged, so you know who may need to be told.
+
+**Games that disappear from the master calendar.** If a game is here but not in the file (in the same days and divisions the file covers), the preview lists it under **not in the file**. It is **not deleted or changed**. Open it on the Games tab and set it to **Canceled**.
+
+**Times.** The file's times are read in **your computer's time zone**, which the import screen states. Import from a computer set to the league's time zone.
+
+**Do the season first.** Create the season, divisions and teams from the registration files (section 32), then import the calendar. The calendar then finds every team and division by itself, so only the fields need creating.
+
+**Tips**
+
+- Let the import create teams and fields using the master calendar's own names. Later imports then match by themselves.
+- If you rename a team or field afterwards, the next import will not recognise it and will offer to create it again (the preview shows those games as changed). Choose the renamed team or field from the list in the matches, and everything lines up again.
+- A file whose headings are different (for example *Game ID* instead of *Match ID*) is usually recognised. If not, the **Columns in the file** panel opens and you choose which column holds what.
+- Limits: files up to 5 MB and 5,000 games at a time.
+
+## 32. Creating a season from the registration files
+
+**Where:** League Setup, **Create a season from a file**. **Who:** super admins, umpire chiefs and schedulers.
+
+**What it does.** It reads the registration system's exports and creates, in one step, a **season**, its **divisions** and its **teams**, so you do not have to type them in. You do this once per season, before importing the calendar (section 31).
+
+**The two files** (save each as **CSV** first)
+
+| File | What it gives | Needed? |
+|---|---|---|
+| **Team Detail** | Every team, with its division and program (season) name | Yes. It is enough on its own |
+| **Division Details** | The season's start and end dates, and how many teams each division should have | Optional |
+
+**Words.** The registration system's "Program" (for example *2026 Fall Ball*) becomes a **season**. Your league (for example RWCLL) is chosen from a list. Divisions belong to the league and are reused from season to season, so a division you already have is matched, not created again.
+
+**What you see, and what is decided for you**
+
+1. **League and season.** If a season with the program's name already exists, it is chosen ("Add to: ..."), and only teams are added to it; its name and dates are never changed. Otherwise a **new season** is created, with a name and dates you can edit.
+2. **Divisions.** Each is matched to one of yours by name. A bracketed description is ignored (`Majors (46-60)` matches `Majors`). A division you do not have is created, named **without** the description (`Majors`), and you can change that name. **External Teams** is **switched off** by default: those are other organizations' practice groups, not teams that need umpires. Untick any division to leave it and its teams out.
+3. **Teams.** Each team is created in its division. Teams already in the season are left alone. Open **Teams** to untick any you do not want. A team with no coach name yet (for example `AA 06 -`) is created as it is and flagged; untick it to leave it out.
+4. **Season dates.** If you add the Division Details file, the dates come from the earliest start and the latest end. An end date more than a year after the start (for example 2027 instead of 2026) is treated as a typing slip, ignored, and mentioned.
+5. **Preview and button.** The preview counts what will be created and lists problems (which stop the button) and things worth a look. The button says exactly what it will do. Everything is saved together, or, if anything is wrong, **nothing is saved** and the message names the season, division or team.
+
+**Running it again is safe.** The season is found by name, nothing is created twice, and the button says "Nothing new to add". If the registration system later gets **another team**, import the new Team Detail file: only that team is added. A team the registration has moved to another division is **not** moved here (you are warned), and teams here that are not in the file are listed but never touched.
+
+**After it has run:** open **Seasons** to choose an age chart, and **Divisions** to set each division's age range if you use them. Then import the calendar (section 31): its teams, divisions and games line up automatically.
+
+**Limits:** files up to 2 MB, 200 divisions and 2,000 teams at a time.
