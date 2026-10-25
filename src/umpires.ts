@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 type UmpireClassification = "youth" | "adult";
 type EligibilityStatus = "active" | "inactive" | "suspended";
 
-type Umpire = {
+type UmpireRow = {
   id: string;
   profile_id: string | null;
   umpire_number: string | null;
@@ -11,6 +11,14 @@ type Umpire = {
   classification: UmpireClassification;
   phone: string | null;
   eligibility_status: EligibilityStatus;
+};
+
+// What the directory works with: the database row plus the email to show.
+// The email comes from the linked account when there is one; otherwise it
+// comes from the administrator-only private details.
+type Umpire = UmpireRow & {
+  email: string | null;
+  email_from_account: boolean;
 };
 
 let directoryElement: HTMLElement | null = null;
@@ -28,6 +36,14 @@ function escapeHtml(value: string): string {
 
     return replacements[character];
   });
+}
+
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function isValidEmail(value: string): boolean {
+  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function statusLabel(status: EligibilityStatus): string {
@@ -52,6 +68,7 @@ function renderRows(searchTerm = "") {
       umpire.display_name,
       umpire.umpire_number ?? "",
       umpire.classification,
+      umpire.email ?? "",
       umpire.phone ?? "",
       umpire.eligibility_status
     ].some((value) => value.toLowerCase().includes(query));
@@ -76,6 +93,7 @@ function renderRows(searchTerm = "") {
             <th>Umpire</th>
             <th>Number</th>
             <th>Classification</th>
+            <th>Email</th>
             <th>Phone</th>
             <th>Eligibility</th>
             <th>Account</th>
@@ -90,6 +108,7 @@ function renderRows(searchTerm = "") {
               <td>${escapeHtml(
                 umpire.classification === "youth" ? "Youth" : "Adult"
               )}</td>
+              <td class="email-cell">${escapeHtml(umpire.email || "—")}</td>
               <td>${escapeHtml(umpire.phone || "—")}</td>
               <td>
                 <span class="eligibility-badge eligibility-${umpire.eligibility_status}">
@@ -147,7 +166,49 @@ async function loadUmpires() {
     return;
   }
 
-  allUmpires = (data ?? []) as Umpire[];
+  // Emails: a linked account's email wins; otherwise the email kept in the
+  // administrator-only private details. If either lookup is not allowed
+  // for this user, the emails are simply left blank.
+  const [privateResult, accountsResult] = await Promise.all([
+    supabase.from("umpire_private_details").select("umpire_id, email"),
+    supabase.from("profiles").select("id, email"),
+  ]);
+
+  if (privateResult.error) {
+    console.error("Umpire emails not loaded:", privateResult.error.message);
+  }
+  if (accountsResult.error) {
+    console.error("Account emails not loaded:", accountsResult.error.message);
+  }
+
+  const recordEmails = new Map<string, string>();
+  for (const row of (privateResult.data ?? []) as {
+    umpire_id: string;
+    email: string | null;
+  }[]) {
+    if (row.email) recordEmails.set(row.umpire_id, row.email);
+  }
+
+  const accountEmails = new Map<string, string>();
+  for (const row of (accountsResult.data ?? []) as {
+    id: string;
+    email: string | null;
+  }[]) {
+    if (row.email) accountEmails.set(row.id, row.email);
+  }
+
+  allUmpires = ((data ?? []) as UmpireRow[]).map((umpire) => {
+    const accountEmail = umpire.profile_id
+      ? accountEmails.get(umpire.profile_id) ?? null
+      : null;
+    const recordEmail = recordEmails.get(umpire.id) ?? null;
+
+    return {
+      ...umpire,
+      email: accountEmail ?? recordEmail,
+      email_from_account: accountEmail !== null,
+    };
+  });
   renderRows(
     document.querySelector<HTMLInputElement>("#umpire-search")?.value ?? ""
   );
@@ -173,6 +234,7 @@ async function createUmpire(form: HTMLFormElement) {
   const umpireNumber = String(data.get("umpire_number") ?? "").trim();
   const classification = String(data.get("classification") ?? "");
   const phone = String(data.get("phone") ?? "").trim();
+  const email = normalizeEmail(String(data.get("email") ?? ""));
   const eligibility = String(data.get("eligibility_status") ?? "");
 
   if (!displayName) {
@@ -199,6 +261,14 @@ async function createUmpire(form: HTMLFormElement) {
     return;
   }
 
+  if (email && !isValidEmail(email)) {
+    if (message) {
+      message.textContent = "Please enter a valid email address.";
+      message.className = "message error";
+    }
+    return;
+  }
+
   if (saveButton) {
     saveButton.disabled = true;
     saveButton.textContent = "Creating…";
@@ -210,16 +280,46 @@ async function createUmpire(form: HTMLFormElement) {
   }
 
   try {
-    const { error } = await supabase.from("umpires").insert({
-      display_name: displayName,
-      umpire_number: umpireNumber || null,
-      classification,
-      phone: phone || null,
-      eligibility_status: eligibility,
-      profile_id: null
-    });
+    const { data: created, error } = await supabase
+      .from("umpires")
+      .insert({
+        display_name: displayName,
+        umpire_number: umpireNumber || null,
+        classification,
+        phone: phone || null,
+        eligibility_status: eligibility,
+        profile_id: null
+      })
+      .select("id")
+      .single();
 
     if (error) throw error;
+
+    // The email is kept in the administrator-only private details.
+    if (email && created) {
+      const { error: emailError } = await supabase
+        .from("umpire_private_details")
+        .upsert(
+          {
+            umpire_id: created.id,
+            email,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "umpire_id" }
+        );
+
+      if (emailError) {
+        if (message) {
+          message.textContent =
+            "The umpire was created, but the email could not be saved: " +
+            emailError.message;
+          message.className = "message error";
+        }
+        form.reset();
+        await loadUmpires();
+        return;
+      }
+    }
 
     if (message) {
       message.textContent = "Umpire created successfully.";
@@ -274,7 +374,7 @@ async function showEditForm(umpireId: string) {
   const { data: privateDetails, error } = await supabase
     .from("umpire_private_details")
     .select(
-      "emergency_contact_name, emergency_contact_phone, admin_notes"
+      "emergency_contact_name, emergency_contact_phone, admin_notes, email"
     )
     .eq("umpire_id", umpireId)
     .maybeSingle();
@@ -318,6 +418,14 @@ async function showEditForm(umpireId: string) {
       <hr class="directory-divider">
       <h3>Private Details — Administrators Only</h3>
 
+      ${umpire.email_from_account
+        ? `<p class="season-dates">Email: ${escapeHtml(umpire.email ?? "")}
+            (from the linked account; it changes when the account's email changes)</p>`
+        : `<label for="edit-email">Email</label>
+      <input id="edit-email" name="email" type="email"
+        maxlength="254" autocomplete="off"
+        value="${escapeHtml(privateDetails?.email ?? "")}">`}
+
       <label for="edit-emergency-contact-name">Emergency Contact Name</label>
       <input id="edit-emergency-contact-name"
         name="emergency_contact_name"
@@ -331,6 +439,9 @@ async function showEditForm(umpireId: string) {
       <label for="edit-admin-notes">Administrative Notes</label>
       <textarea id="edit-admin-notes" name="admin_notes"
         rows="4">${escapeHtml(privateDetails?.admin_notes ?? "")}</textarea>
+
+      <p id="edit-umpire-message" class="message"
+        role="status" aria-live="polite"></p>
 
       <div class="account-actions">
         <button type="submit">Save Changes</button>
@@ -365,6 +476,10 @@ async function saveUmpireEdits(
     formData.get("emergency_contact_phone") ?? ""
   ).trim();
   const adminNotes = String(formData.get("admin_notes") ?? "").trim();
+  // A linked umpire has no email box (the account's email is used), so
+  // the stored email is left untouched in that case.
+  const hasEmailField = formData.has("email");
+  const email = normalizeEmail(String(formData.get("email") ?? ""));
 
   if (!displayName) {
     showEditor("<p>Please enter a display name.</p>");
@@ -378,6 +493,17 @@ async function saveUmpireEdits(
 
   if (!["active", "inactive", "suspended"].includes(eligibility)) {
     showEditor("<p>Please choose a valid eligibility status.</p>");
+    return;
+  }
+
+  if (hasEmailField && email && !isValidEmail(email)) {
+    const editMessage = document.querySelector<HTMLParagraphElement>(
+      "#edit-umpire-message"
+    );
+    if (editMessage) {
+      editMessage.textContent = "Please enter a valid email address.";
+      editMessage.className = "message error";
+    }
     return;
   }
 
@@ -415,6 +541,7 @@ async function saveUmpireEdits(
         emergency_contact_name: emergencyContactName || null,
         emergency_contact_phone: emergencyContactPhone || null,
         admin_notes: adminNotes || null,
+        ...(hasEmailField ? { email: email || null } : {}),
         updated_at: new Date().toISOString(),
       },
       { onConflict: "umpire_id" }
@@ -574,6 +701,11 @@ export function renderUmpireDirectory(container: HTMLElement) {
           <option value="adult">Adult</option>
         </select>
 
+        <label for="new-umpire-email">Email</label>
+        <input id="new-umpire-email" name="email"
+          type="email" maxlength="254" autocomplete="off"
+          placeholder="Optional email address (administrators only)" />
+
         <label for="new-umpire-phone">Phone</label>
         <input id="new-umpire-phone" name="phone"
           type="tel" maxlength="30"
@@ -599,7 +731,7 @@ export function renderUmpireDirectory(container: HTMLElement) {
 
       <label for="umpire-search">Search umpires</label>
       <input id="umpire-search" type="search"
-        placeholder="Search name, number, phone, or status"
+        placeholder="Search name, number, email, phone, or status"
         autocomplete="off" />
 
       <p id="umpire-directory-message" class="message"
