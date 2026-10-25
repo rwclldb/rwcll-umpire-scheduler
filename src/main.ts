@@ -4,6 +4,7 @@ import { supabase } from "./supabase";
 import type { Session } from "@supabase/supabase-js";
 import { renderUmpireDirectory } from "./umpires";
 import { renderLeagueSetup } from "./league_setup";
+     import { renderRoleManager } from "./roles";
 
 type AccountStatus = "pending" | "approved" | "rejected" | "suspended";
 
@@ -333,6 +334,10 @@ function renderAdminDashboard(profile: Profile) {
 
         <hr class="directory-divider" />
 
+        <div id="role-manager-container"></div>
+
+        <hr class="directory-divider" />
+
         <div id="league-setup-container"></div>
 
         <div id="umpire-directory-container"></div>
@@ -391,6 +396,13 @@ function renderAdminDashboard(profile: Profile) {
 
   if (leagueSetupContainer) {
     void renderLeagueSetup(leagueSetupContainer);
+  }
+
+  const roleManagerContainer =
+    document.querySelector<HTMLElement>("#role-manager-container");
+
+  if (roleManagerContainer) {
+    void renderRoleManager(roleManagerContainer);
   }
 }
 

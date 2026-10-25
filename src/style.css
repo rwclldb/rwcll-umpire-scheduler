@@ -620,3 +620,169 @@ input:focus-visible {
     flex-wrap: wrap;
   }
 }
+
+
+/* ================================================================
+   Role manager
+   ================================================================ */
+
+.role-legend {
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.role-legend summary {
+  min-height: 24px;
+  color: #2459a9;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.role-legend ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.role-list {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.role-account {
+  padding: 16px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.role-account[hidden],
+.directory-empty[hidden] {
+  display: none;
+}
+
+.role-account-name {
+  display: block;
+  font-weight: 700;
+}
+
+.role-account-email {
+  display: block;
+  color: #64748b;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.role-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px 3px 12px;
+  color: #244c86;
+  background: #edf4ff;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.role-chip:not(:has(.role-chip-remove)) {
+  padding-right: 12px;
+}
+
+.role-chip-remove {
+  min-width: 36px;
+  min-height: 36px;
+  color: #244c86;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.role-chip-remove:hover {
+  background: #d8e6fb;
+}
+
+.role-chip-remove:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.role-chip-none {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.role-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.role-add select {
+  flex: 1 1 200px;
+  width: auto;
+  min-width: 0;
+}
+
+.role-add .secondary-button {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .role-add .secondary-button {
+    flex: 1 1 100%;
+  }
+}
+
+/* Contact details in lists, and a tighter umpire table so that all
+   columns and both action buttons fit on a desktop screen. */
+.umpire-table th,
+.umpire-table td {
+  padding: 12px 10px;
+}
+
+.umpire-table td:first-child {
+  min-width: 120px;
+  white-space: normal;
+}
+
+.umpire-table td.email-cell {
+  min-width: 170px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.umpire-table td:last-child {
+  min-width: 150px;
+  white-space: normal;
+}
+
+.umpire-table td .secondary-button {
+  margin: 3px 8px 3px 0;
+}
+
+.role-account-contact {
+  display: block;
+  color: #64748b;
+  font-size: 0.9rem;
+}
