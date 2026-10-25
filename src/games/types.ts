@@ -21,6 +21,7 @@ export type Game = {
 };
 
 export type NamedOption = { id: string; name: string; is_active: boolean };
+export type LocationOption = NamedOption & { address: string | null };
 export type DivisionOption = NamedOption & { league_id: string };
 export type TeamOption = NamedOption & {
   season_id: string;
@@ -39,6 +40,6 @@ export type GamesContext = {
   seasons: SeasonOption[];
   divisions: DivisionOption[];
   teams: TeamOption[];
-  locations: NamedOption[];
+  locations: LocationOption[];
   umpireNames: Map<string, string>;
 };

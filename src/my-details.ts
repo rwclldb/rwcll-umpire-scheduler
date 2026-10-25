@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { escapeHtml } from "./ui";
+import { describeRoles } from "./role-names";
 
 type ContactRow = {
   phone: string | null;
@@ -30,7 +31,7 @@ export async function renderMyDetails(
     return;
   }
 
-  const [contactResult, profileResult] = await Promise.all([
+  const [contactResult, profileResult, rolesResult] = await Promise.all([
     supabase.from("account_contact")
       .select("phone, sms_opt_in")
       .eq("profile_id", user.id)
@@ -39,6 +40,9 @@ export async function renderMyDetails(
       .select("email")
       .eq("id", user.id)
       .maybeSingle(),
+    supabase.from("user_roles")
+      .select("role_id")
+      .eq("user_id", user.id),
   ]);
 
   if (contactResult.error) {
@@ -56,6 +60,11 @@ export async function renderMyDetails(
     ?? user.email
     ?? "";
 
+  // (A failure to read the roles is not worth stopping for: the line just says none.)
+  const roles = describeRoles(
+    ((rolesResult.data ?? []) as { role_id: string }[]).map((row) => row.role_id)
+  );
+
   container.innerHTML = `
     <section class="my-details">
       ${showHeading ? `<h2>My details</h2>` : ""}
@@ -63,6 +72,10 @@ export async function renderMyDetails(
       <p class="season-dates">
         Email: ${escapeHtml(email || "not available")}
         (this is how you sign in)
+      </p>
+
+      <p class="season-dates" id="my-roles">
+        Your roles: <em>${escapeHtml(roles || "none")}</em>
       </p>
 
       <form id="my-details-form">

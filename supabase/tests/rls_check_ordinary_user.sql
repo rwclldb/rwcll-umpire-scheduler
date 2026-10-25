@@ -1,8 +1,10 @@
 -- RWCLL security check: what can an ORDINARY approved account do?
 --
 -- HOW TO USE
--- 1. Replace the all-zeros user id below with the id of an approved
---    account that has NO administrative role (for example a youth umpire).
+-- 1. Nothing needs to be edited: the script picks an approved account that
+--    has NO administrative role by itself (preferring one that is linked to
+--    an umpire record). To test as one particular account instead, replace
+--    the all-zeros user id below with that account's id.
 -- 2. Paste the whole script into the Supabase SQL Editor and run it.
 -- 3. The run ENDS WITH A RED ERROR. That is intentional: the report is
 --    carried inside the error message, and raising an error guarantees
@@ -19,7 +21,7 @@
 
 do $$
 declare
-  test_user uuid := '00000000-0000-0000-0000-000000000000';  -- REPLACE THIS
+  test_user uuid := '00000000-0000-0000-0000-000000000000';  -- leave as is to choose an account automatically
 
   t record;
   report text[] := '{}';
@@ -30,12 +32,33 @@ declare
   status text;
   detail text;
 begin
+  -- No account named: choose an approved one with no administrative role,
+  -- preferring one that is linked to an umpire record (that also exercises
+  -- the "an umpire can read their own record" rules).
+  if test_user = '00000000-0000-0000-0000-000000000000'::uuid then
+    select p.id into test_user
+    from public.profiles p
+    where p.account_status = 'approved'
+      and not exists (
+        select 1 from public.user_roles ur
+        where ur.user_id = p.id
+          and ur.role_id in ('super_admin', 'umpire_chief', 'scheduler',
+                             'treasurer', 'feedback_reviewer', 'read_only_admin')
+      )
+    order by exists (select 1 from public.umpires u where u.profile_id = p.id) desc, p.id
+    limit 1;
+
+    if test_user is null then
+      raise exception 'There is no approved account without an administrative role to test as. Approve an ordinary account (for example a test sign-up) and run this again.';
+    end if;
+  end if;
+
   -- Guards: the chosen account must be approved and not an administrator.
   if not exists (
     select 1 from public.profiles p
     where p.id = test_user and p.account_status = 'approved'
   ) then
-    raise exception 'Replace the placeholder with the id of an APPROVED ordinary account.';
+    raise exception 'The account you named is not an APPROVED account. Choose an approved ordinary account, or leave the id as zeros.';
   end if;
 
   if exists (
@@ -46,6 +69,13 @@ begin
   ) then
     raise exception 'That account has an administrative role. Choose an ordinary account.';
   end if;
+
+  report := report || format(
+    'INFO   tested as an ordinary account that is %s',
+    case when exists (select 1 from public.umpires u where u.profile_id = test_user)
+         then 'linked to an umpire record'
+         else 'not linked to an umpire record' end
+  );
 
   -- Count the rows that really exist (as the owner), so that a change
   -- test that touches 0 rows can be told apart from an empty table.

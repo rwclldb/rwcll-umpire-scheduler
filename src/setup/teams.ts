@@ -14,12 +14,38 @@ export function ageRangeLabel(division: DivisionRecord): string {
 }
 
 // Inner HTML of the Teams panel. Re-rendered in place when the
-// season filter changes, so other open forms are not disturbed.
+// season or division filter changes, so other open forms are not disturbed.
 export function renderTeamsPanel(): string {
   const showLeague = state.loadedLeagues.length > 1;
-  const visible = state.teamSeasonFilter
+  const inSeason = state.teamSeasonFilter
     ? state.loadedTeams.filter((team) => team.season_id === state.teamSeasonFilter)
     : state.loadedTeams;
+
+  // The division filter shows how many teams each division has in the season
+  // being looked at.
+  const NONE = "__none__";
+  const withoutDivision = inSeason.filter((team) => !team.division_id).length;
+  const visible =
+    state.teamDivisionFilter === ""
+      ? inSeason
+      : state.teamDivisionFilter === NONE
+        ? inSeason.filter((team) => !team.division_id)
+        : inSeason.filter((team) => team.division_id === state.teamDivisionFilter);
+
+  const divisionOptions =
+    `<option value="">All divisions (${inSeason.length})</option>` +
+    state.loadedDivisions.map((division) => `
+      <option value="${escapeHtml(division.id)}"
+        ${division.id === state.teamDivisionFilter ? "selected" : ""}>
+        ${escapeHtml(division.name)}
+        (${inSeason.filter((team) => team.division_id === division.id).length})
+      </option>
+    `).join("") +
+    (withoutDivision > 0 || state.teamDivisionFilter === NONE
+      ? `<option value="${NONE}" ${state.teamDivisionFilter === NONE ? "selected" : ""}>
+          No division (${withoutDivision})
+        </option>`
+      : "");
 
   const seasonOptions =
     `<option value="">All seasons</option>` +
@@ -63,7 +89,9 @@ export function renderTeamsPanel(): string {
     : `<p class="directory-empty">${
         state.loadedTeams.length === 0
           ? "No teams yet. Add the teams that play in each season."
-          : "No teams in this season yet."
+          : inSeason.length === 0
+            ? "No teams in this season yet."
+            : "No teams in this division."
       }</p>`;
 
   return `
@@ -73,6 +101,8 @@ export function renderTeamsPanel(): string {
     </button>
     <label for="team-season-filter">Show season</label>
     <select id="team-season-filter">${seasonOptions}</select>
+    <label for="team-division-filter">Show division</label>
+    <select id="team-division-filter">${divisionOptions}</select>
     ${items}
   `;
 }

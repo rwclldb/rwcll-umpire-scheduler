@@ -2,7 +2,11 @@ import { escapeHtml } from "./ui";
 import { loadContext, loadSeasonGames } from "./games/data";
 import { renderGameForm } from "./games/form";
 import { renderImporter } from "./games/importer";
-import { formatDate, formatTime, localDateKey } from "./games/format";
+import { downloadText, safeFileName, toCsv } from "./games/csv-out";
+import { formatDate, formatPrinted, formatTime, localDateKey } from "./games/format";
+import { printHtml } from "./games/print";
+import { DAY_CSV_HEADERS, buildScheduleGames, dayCsvRows, dayPrintHtml, groupByDay, lookupsFor } from "./games/schedule";
+import { renderUmpireSchedulePanel } from "./games/umpire-schedule";
 import { computeWarnings } from "./games/warnings";
 import type { Warning } from "./games/warnings";
 import type {
@@ -25,6 +29,10 @@ type Filters = {
 
 // Kept while the person moves between pages, so they come back to the same view.
 let remembered: Filters | null = null;
+
+// Whether a printed schedule starts a new page for each day. Kept while the
+// person moves between pages.
+let pagePerDay = false;
 
 // A message to show once, at the top, after the page is drawn again (for
 // example "Imported 45 games").
@@ -183,17 +191,26 @@ export async function renderGames(container: HTMLElement): Promise<void> {
           <input id="gf-warnings" type="checkbox" ${filters.onlyWarnings ? "checked" : ""} />
           Only games with warnings
         </label>
+        <label class="season-checkbox-label game-filter-wide">
+          <input id="print-page-per-day" type="checkbox" ${pagePerDay ? "checked" : ""} />
+          When printing, start each day on a new page
+        </label>
       </div>
 
       <div class="account-actions">
         <button id="add-game" class="primary-button" type="button">Add game</button>
         <button id="import-games" class="secondary-button" type="button">Import from spreadsheet</button>
+        <button id="print-games" class="secondary-button" type="button">Print schedule</button>
+        <button id="download-games" class="secondary-button" type="button">Download CSV</button>
+        <button id="umpire-schedule" class="secondary-button" type="button">One umpire's schedule</button>
         <button id="refresh-games" class="secondary-button" type="button">Refresh</button>
       </div>
 
       <p id="games-message" class="message" role="status" aria-live="polite"></p>
 
       <div id="importer-container"></div>
+
+      <div id="umpire-schedule-container"></div>
 
       <div id="game-form-container"></div>
 
@@ -279,6 +296,9 @@ export async function renderGames(container: HTMLElement): Promise<void> {
         a.starts_at.localeCompare(b.starts_at) ||
         (fieldNames.get(a.location_id) ?? "").localeCompare(fieldNames.get(b.location_id) ?? "")
       );
+
+    shownGames = visible;
+    shownAssignments = assignments;
 
     // ---- summary
     const count = (kind: Warning["kind"]) =>
@@ -392,6 +412,35 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   };
 
   // ------------------------------------------------------------- the form
+  // The games currently on screen: what Print and Download use.
+  let shownGames: Game[] = [];
+  let shownAssignments: Assignment[] = [];
+
+  // What the filters say, in words, for the top of a printout.
+  const describeFilters = (): string[] => {
+    const season = context.seasons.find((item) => item.id === filters.seasonId)?.name ?? "";
+    const pretty = (day: string) => formatDate(new Date(`${day}T12:00:00`).toISOString());
+    const dates =
+      filters.from && filters.to ? `${pretty(filters.from)} to ${pretty(filters.to)}`
+      : filters.from ? `From ${pretty(filters.from)}`
+      : filters.to ? `Up to ${pretty(filters.to)}`
+      : "All dates";
+    const status =
+      filters.status === "not_canceled" ? "Canceled games not shown"
+      : filters.status === "all" ? "All statuses"
+      : STATUS_LABELS[filters.status as GameStatus] ?? filters.status;
+
+    return [[
+      season,
+      filters.divisionId ? divisionNames.get(filters.divisionId) ?? "" : "All divisions",
+      filters.fieldId ? fieldNames.get(filters.fieldId) ?? "" : "All fields",
+      dates,
+      status,
+      filters.search.trim() ? `matching "${filters.search.trim()}"` : "",
+      filters.onlyWarnings ? "only games with warnings" : "",
+    ].filter(Boolean).join(" \u00b7 ")];
+  };
+
   const closeForm = () => {
     get<HTMLElement>("game-form-container").innerHTML = "";
   };
@@ -443,6 +492,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   get<HTMLElement>("import-games").addEventListener("click", () => {
     say("");
     closeForm();
+    get<HTMLElement>("umpire-schedule-container").innerHTML = "";
 
     const importer = get<HTMLElement>("importer-container");
     renderImporter(importer, {
@@ -459,6 +509,57 @@ export async function renderGames(container: HTMLElement): Promise<void> {
     importer.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   get<HTMLElement>("refresh-games").addEventListener("click", () => { say(""); void reload(); });
+
+  bind("print-page-per-day", "change", (t) => { pagePerDay = t.checked; });
+
+  // ---- print and download exactly the games shown below
+  get<HTMLElement>("print-games").addEventListener("click", () => {
+    say("");
+    if (shownGames.length === 0) {
+      say("There are no games to print. Change the filters first.", "error");
+      return;
+    }
+
+    const rows = buildScheduleGames(shownGames, shownAssignments, lookupsFor(context));
+    printHtml(
+      dayPrintHtml(groupByDay(rows), {
+        title: "Umpire schedule",
+        lines: describeFilters(),
+        printedAt: formatPrinted(new Date()),
+        pagePerDay,
+      })
+    );
+  });
+
+  get<HTMLElement>("download-games").addEventListener("click", () => {
+    say("");
+    if (shownGames.length === 0) {
+      say("There are no games to download. Change the filters first.", "error");
+      return;
+    }
+
+    const rows = buildScheduleGames(shownGames, shownAssignments, lookupsFor(context));
+    const season = context.seasons.find((item) => item.id === filters.seasonId)?.name ?? "season";
+    downloadText(
+      `${safeFileName(`RWCLL-schedule-${season}-${filters.from || "start"}-${filters.to || "end"}`)}.csv`,
+      toCsv([DAY_CSV_HEADERS, ...dayCsvRows(rows)])
+    );
+    say(`Downloaded ${rows.length} ${rows.length === 1 ? "game" : "games"}.`, "success");
+  });
+
+  // ---- one umpire's schedule
+  get<HTMLElement>("umpire-schedule").addEventListener("click", () => {
+    say("");
+    get<HTMLElement>("importer-container").innerHTML = "";
+    closeForm();
+
+    const holder = get<HTMLElement>("umpire-schedule-container");
+    renderUmpireSchedulePanel(holder, {
+      context,
+      onClose: () => { holder.innerHTML = ""; },
+    });
+    holder.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   get<HTMLElement>("game-list").addEventListener("click", (event) => {
     const target = event.target;

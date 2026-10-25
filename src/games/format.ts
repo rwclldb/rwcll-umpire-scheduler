@@ -74,3 +74,43 @@ export function localDateKey(iso: string): string {
 export function startOfToday(now: Date): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
+
+const longDateFormat = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
+
+// "Saturday, October 4, 2026"
+export function formatLongDate(iso: string): string {
+  return longDateFormat.format(new Date(iso));
+}
+
+const weekdayFormat = new Intl.DateTimeFormat("en-US", { weekday: "long" });
+
+// "Saturday"
+export function weekdayName(iso: string): string {
+  return weekdayFormat.format(new Date(iso));
+}
+
+// "9:00 AM - 11:00 AM"
+export function timeRange(startIso: string, endIso: string): string {
+  return `${formatTime(startIso)} \u2013 ${formatTime(endIso)}`;
+}
+
+// (The pieces are named one by one: a time zone name cannot be combined with
+// the ready-made "dateStyle" and "timeStyle" options.)
+const printedFormat = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+
+// "Oct 25, 2026, 9:41 AM PDT": when something was printed, with the time zone
+export function formatPrinted(now: Date): string {
+  return printedFormat.format(now).replace(/\u202f/g, " ");
+}
