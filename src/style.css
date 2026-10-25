@@ -925,3 +925,56 @@ input[type="radio"] {
   margin: 8px 0;
   background: #f8fafc;
 }
+
+/* App shell: menu under the top bar, and the page below it */
+.app-nav {
+  position: sticky;
+  top: 56px;
+  z-index: 15;
+  overflow-x: auto;
+  background: #fff;
+  border-bottom: 1px solid #e0e6ef;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-nav[hidden] {
+  display: none;
+}
+
+.app-nav ul {
+  display: flex;
+  gap: 4px;
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  padding: 6px 12px;
+  list-style: none;
+}
+
+.app-nav-button {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 16px;
+  color: #4b5870;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.app-nav-button:hover {
+  background: #f0f3f8;
+}
+
+.app-nav-button[aria-current="page"] {
+  color: #1d4e91;
+  background: #edf4ff;
+}
+
+/* A page inside the shell does not need to fill the whole screen height */
+#page-content .page {
+  min-height: 0;
+}

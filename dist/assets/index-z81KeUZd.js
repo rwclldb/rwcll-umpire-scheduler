@@ -1038,15 +1038,29 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
             ${Mo?`The outbox is empty.`:`No messages are waiting to be sent.`}
           </p>`}
     </section>
-  `;let o=e.querySelector(`#outbox-root`);if(!o)return;let s=(e,t)=>{let n=o.querySelector(`#outbox-message`);n&&(n.textContent=e,n.className=`message ${t}`)},c=async t=>{await No(e);let n=e.querySelector(`#outbox-message`);n&&(n.textContent=t,n.className=`message success`)};o.querySelector(`#outbox-refresh`)?.addEventListener(`click`,()=>{No(e)}),o.querySelector(`#outbox-filter`)?.addEventListener(`change`,t=>{Mo=t.target.value===`all`,No(e)}),o.addEventListener(`click`,e=>{let t=e.target;if(!(t instanceof Element))return;let n=t.closest(`[data-copy]`);if(n){let e=n.parentElement?.querySelector(`textarea`);if(!e)return;(async()=>{try{await navigator.clipboard.writeText(e.value),s(`Message copied.`,`success`)}catch{e.select(),s(`Press Ctrl+C to copy the selected message.`,`success`)}})();return}let r=t.closest(`[data-sent]`);if(r){let e=r.dataset.sent??``;r.disabled=!0,(async()=>{let{error:t}=await U.rpc(`mark_email_sent`,{p_id:e});t?(s(`Could not update the message: ${t.message}`,`error`),r.disabled=!1):await c(`Marked as sent.`)})();return}let i=t.closest(`[data-skip]`);if(i){let e=i.dataset.skip??``;if(!window.confirm(`Skip this message? It will not be sent, but a record of it is kept.`))return;i.disabled=!0,(async()=>{let{error:t}=await U.rpc(`skip_email`,{p_id:e});t?(s(`Could not update the message: ${t.message}`,`error`),i.disabled=!1):await c(`Skipped.`)})()}})}var Z=document.querySelector(`#app`);if(!Z)throw Error(`Application container was not found.`);var Q=`login`,Po=!1,Fo=new URLSearchParams(`${window.location.hash.replace(/^#/,``)}&${window.location.search.replace(/^\?/,``)}`),Io=Fo.get(`type`)===`recovery`,Lo=Fo.has(`error_description`),Ro=null;function zo(){let e=document.querySelector(`#outbox-details`),t=document.querySelector(`#outbox-container`);e&&t&&(e.addEventListener(`toggle`,()=>{e.open&&No(t)}),Ro&&document.removeEventListener(`outbox:changed`,Ro),Ro=()=>{e.isConnected&&e.open&&No(t)},document.addEventListener(`outbox:changed`,Ro))}function Bo(e){Z.insertAdjacentHTML(`afterbegin`,`
+  `;let o=e.querySelector(`#outbox-root`);if(!o)return;let s=(e,t)=>{let n=o.querySelector(`#outbox-message`);n&&(n.textContent=e,n.className=`message ${t}`)},c=async t=>{await No(e);let n=e.querySelector(`#outbox-message`);n&&(n.textContent=t,n.className=`message success`)};o.querySelector(`#outbox-refresh`)?.addEventListener(`click`,()=>{No(e)}),o.querySelector(`#outbox-filter`)?.addEventListener(`change`,t=>{Mo=t.target.value===`all`,No(e)}),o.addEventListener(`click`,e=>{let t=e.target;if(!(t instanceof Element))return;let n=t.closest(`[data-copy]`);if(n){let e=n.parentElement?.querySelector(`textarea`);if(!e)return;(async()=>{try{await navigator.clipboard.writeText(e.value),s(`Message copied.`,`success`)}catch{e.select(),s(`Press Ctrl+C to copy the selected message.`,`success`)}})();return}let r=t.closest(`[data-sent]`);if(r){let e=r.dataset.sent??``;r.disabled=!0,(async()=>{let{error:t}=await U.rpc(`mark_email_sent`,{p_id:e});t?(s(`Could not update the message: ${t.message}`,`error`),r.disabled=!1):await c(`Marked as sent.`)})();return}let i=t.closest(`[data-skip]`);if(i){let e=i.dataset.skip??``;if(!window.confirm(`Skip this message? It will not be sent, but a record of it is kept.`))return;i.disabled=!0,(async()=>{let{error:t}=await U.rpc(`skip_email`,{p_id:e});t?(s(`Could not update the message: ${t.message}`,`error`),i.disabled=!1):await c(`Skipped.`)})()}})}function Po(e,t,n){e.querySelector(`.topbar`)?.remove(),e.insertAdjacentHTML(`afterbegin`,`
       <header class="topbar">
         <span class="topbar-user">
-          ${e?`Signed in as ${qo(e)}`:`Signed in`}
+          ${t?`Signed in as ${Y(t)}`:`Signed in`}
         </span>
         <button id="topbar-signout" class="secondary-button"
           type="button">Sign out</button>
       </header>
-    `),document.querySelector(`#topbar-signout`)?.addEventListener(`click`,()=>void ts())}function $(e,t=`error`){let n=document.querySelector(`#message`);n&&(n.textContent=e,n.className=`message ${t}`)}function Vo(){Z.innerHTML=`
+    `),e.querySelector(`#topbar-signout`)?.addEventListener(`click`,n)}var Fo=null;function Io(e,t){let{pages:n}=t;e.innerHTML=`
+    <nav class="app-nav" aria-label="Main menu" ${n.length<2?`hidden`:``}>
+      <ul>
+        ${n.map(e=>`
+          <li>
+            <button type="button" class="app-nav-button"
+              data-page="${Y(e.id)}">
+              ${Y(e.label)}
+            </button>
+          </li>
+        `).join(``)}
+      </ul>
+    </nav>
+    <div id="page-content"></div>
+  `,Po(e,t.name,t.onSignOut);let r=e=>{window.location.hash=`#/${e}`};e.querySelector(`.app-nav`)?.addEventListener(`click`,e=>{let t=e.target;if(!(t instanceof Element))return;let n=t.closest(`[data-page]`);n?.dataset.page&&r(n.dataset.page)});let i=()=>{let e=document.querySelector(`#page-content`);if(!e)return;let t=/^#\/([a-z0-9-]+)$/.exec(window.location.hash)?.[1],i=n.find(e=>e.id===t)??n[0];i&&(document.querySelectorAll(`.app-nav-button`).forEach(e=>{e.dataset.page===i.id?e.setAttribute(`aria-current`,`page`):e.removeAttribute(`aria-current`)}),e.innerHTML=``,i.render(e,r),window.scrollTo(0,0))};Fo&&window.removeEventListener(`hashchange`,Fo),Fo=i,window.addEventListener(`hashchange`,Fo),i()}var Lo=document.querySelector(`#app`);if(!Lo)throw Error(`Application container was not found.`);var Z=`login`,Q=!1,Ro=new URLSearchParams(`${window.location.hash.replace(/^#/,``)}&${window.location.search.replace(/^\?/,``)}`),zo=Ro.get(`type`)===`recovery`,Bo=Ro.has(`error_description`),Vo=null;function Ho(){let e=document.querySelector(`#outbox-details`),t=document.querySelector(`#outbox-container`);e&&t&&(e.addEventListener(`toggle`,()=>{e.open&&No(t)}),Vo&&document.removeEventListener(`outbox:changed`,Vo),Vo=()=>{e.isConnected&&e.open&&No(t)},document.addEventListener(`outbox:changed`,Vo))}function Uo(e){Po(Lo,e,()=>void ls())}function $(e,t=`error`){let n=document.querySelector(`#message`);n&&(n.textContent=e,n.className=`message ${t}`)}function Wo(){Lo.innerHTML=`
     <main class="page">
       <section class="auth-card">
         <p class="eyebrow">RWCLL</p>
@@ -1057,22 +1071,22 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
         <div class="tabs" role="tablist" aria-label="Account access">
           <button id="login-tab" class="tab" type="button"
-            aria-selected="${Q===`login`}">
+            aria-selected="${Z===`login`}">
             Sign in
           </button>
           <button id="signup-tab" class="tab" type="button"
-            aria-selected="${Q===`signup`}">
+            aria-selected="${Z===`signup`}">
             Create account
           </button>
         </div>
 
-        <h2>${Q===`signup`?`Create your account`:`Welcome back`}</h2>
+        <h2>${Z===`signup`?`Create your account`:`Welcome back`}</h2>
         <p class="form-intro">
-          ${Q===`signup`?`Register to request access to the umpire system.`:`Sign in to check your account and assignments.`}
+          ${Z===`signup`?`Register to request access to the umpire system.`:`Sign in to check your account and assignments.`}
         </p>
 
         <form id="auth-form">
-          ${Q===`signup`?`
+          ${Z===`signup`?`
                 <label for="display-name">Full name</label>
                 <input id="display-name" name="displayName"
                   type="text" autocomplete="name" maxlength="100"
@@ -1111,13 +1125,13 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 
           <label for="password">Password</label>
           <input id="password" name="password" type="password"
-            autocomplete="${Q===`signup`?`new-password`:`current-password`}"
+            autocomplete="${Z===`signup`?`new-password`:`current-password`}"
             minlength="8" required placeholder="At least 8 characters" />
 
-          ${Q===`login`?`<button id="forgot-password-button" class="link-button"
+          ${Z===`login`?`<button id="forgot-password-button" class="link-button"
                   type="button">Forgot your password?</button>`:``}
 
-          ${Q===`signup`?`
+          ${Z===`signup`?`
                 <label for="confirm-password">Confirm password</label>
                 <input id="confirm-password" name="confirmPassword"
                   type="password" autocomplete="new-password"
@@ -1125,7 +1139,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
               `:``}
 
           <button id="submit-button" class="primary-button" type="submit">
-            ${Q===`signup`?`Create account`:`Sign in`}
+            ${Z===`signup`?`Create account`:`Sign in`}
           </button>
           <p id="message" class="message" role="status" aria-live="polite"></p>
         </form>
@@ -1136,7 +1150,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         </p>
       </section>
     </main>
-  `,document.querySelector(`#login-tab`)?.addEventListener(`click`,()=>{Q=`login`,Vo()}),document.querySelector(`#signup-tab`)?.addEventListener(`click`,()=>{Q=`signup`,Vo()}),document.querySelector(`#auth-form`)?.addEventListener(`submit`,e=>{e.preventDefault(),Ho()}),document.querySelector(`#forgot-password-button`)?.addEventListener(`click`,()=>{Zo()}),document.querySelectorAll(`input[name="signupKind"]`).forEach(e=>{e.addEventListener(`change`,()=>{let e=document.querySelector(`input[name="signupKind"][value="youth_umpire"]`)?.checked??!1,t=document.querySelector(`#age-confirm`);t&&(t.hidden=!e)})})}async function Ho(){if(Po)return;let e=document.querySelector(`#auth-form`),t=document.querySelector(`#submit-button`);if(!e||!t)return;let n=new FormData(e),r=String(n.get(`email`)??``).trim(),i=String(n.get(`password`)??``);Po=!0,t.disabled=!0,t.textContent=Q===`signup`?`Creating account…`:`Signing in…`,$(``);try{if(Q===`signup`){let e=String(n.get(`displayName`)??``).trim(),t=String(n.get(`confirmPassword`)??``);if(!e){$(`Please enter your full name.`);return}if(i.length<8){$(`Your password must be at least 8 characters.`);return}if(i!==t){$(`The passwords do not match.`);return}let a=String(n.get(`signupKind`)??``);if(a!==`adult_umpire`&&a!==`youth_umpire`){$(`Please choose whether you are an adult or a youth umpire.`);return}if(a===`youth_umpire`&&!n.get(`ageConfirm`)){$(`Umpires under 13 cannot register themselves. Please ask a parent or your league administrator to set up your account.`);return}let{data:o,error:s}=await U.auth.signUp({email:r,password:i,options:{data:{display_name:e,signup_kind:a},emailRedirectTo:`${window.location.origin}/`}});if(s)throw s;o.session?await Uo(o.session):(Vo(),$(`Registration submitted. Check your email for a confirmation link. After confirming, sign in to check your account approval status.`,`success`))}else{let{data:e,error:t}=await U.auth.signInWithPassword({email:r,password:i});if(t)throw t;await Uo(e.session)}}catch(e){$(e instanceof Error?e.message:`Something went wrong. Please try again.`)}finally{Po=!1;let e=document.querySelector(`#submit-button`);e&&(e.disabled=!1,e.textContent=Q===`signup`?`Create account`:`Sign in`)}}async function Uo(e,t=!1){let{data:n,error:r}=await U.from(`profiles`).select(`display_name, account_status`).eq(`id`,e.user.id).single();if(Io)return;if(r||!n){Z.innerHTML=`
+  `,document.querySelector(`#login-tab`)?.addEventListener(`click`,()=>{Z=`login`,Wo()}),document.querySelector(`#signup-tab`)?.addEventListener(`click`,()=>{Z=`signup`,Wo()}),document.querySelector(`#auth-form`)?.addEventListener(`submit`,e=>{e.preventDefault(),Go()}),document.querySelector(`#forgot-password-button`)?.addEventListener(`click`,()=>{as()}),document.querySelectorAll(`input[name="signupKind"]`).forEach(e=>{e.addEventListener(`change`,()=>{let e=document.querySelector(`input[name="signupKind"][value="youth_umpire"]`)?.checked??!1,t=document.querySelector(`#age-confirm`);t&&(t.hidden=!e)})})}async function Go(){if(Q)return;let e=document.querySelector(`#auth-form`),t=document.querySelector(`#submit-button`);if(!e||!t)return;let n=new FormData(e),r=String(n.get(`email`)??``).trim(),i=String(n.get(`password`)??``);Q=!0,t.disabled=!0,t.textContent=Z===`signup`?`Creating account…`:`Signing in…`,$(``);try{if(Z===`signup`){let e=String(n.get(`displayName`)??``).trim(),t=String(n.get(`confirmPassword`)??``);if(!e){$(`Please enter your full name.`);return}if(i.length<8){$(`Your password must be at least 8 characters.`);return}if(i!==t){$(`The passwords do not match.`);return}let a=String(n.get(`signupKind`)??``);if(a!==`adult_umpire`&&a!==`youth_umpire`){$(`Please choose whether you are an adult or a youth umpire.`);return}if(a===`youth_umpire`&&!n.get(`ageConfirm`)){$(`Umpires under 13 cannot register themselves. Please ask a parent or your league administrator to set up your account.`);return}let{data:o,error:s}=await U.auth.signUp({email:r,password:i,options:{data:{display_name:e,signup_kind:a},emailRedirectTo:`${window.location.origin}/`}});if(s)throw s;o.session?await Ko(o.session):(Wo(),$(`Registration submitted. Check your email for a confirmation link. After confirming, sign in to check your account approval status.`,`success`))}else{let{data:e,error:t}=await U.auth.signInWithPassword({email:r,password:i});if(t)throw t;await Ko(e.session)}}catch(e){$(e instanceof Error?e.message:`Something went wrong. Please try again.`)}finally{Q=!1;let e=document.querySelector(`#submit-button`);e&&(e.disabled=!1,e.textContent=Z===`signup`?`Create account`:`Sign in`)}}async function Ko(e,t=!1){let{data:n,error:r}=await U.from(`profiles`).select(`display_name, account_status`).eq(`id`,e.user.id).single();if(zo)return;if(r||!n){Lo.innerHTML=`
       <main class="page">
         <section class="auth-card">
           <h1>Account status unavailable</h1>
@@ -1146,7 +1160,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
           </button>
         </section>
       </main>
-    `,document.querySelector(`#signout-button`)?.addEventListener(`click`,()=>void ts()),Bo(``);return}if(n.account_status===`pending`&&!t){let{data:t}=await U.rpc(`claim_registration`);if(Io)return;if(t===`invited`){await Uo(e,!0);return}}let{data:i,error:a}=await U.from(`user_roles`).select(`role_id`).eq(`user_id`,e.user.id);if(Io)return;if(a){Wo(n),$(`Unable to check account permissions. Please try again.`);return}let o=i?.some(e=>e.role_id===`super_admin`)??!1,s=i?.some(e=>e.role_id===`umpire_chief`)??!1;n.account_status===`approved`&&o?Go(n):n.account_status===`approved`&&s?Ko(n):Wo(n)}function Wo(e){let t={pending:{title:`Awaiting approval`,text:`Your account has been created, but an administrator must approve it before you can access protected umpire features.`},approved:{title:`Account approved`,text:`Your account is approved. The scheduling dashboard will be added in a later step.`},rejected:{title:`Account not approved`,text:`Your account has not been approved. Please contact your league administrator if you believe this is a mistake.`},suspended:{title:`Account suspended`,text:`Access to the umpire system is currently suspended. Please contact your league administrator.`}},n=t[e.account_status]??t.pending;if(Z.innerHTML=`
+    `,document.querySelector(`#signout-button`)?.addEventListener(`click`,()=>void ls()),Uo(``);return}if(n.account_status===`pending`&&!t){let{data:t}=await U.rpc(`claim_registration`);if(zo)return;if(t===`invited`){await Ko(e,!0);return}}let{data:i,error:a}=await U.from(`user_roles`).select(`role_id`).eq(`user_id`,e.user.id);if(zo)return;if(a){qo(n),$(`Unable to check account permissions. Please try again.`);return}let o=(i??[]).map(e=>e.role_id);if(n.account_status===`approved`){let e=es({isSuperAdmin:o.includes(`super_admin`),isUmpireChief:o.includes(`umpire_chief`),isScheduler:o.includes(`scheduler`),isUmpire:o.includes(`youth_umpire`)||o.includes(`adult_umpire`)},n);if(e.length>0){Io(Lo,{name:n.display_name,pages:e,onSignOut:()=>void ls()});return}}qo(n)}function qo(e){let t={pending:{title:`Awaiting approval`,text:`Your account has been created, but an administrator must approve it before you can access protected umpire features.`},approved:{title:`Account approved`,text:`Your account is approved. The scheduling dashboard will be added in a later step.`},rejected:{title:`Account not approved`,text:`Your account has not been approved. Please contact your league administrator if you believe this is a mistake.`},suspended:{title:`Account suspended`,text:`Access to the umpire system is currently suspended. Please contact your league administrator.`}},n=t[e.account_status]??t.pending;if(Lo.innerHTML=`
     <main class="page">
       <section class="auth-card">
         <p class="eyebrow">RWCLL</p>
@@ -1164,7 +1178,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         </button>
       </section>
     </main>
-  `,document.querySelector(`#account-heading`).textContent=n.title,document.querySelector(`#account-message`).textContent=n.text,document.querySelector(`#account-status`).textContent=`Signed in as ${e.display_name||`user`} · ${e.account_status}`,e.account_status===`approved`){let e=document.querySelector(`#my-details-container`);e&&Eo(e)}document.querySelector(`#signout-button`)?.addEventListener(`click`,()=>{ts()}),Bo(e.display_name)}function Go(e){Z.innerHTML=`
+  `,document.querySelector(`#account-heading`).textContent=n.title,document.querySelector(`#account-message`).textContent=n.text,document.querySelector(`#account-status`).textContent=`Signed in as ${e.display_name||`user`} · ${e.account_status}`,e.account_status===`approved`){let e=document.querySelector(`#my-details-container`);e&&Eo(e)}document.querySelector(`#signout-button`)?.addEventListener(`click`,()=>{ls()}),Uo(e.display_name)}function Jo(e){e.innerHTML=`
     <main class="page">
       <section class="auth-card admin-card">
         <p class="eyebrow">RWCLL · ADMINISTRATION</p>
@@ -1205,16 +1219,9 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         <div id="league-setup-container"></div>
 
         <div id="umpire-directory-container"></div>
-
-        <p class="security-note">
-          Signed in as ${qo(e.display_name||`Administrator`)}
-        </p>
-
-        <button id="signout-button" class="secondary-button"
-          type="button">Sign out</button>
       </section>
     </main>
-  `,document.querySelector(`#signout-button`)?.addEventListener(`click`,()=>void ts()),document.querySelector(`#refresh-accounts`)?.addEventListener(`click`,()=>void Jo()),document.querySelector(`#pending-accounts`)?.addEventListener(`click`,e=>{let t=e.target;if(!(t instanceof HTMLButtonElement))return;let n=t.dataset.userId,r=t.dataset.status;!n||r!==`approved`&&r!==`rejected`||Yo(n,r)}),Jo();let t=document.querySelector(`#umpire-directory-container`);t&&Va(t);let n=document.querySelector(`#league-setup-container`);n&&vo(n);let r=document.querySelector(`#role-manager-container`);r&&wo(r);let i=document.querySelector(`#my-details-admin`);i&&Eo(i,{heading:!1});let a=document.querySelector(`#registrations-container`);a&&ko(a),zo(),Bo(e.display_name)}function Ko(e){Z.innerHTML=`
+  `,document.querySelector(`#refresh-accounts`)?.addEventListener(`click`,()=>void ns()),document.querySelector(`#pending-accounts`)?.addEventListener(`click`,e=>{let t=e.target;if(!(t instanceof HTMLButtonElement))return;let n=t.dataset.userId,r=t.dataset.status;!n||r!==`approved`&&r!==`rejected`||rs(n,r)}),ns();let t=document.querySelector(`#umpire-directory-container`);t&&Va(t);let n=document.querySelector(`#league-setup-container`);n&&vo(n);let r=document.querySelector(`#role-manager-container`);r&&wo(r);let i=document.querySelector(`#my-details-admin`);i&&Eo(i,{heading:!1});let a=document.querySelector(`#registrations-container`);a&&ko(a),Ho()}function Yo(e){e.innerHTML=`
     <main class="page">
       <section class="auth-card admin-card">
         <p class="eyebrow">RWCLL · UMPIRE CHIEF</p>
@@ -1238,16 +1245,46 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         <hr class="directory-divider" />
 
         <div id="umpire-directory-container"></div>
-
-        <p class="security-note">
-          Signed in as ${qo(e.display_name||`Umpire chief`)}
-        </p>
-
-        <button id="signout-button" class="secondary-button"
-          type="button">Sign out</button>
       </section>
     </main>
-  `,document.querySelector(`#signout-button`)?.addEventListener(`click`,()=>void ts());let t=document.querySelector(`#umpire-directory-container`);t&&Va(t);let n=document.querySelector(`#registrations-container`);n&&ko(n);let r=document.querySelector(`#my-details-admin`);r&&Eo(r,{heading:!1}),zo(),Bo(e.display_name)}function qo(e){return e.replace(/[&<>"']/g,e=>({"&":`&amp;`,"<":`&lt;`,">":`&gt;`,'"':`&quot;`,"'":`&#39;`})[e])}async function Jo(){let e=document.querySelector(`#pending-accounts`);if(!e)return;e.replaceChildren();let t=document.createElement(`p`);t.textContent=`Loading pending accounts…`,e.append(t);let{data:n,error:r}=await U.from(`profiles`).select(`id, display_name, email`).eq(`account_status`,`pending`).is(`registration_kind`,null).order(`display_name`);if(e.replaceChildren(),r){let t=document.createElement(`p`);t.textContent=`Unable to load pending accounts.`,e.append(t),Xo(r.message);return}let i=n??[];if(i.length===0){let t=document.createElement(`p`);t.textContent=`There are no pending accounts.`,e.append(t)}else for(let t of i){let n=document.createElement(`div`);n.className=`pending-account`;let r=document.createElement(`h3`);r.textContent=t.display_name||`Name not provided`;let i=document.createElement(`p`);i.textContent=t.email||`Email unavailable`;let a=document.createElement(`div`);a.className=`account-actions`;for(let e of[{label:`Approve`,status:`approved`},{label:`Reject`,status:`rejected`}]){let n=document.createElement(`button`);n.type=`button`,n.textContent=e.label,n.className=e.status===`approved`?`primary-button`:`secondary-button`,n.dataset.userId=t.id,n.dataset.status=e.status,a.append(n)}n.append(r,i,a),e.append(n)}}async function Yo(e,t){let n=t===`approved`?`Approve this account?`:`Reject this account?`;if(!window.confirm(n))return;let r=document.querySelectorAll(`[data-user-id="${CSS.escape(e)}"]`);r.forEach(e=>{e.disabled=!0});let{error:i}=await U.rpc(`set_account_status`,{target_user_id:e,new_status:t});i?(Xo(`Could not update account: ${i.message}`),r.forEach(e=>{e.disabled=!1})):(Xo(t===`approved`?`Account approved.`:`Account rejected.`,`success`),await Jo())}function Xo(e,t=`error`){let n=document.querySelector(`#admin-message`);n&&(n.textContent=e,n.className=`message ${t}`)}function Zo(){Z.innerHTML=`
+  `;let t=document.querySelector(`#umpire-directory-container`);t&&Va(t);let n=document.querySelector(`#registrations-container`);n&&ko(n);let r=document.querySelector(`#my-details-admin`);r&&Eo(r,{heading:!1}),Ho()}function Xo(e){e.innerHTML=`
+    <main class="page">
+      <section class="auth-card admin-card">
+        <details class="role-legend" id="outbox-details">
+          <summary>Outbox (messages waiting to be sent)</summary>
+          <div id="outbox-container"></div>
+        </details>
+
+        <div id="umpire-directory-container"></div>
+      </section>
+    </main>
+  `;let t=e.querySelector(`#umpire-directory-container`);t&&Va(t),Ho()}function Zo(e){e.innerHTML=`
+    <main class="page">
+      <section class="auth-card admin-card">
+        <div id="league-setup-container"></div>
+      </section>
+    </main>
+  `;let t=e.querySelector(`#league-setup-container`);t&&vo(t)}function Qo(e){e.innerHTML=`
+    <main class="page">
+      <section class="auth-card admin-card">
+        <div id="my-details-page"></div>
+      </section>
+    </main>
+  `;let t=e.querySelector(`#my-details-page`);t&&Eo(t)}function $o(e,t,n){e.innerHTML=`
+    <main class="page">
+      <section class="auth-card admin-card">
+        <p class="eyebrow">RWCLL · UMPIRE</p>
+        <h1>Welcome${t?`, ${ts(t)}`:``}</h1>
+        <p class="intro">
+          Your umpire account is active. Your availability and your game
+          assignments will appear here as soon as scheduling is switched on.
+          Meanwhile, please keep your contact details up to date.
+        </p>
+        ${n?`<button id="home-open-details" class="secondary-button"
+              type="button">Open My details</button>`:``}
+      </section>
+    </main>
+  `,n&&e.querySelector(`#home-open-details`)?.addEventListener(`click`,n)}function es(e,t){let n=[];e.isSuperAdmin?n.push({id:`admin`,label:`Administration`,render:e=>Jo(e)}):(e.isUmpireChief&&n.push({id:`chief`,label:`Umpire Management`,render:e=>Yo(e)}),e.isScheduler&&(e.isUmpireChief||n.push({id:`umpires`,label:`Umpires`,render:Xo}),n.push({id:`setup`,label:`League Setup`,render:Zo})));let r=!e.isSuperAdmin&&!e.isUmpireChief;return e.isUmpire&&n.push({id:`home`,label:n.length===0?`Home`:`As an umpire`,render:(e,n)=>$o(e,t.display_name,r?()=>n(`details`):null)}),r&&n.length>0&&n.push({id:`details`,label:`My details`,render:Qo}),n}function ts(e){return e.replace(/[&<>"']/g,e=>({"&":`&amp;`,"<":`&lt;`,">":`&gt;`,'"':`&quot;`,"'":`&#39;`})[e])}async function ns(){let e=document.querySelector(`#pending-accounts`);if(!e)return;e.replaceChildren();let t=document.createElement(`p`);t.textContent=`Loading pending accounts…`,e.append(t);let{data:n,error:r}=await U.from(`profiles`).select(`id, display_name, email`).eq(`account_status`,`pending`).is(`registration_kind`,null).order(`display_name`);if(e.replaceChildren(),r){let t=document.createElement(`p`);t.textContent=`Unable to load pending accounts.`,e.append(t),is(r.message);return}let i=n??[];if(i.length===0){let t=document.createElement(`p`);t.textContent=`There are no pending accounts.`,e.append(t)}else for(let t of i){let n=document.createElement(`div`);n.className=`pending-account`;let r=document.createElement(`h3`);r.textContent=t.display_name||`Name not provided`;let i=document.createElement(`p`);i.textContent=t.email||`Email unavailable`;let a=document.createElement(`div`);a.className=`account-actions`;for(let e of[{label:`Approve`,status:`approved`},{label:`Reject`,status:`rejected`}]){let n=document.createElement(`button`);n.type=`button`,n.textContent=e.label,n.className=e.status===`approved`?`primary-button`:`secondary-button`,n.dataset.userId=t.id,n.dataset.status=e.status,a.append(n)}n.append(r,i,a),e.append(n)}}async function rs(e,t){let n=t===`approved`?`Approve this account?`:`Reject this account?`;if(!window.confirm(n))return;let r=document.querySelectorAll(`[data-user-id="${CSS.escape(e)}"]`);r.forEach(e=>{e.disabled=!0});let{error:i}=await U.rpc(`set_account_status`,{target_user_id:e,new_status:t});i?(is(`Could not update account: ${i.message}`),r.forEach(e=>{e.disabled=!1})):(is(t===`approved`?`Account approved.`:`Account rejected.`,`success`),await ns())}function is(e,t=`error`){let n=document.querySelector(`#admin-message`);n&&(n.textContent=e,n.className=`message ${t}`)}function as(){Lo.innerHTML=`
     <main class="page">
       <section class="auth-card">
         <p class="eyebrow">RWCLL</p>
@@ -1275,7 +1312,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
         </button>
       </section>
     </main>
-  `,document.querySelector(`#forgot-back`)?.addEventListener(`click`,()=>{Q=`login`,Vo()}),document.querySelector(`#forgot-form`)?.addEventListener(`submit`,e=>{e.preventDefault(),Qo()})}async function Qo(){if(Po)return;let e=document.querySelector(`#forgot-form`),t=document.querySelector(`#forgot-submit`);if(!e||!t)return;let n=String(new FormData(e).get(`email`)??``).trim().toLowerCase();Po=!0,t.disabled=!0,t.textContent=`Sending…`,$(``);try{let{error:e}=await U.auth.resetPasswordForEmail(n,{redirectTo:`${window.location.origin}/`});if(e)throw e;$(`If an account exists for that email, a reset link is on its way. Check your inbox and spam folder. The link works for a limited time.`,`success`)}catch(e){$(e instanceof Error?e.message:`Could not send the reset link. Please try again.`)}finally{Po=!1;let e=document.querySelector(`#forgot-submit`);e&&(e.disabled=!1,e.textContent=`Send reset link`)}}function $o(){Z.innerHTML=`
+  `,document.querySelector(`#forgot-back`)?.addEventListener(`click`,()=>{Z=`login`,Wo()}),document.querySelector(`#forgot-form`)?.addEventListener(`submit`,e=>{e.preventDefault(),os()})}async function os(){if(Q)return;let e=document.querySelector(`#forgot-form`),t=document.querySelector(`#forgot-submit`);if(!e||!t)return;let n=String(new FormData(e).get(`email`)??``).trim().toLowerCase();Q=!0,t.disabled=!0,t.textContent=`Sending…`,$(``);try{let{error:e}=await U.auth.resetPasswordForEmail(n,{redirectTo:`${window.location.origin}/`});if(e)throw e;$(`If an account exists for that email, a reset link is on its way. Check your inbox and spam folder. The link works for a limited time.`,`success`)}catch(e){$(e instanceof Error?e.message:`Could not send the reset link. Please try again.`)}finally{Q=!1;let e=document.querySelector(`#forgot-submit`);e&&(e.disabled=!1,e.textContent=`Send reset link`)}}function ss(){Lo.innerHTML=`
     <main class="page">
       <section class="auth-card">
         <p class="eyebrow">RWCLL</p>
@@ -1305,4 +1342,4 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
           type="button">Cancel</button>
       </section>
     </main>
-  `,document.querySelector(`#new-password-cancel`)?.addEventListener(`click`,()=>{ts()}),document.querySelector(`#new-password-form`)?.addEventListener(`submit`,e=>{e.preventDefault(),es()}),Bo(``)}async function es(){if(Po)return;let e=document.querySelector(`#new-password-form`),t=document.querySelector(`#new-password-submit`);if(!e||!t)return;let n=new FormData(e),r=String(n.get(`password`)??``),i=String(n.get(`confirmPassword`)??``);if(r.length<8)$(`Your password must be at least 8 characters.`);else if(r!==i)$(`The passwords do not match.`);else{Po=!0,t.disabled=!0,t.textContent=`Saving…`,$(``);try{let{error:e}=await U.auth.updateUser({password:r});if(e)throw e;await U.auth.signOut({scope:`others`}),Io=!1,window.history.replaceState(null,``,window.location.pathname);let{data:t}=await U.auth.getSession();t.session?await Uo(t.session):(Q=`login`,Vo(),$(`Your password was changed. Please sign in.`,`success`))}catch(e){let t=e instanceof Error?e.message:``;$(/session missing|not authenticated/i.test(t)?`This reset link has expired or was already used. Please request a new one.`:t||`Could not change the password. Please try again.`)}finally{Po=!1;let e=document.querySelector(`#new-password-submit`);e&&(e.disabled=!1,e.textContent=`Save new password`)}}}async function ts(){let{error:e}=await U.auth.signOut();e?$(e.message):(Io=!1,Q=`login`,Vo())}async function ns(){if(Io){$o();return}if(Vo(),Lo){window.history.replaceState(null,``,window.location.pathname),$(`That email link is invalid or has expired. If you were resetting your password, please request a new link.`);return}let{data:e,error:t}=await U.auth.getSession();t?$(`Unable to check your current session. Please sign in again.`):e.session&&await Uo(e.session)}U.auth.onAuthStateChange(e=>{e===`PASSWORD_RECOVERY`&&(Io=!0,document.querySelector(`#new-password-form`)||$o())}),ns();
+  `,document.querySelector(`#new-password-cancel`)?.addEventListener(`click`,()=>{ls()}),document.querySelector(`#new-password-form`)?.addEventListener(`submit`,e=>{e.preventDefault(),cs()}),Uo(``)}async function cs(){if(Q)return;let e=document.querySelector(`#new-password-form`),t=document.querySelector(`#new-password-submit`);if(!e||!t)return;let n=new FormData(e),r=String(n.get(`password`)??``),i=String(n.get(`confirmPassword`)??``);if(r.length<8)$(`Your password must be at least 8 characters.`);else if(r!==i)$(`The passwords do not match.`);else{Q=!0,t.disabled=!0,t.textContent=`Saving…`,$(``);try{let{error:e}=await U.auth.updateUser({password:r});if(e)throw e;await U.auth.signOut({scope:`others`}),zo=!1,window.history.replaceState(null,``,window.location.pathname);let{data:t}=await U.auth.getSession();t.session?await Ko(t.session):(Z=`login`,Wo(),$(`Your password was changed. Please sign in.`,`success`))}catch(e){let t=e instanceof Error?e.message:``;$(/session missing|not authenticated/i.test(t)?`This reset link has expired or was already used. Please request a new one.`:t||`Could not change the password. Please try again.`)}finally{Q=!1;let e=document.querySelector(`#new-password-submit`);e&&(e.disabled=!1,e.textContent=`Save new password`)}}}async function ls(){let{error:e}=await U.auth.signOut();e?$(e.message):(zo=!1,Z=`login`,window.history.replaceState(null,``,window.location.pathname),Wo())}async function us(){if(zo){ss();return}if(Wo(),Bo){window.history.replaceState(null,``,window.location.pathname),$(`That email link is invalid or has expired. If you were resetting your password, please request a new link.`);return}let{data:e,error:t}=await U.auth.getSession();t?$(`Unable to check your current session. Please sign in again.`):e.session&&await Ko(e.session)}U.auth.onAuthStateChange(e=>{e===`PASSWORD_RECOVERY`&&(zo=!0,document.querySelector(`#new-password-form`)||ss())}),us();

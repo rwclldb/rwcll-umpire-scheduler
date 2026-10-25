@@ -59,6 +59,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 26. [Email: why sign-up fails on live, and the plan](#26-email-why-sign-up-fails-on-live-and-the-plan)
 27. [The Outbox: email stubs, and how to switch on real sending](#27-the-outbox-email-stubs-and-how-to-switch-on-real-sending)
 28. [Rules about teams and games](#28-rules-about-teams-and-games)
+29. [Menus and pages: who sees what](#29-menus-and-pages-who-sees-what)
 
 ---
 
@@ -436,7 +437,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 
 ```
 rwcll-umpire-scheduler\
-  src\                     the app (main.ts, roles.ts, umpires.ts, my-details.ts, registrations.ts, email.ts, outbox.ts, league_setup.ts, style.css, ...)
+  src\                     the app (main.ts, roles.ts, umpires.ts, my-details.ts, registrations.ts, email.ts, outbox.ts, shell.ts, league_setup.ts, style.css, ...)
   src\setup\               the League Setup pieces (leagues, seasons, divisions, teams, locations, ...)
   supabase\migrations\     database changes, in order
   supabase\tests\          check scripts and the schema fingerprint
@@ -458,7 +459,7 @@ If the same file already exists, **overwrite it**.
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
 | `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1` | `scripts` |
-| App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `league_setup.ts`, `ui.ts` | `src` |
+| App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
 | `style.css` | `src` (it replaces `src\style.css`) |
 | `FAQ.md`, `RECOVERY.md`, `EMAIL-SETUP.md` | `docs` |
@@ -667,3 +668,21 @@ These are enforced by the database itself, so they hold no matter which screen i
 **Not enforced as a hard rule (the games screen will warn instead):** two games at the same field at overlapping times, and a team in two games at once. Real leagues sometimes need exceptions, so these will be warnings you can see, not walls.
 
 **Games with umpires** (the plate and field umpires, availability, and conflicts) come with the assignment screens.
+
+## 29. Menus and pages: who sees what
+
+After signing in, an approved person sees a **top bar** (their name and **Sign out**) and, if they have more than one page, a **menu** of tabs under it. Which pages they get depends on their roles. People with several roles get the pages of each.
+
+| Role | Pages |
+|---|---|
+| Super admin | **Administration** (accounts, registrations, roles, league setup, umpire directory, Outbox, My details). One page, so no menu. |
+| Umpire chief | **Umpire Management** (registrations, umpire directory, Outbox, My details). One page, so no menu. |
+| Scheduler | **Umpires** (directory and Outbox), **League Setup**, **My details** |
+| Youth or adult umpire | **Home**, **My details** |
+| Treasurer, feedback reviewer, read-only admin, parent | The plain account page for now (their pages come with their features) |
+
+Combinations: chief and scheduler get *Umpire Management* and *League Setup*. A scheduler who is also an umpire gets *Umpires*, *League Setup*, *As an umpire*, and *My details*.
+
+**The address bar follows the page**, for example `.../#/setup`. Back, Forward, and bookmarks work. If the address names a page the person is not allowed to see, they get their first page instead. **Signing out clears it**, so the next person starts at their own first page.
+
+**Games, availability, and assignments will each be a new tab** in this menu.
