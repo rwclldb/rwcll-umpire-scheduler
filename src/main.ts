@@ -4,7 +4,9 @@ import { supabase } from "./supabase";
 import type { Session } from "@supabase/supabase-js";
 import { renderUmpireDirectory } from "./umpires";
 import { renderLeagueSetup } from "./league_setup";
-     import { renderRoleManager } from "./roles";
+import { renderRoleManager } from "./roles";
+import { renderMyDetails } from "./my-details";
+import { renderUmpireRegistrations } from "./registrations";
 
 type AccountStatus = "pending" | "approved" | "rejected" | "suspended";
 
@@ -21,6 +23,15 @@ if (!app) {
 
 let currentView: "signup" | "login" = "login";
 let busy = false;
+
+// Links in emails (password reset, confirmation) arrive with details in the
+// address. They are read here, straight away, before Supabase tidies the
+// address up.
+const linkParams = new URLSearchParams(
+  `${window.location.hash.replace(/^#/, "")}&${window.location.search.replace(/^\?/, "")}`
+);
+let recoveryMode = linkParams.get("type") === "recovery";
+const linkHadError = linkParams.has("error_description");
 
 function showMessage(message: string, kind: "error" | "success" = "error") {
   const element = document.querySelector<HTMLParagraphElement>("#message");
@@ -68,6 +79,31 @@ function renderAuthForm() {
                 <input id="display-name" name="displayName"
                   type="text" autocomplete="name" maxlength="100"
                   required placeholder="Your full name" />
+
+                <fieldset class="signup-kind">
+                  <legend>I am signing up as</legend>
+                  <label class="season-checkbox-label">
+                    <input type="radio" name="signupKind"
+                      value="adult_umpire" required />
+                    An adult umpire (18 or older)
+                  </label>
+                  <label class="season-checkbox-label">
+                    <input type="radio" name="signupKind"
+                      value="youth_umpire" />
+                    A youth umpire (13 to 17)
+                  </label>
+                  <div id="age-confirm" hidden>
+                    <label class="season-checkbox-label">
+                      <input type="checkbox" name="ageConfirm" />
+                      I am 13 or older
+                    </label>
+                    <p class="season-dates">
+                      If you are under 13, a parent or the league has to set
+                      up your account. Please contact your league
+                      administrator.
+                    </p>
+                  </div>
+                </fieldset>
               `
               : ""
           }
@@ -81,6 +117,13 @@ function renderAuthForm() {
           <input id="password" name="password" type="password"
             autocomplete="${currentView === "signup" ? "new-password" : "current-password"}"
             minlength="8" required placeholder="At least 8 characters" />
+
+          ${
+            currentView === "login"
+              ? `<button id="forgot-password-button" class="link-button"
+                  type="button">Forgot your password?</button>`
+              : ""
+          }
 
           ${
             currentView === "signup"
@@ -122,6 +165,23 @@ function renderAuthForm() {
       event.preventDefault();
       void submitAuthForm();
     });
+
+  document.querySelector("#forgot-password-button")
+    ?.addEventListener("click", () => {
+      renderForgotPassword();
+    });
+
+  // Choosing "youth" asks for the 13-or-older confirmation.
+  document.querySelectorAll<HTMLInputElement>('input[name="signupKind"]')
+    .forEach((radio) => {
+      radio.addEventListener("change", () => {
+        const youth = document.querySelector<HTMLInputElement>(
+          'input[name="signupKind"][value="youth_umpire"]'
+        )?.checked ?? false;
+        const box = document.querySelector<HTMLElement>("#age-confirm");
+        if (box) box.hidden = !youth;
+      });
+    });
 }
 
 async function submitAuthForm() {
@@ -160,11 +220,26 @@ async function submitAuthForm() {
         return;
       }
 
+      const signupKind = String(data.get("signupKind") ?? "");
+
+      if (signupKind !== "adult_umpire" && signupKind !== "youth_umpire") {
+        showMessage("Please choose whether you are an adult or a youth umpire.");
+        return;
+      }
+
+      if (signupKind === "youth_umpire" && !data.get("ageConfirm")) {
+        showMessage(
+          "Umpires under 13 cannot register themselves. Please ask a " +
+          "parent or your league administrator to set up your account."
+        );
+        return;
+      }
+
       const { data: result, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { display_name: displayName },
+          data: { display_name: displayName, signup_kind: signupKind },
           emailRedirectTo: `${window.location.origin}/`
         }
       });
@@ -207,12 +282,16 @@ async function submitAuthForm() {
 }
 
 
-async function loadProfile(session: Session) {
+async function loadProfile(session: Session, alreadyClaimed = false) {
   const { data: profile, error } = await supabase
     .from("profiles")
     .select("display_name, account_status")
     .eq("id", session.user.id)
     .single<Profile>();
+
+  // If a password reset link was opened while this was loading, the reset
+  // screen must stay on top.
+  if (recoveryMode) return;
 
   if (error || !profile) {
     app!.innerHTML = `
@@ -233,10 +312,27 @@ async function loadProfile(session: Session) {
     return;
   }
 
+  // A new account may have an invitation waiting, or may be a new umpire
+  // registration. The database decides; it only acts once the email is
+  // confirmed. Safe to repeat.
+  if (profile.account_status === "pending" && !alreadyClaimed) {
+    const { data: outcome } = await supabase.rpc("claim_registration");
+
+    if (recoveryMode) return;
+
+    if (outcome === "invited") {
+      // The invitation approved this account: load it again as approved.
+      await loadProfile(session, true);
+      return;
+    }
+  }
+
   const { data: roleRows, error: roleError } = await supabase
     .from("user_roles")
     .select("role_id")
     .eq("user_id", session.user.id);
+
+  if (recoveryMode) return;
 
   if (roleError) {
     renderAccountStatus(profile);
@@ -246,9 +342,18 @@ async function loadProfile(session: Session) {
 
   const isSuperAdmin =
     roleRows?.some((role) => role.role_id === "super_admin") ?? false;
+  const isUmpireChief =
+    roleRows?.some(
+      (role: { role_id: string }) => role.role_id === "umpire_chief"
+    ) ?? false;
 
   if (profile.account_status === "approved" && isSuperAdmin) {
     renderAdminDashboard(profile);
+    return;
+  }
+
+  if (profile.account_status === "approved" && isUmpireChief) {
+    renderChiefDashboard(profile);
     return;
   }
 
@@ -288,6 +393,9 @@ function renderAccountStatus(profile: Profile) {
           <span class="status-dot"></span>
           <span id="account-status"></span>
         </div>
+
+        <div id="my-details-container"></div>
+
         <button id="signout-button" class="secondary-button" type="button">
           Sign out
         </button>
@@ -300,6 +408,15 @@ function renderAccountStatus(profile: Profile) {
   document.querySelector("#account-message")!.textContent = status.text;
   document.querySelector("#account-status")!.textContent =
     `Signed in as ${profile.display_name || "user"} · ${profile.account_status}`;
+
+  if (profile.account_status === "approved") {
+    const detailsContainer =
+      document.querySelector<HTMLElement>("#my-details-container");
+
+    if (detailsContainer) {
+      void renderMyDetails(detailsContainer);
+    }
+  }
 
   document.querySelector("#signout-button")?.addEventListener("click", () => {
     void signOut();
@@ -321,10 +438,19 @@ function renderAdminDashboard(profile: Profile) {
         <h1>Account Management</h1>
         <p class="intro">Review new account requests.</p>
 
+        <details class="role-legend">
+          <summary>My details (phone and text messages)</summary>
+          <div id="my-details-admin"></div>
+        </details>
+
         <p id="admin-message" class="message"
           role="status" aria-live="polite"></p>
 
-        <h2>Pending accounts</h2>
+        <div id="registrations-container"></div>
+
+        <hr class="directory-divider" />
+
+        <h2>Other pending accounts</h2>
         <div id="pending-accounts">
           <p>Loading pending accounts…</p>
         </div>
@@ -404,6 +530,80 @@ function renderAdminDashboard(profile: Profile) {
   if (roleManagerContainer) {
     void renderRoleManager(roleManagerContainer);
   }
+
+  const myDetailsAdmin =
+    document.querySelector<HTMLElement>("#my-details-admin");
+
+  if (myDetailsAdmin) {
+    void renderMyDetails(myDetailsAdmin, { heading: false });
+  }
+
+  const registrationsContainer =
+    document.querySelector<HTMLElement>("#registrations-container");
+
+  if (registrationsContainer) {
+    void renderUmpireRegistrations(registrationsContainer);
+  }
+}
+
+// A smaller dashboard for the umpire chief: review new umpire
+// registrations and manage the umpire directory.
+function renderChiefDashboard(profile: Profile) {
+  app!.innerHTML = `
+    <main class="page">
+      <section class="auth-card admin-card">
+        <p class="eyebrow">RWCLL · UMPIRE CHIEF</p>
+        <h1>Umpire Management</h1>
+        <p class="intro">
+          Review new umpire registrations and manage the umpire directory.
+        </p>
+
+        <details class="role-legend">
+          <summary>My details (phone and text messages)</summary>
+          <div id="my-details-admin"></div>
+        </details>
+
+        <div id="registrations-container"></div>
+
+        <hr class="directory-divider" />
+
+        <div id="umpire-directory-container"></div>
+
+        <p class="security-note">
+          Signed in as ${escapeHtml(profile.display_name || "Umpire chief")}
+        </p>
+
+        <button id="signout-button" class="secondary-button"
+          type="button">Sign out</button>
+      </section>
+    </main>
+  `;
+
+  document.querySelector("#signout-button")?.addEventListener(
+    "click",
+    () => void signOut()
+  );
+
+  const directoryContainer =
+    document.querySelector<HTMLElement>("#umpire-directory-container");
+
+  if (directoryContainer) {
+    renderUmpireDirectory(directoryContainer);
+  }
+
+  const registrationsContainer =
+    document.querySelector<HTMLElement>("#registrations-container");
+
+  if (registrationsContainer) {
+    void renderUmpireRegistrations(registrationsContainer);
+  }
+
+  const myDetailsAdmin =
+    document.querySelector<HTMLElement>("#my-details-admin");
+
+  if (myDetailsAdmin) {
+    void renderMyDetails(myDetailsAdmin, { heading: false });
+  }
 }
 
 function escapeHtml(value: string): string {
@@ -436,6 +636,7 @@ async function loadPendingAccounts() {
     .from("profiles")
     .select("id, display_name, email")
     .eq("account_status", "pending")
+    .is("registration_kind", null)
     .order("display_name");
 
   container.replaceChildren();
@@ -548,6 +749,205 @@ function showAdminMessage(
 }
 
 
+function renderForgotPassword() {
+  app!.innerHTML = `
+    <main class="page">
+      <section class="auth-card">
+        <p class="eyebrow">RWCLL</p>
+        <h1>Reset your password</h1>
+        <p class="intro">
+          Enter the email address you registered with. If an account exists
+          for it, we will send a link that lets you choose a new password.
+        </p>
+
+        <form id="forgot-form">
+          <label for="forgot-email">Email address</label>
+          <input id="forgot-email" name="email" type="email"
+            autocomplete="email" required maxlength="254"
+            placeholder="you@example.com" />
+
+          <button id="forgot-submit" class="primary-button" type="submit">
+            Send reset link
+          </button>
+          <p id="message" class="message" role="status"
+            aria-live="polite"></p>
+        </form>
+
+        <button id="forgot-back" class="secondary-button" type="button">
+          Back to sign in
+        </button>
+      </section>
+    </main>
+  `;
+
+  document.querySelector("#forgot-back")?.addEventListener("click", () => {
+    currentView = "login";
+    renderAuthForm();
+  });
+
+  document.querySelector<HTMLFormElement>("#forgot-form")
+    ?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void submitForgotPassword();
+    });
+}
+
+async function submitForgotPassword() {
+  if (busy) return;
+
+  const form = document.querySelector<HTMLFormElement>("#forgot-form");
+  const button = document.querySelector<HTMLButtonElement>("#forgot-submit");
+  if (!form || !button) return;
+
+  const email = String(new FormData(form).get("email") ?? "")
+    .trim()
+    .toLowerCase();
+
+  busy = true;
+  button.disabled = true;
+  button.textContent = "Sending…";
+  showMessage("");
+
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`
+    });
+
+    if (error) throw error;
+
+    // The same wording is used whether or not an account exists, so this
+    // screen cannot be used to find out who has an account.
+    showMessage(
+      "If an account exists for that email, a reset link is on its way. " +
+      "Check your inbox and spam folder. The link works for a limited time.",
+      "success"
+    );
+  } catch (error) {
+    showMessage(
+      error instanceof Error
+        ? error.message
+        : "Could not send the reset link. Please try again."
+    );
+  } finally {
+    busy = false;
+    const submit = document.querySelector<HTMLButtonElement>("#forgot-submit");
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent = "Send reset link";
+    }
+  }
+}
+
+function renderSetNewPassword() {
+  app!.innerHTML = `
+    <main class="page">
+      <section class="auth-card">
+        <p class="eyebrow">RWCLL</p>
+        <h1>Choose a new password</h1>
+        <p class="intro">
+          Enter a new password for your account. Use at least 8 characters.
+        </p>
+
+        <form id="new-password-form">
+          <label for="new-password">New password</label>
+          <input id="new-password" name="password" type="password"
+            autocomplete="new-password" minlength="8" required
+            placeholder="At least 8 characters" />
+
+          <label for="new-password-confirm">Confirm new password</label>
+          <input id="new-password-confirm" name="confirmPassword"
+            type="password" autocomplete="new-password" minlength="8"
+            required placeholder="Enter password again" />
+
+          <button id="new-password-submit" class="primary-button"
+            type="submit">Save new password</button>
+          <p id="message" class="message" role="status"
+            aria-live="polite"></p>
+        </form>
+
+        <button id="new-password-cancel" class="secondary-button"
+          type="button">Cancel</button>
+      </section>
+    </main>
+  `;
+
+  document.querySelector("#new-password-cancel")
+    ?.addEventListener("click", () => {
+      void signOut();
+    });
+
+  document.querySelector<HTMLFormElement>("#new-password-form")
+    ?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void submitNewPassword();
+    });
+}
+
+async function submitNewPassword() {
+  if (busy) return;
+
+  const form = document.querySelector<HTMLFormElement>("#new-password-form");
+  const button =
+    document.querySelector<HTMLButtonElement>("#new-password-submit");
+  if (!form || !button) return;
+
+  const data = new FormData(form);
+  const password = String(data.get("password") ?? "");
+  const confirmPassword = String(data.get("confirmPassword") ?? "");
+
+  if (password.length < 8) {
+    showMessage("Your password must be at least 8 characters.");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    showMessage("The passwords do not match.");
+    return;
+  }
+
+  busy = true;
+  button.disabled = true;
+  button.textContent = "Saving…";
+  showMessage("");
+
+  try {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+
+    // End any other sign-ins that were still using the old password.
+    await supabase.auth.signOut({ scope: "others" });
+
+    recoveryMode = false;
+    window.history.replaceState(null, "", window.location.pathname);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    if (sessionData.session) {
+      await loadProfile(sessionData.session);
+    } else {
+      currentView = "login";
+      renderAuthForm();
+      showMessage("Your password was changed. Please sign in.", "success");
+    }
+  } catch (error) {
+    const text = error instanceof Error ? error.message : "";
+    showMessage(
+      /session missing|not authenticated/i.test(text)
+        ? "This reset link has expired or was already used. " +
+          "Please request a new one."
+        : text || "Could not change the password. Please try again."
+    );
+  } finally {
+    busy = false;
+    const submit =
+      document.querySelector<HTMLButtonElement>("#new-password-submit");
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent = "Save new password";
+    }
+  }
+}
+
 async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) {
@@ -555,12 +955,29 @@ async function signOut() {
     return;
   }
 
+  recoveryMode = false;
   currentView = "login";
   renderAuthForm();
 }
 
 async function initialize() {
+  // Opened from a password reset email: show the new-password screen.
+  if (recoveryMode) {
+    renderSetNewPassword();
+    return;
+  }
+
   renderAuthForm();
+
+  if (linkHadError) {
+    // Expired or already-used email links arrive with an error in the address.
+    window.history.replaceState(null, "", window.location.pathname);
+    showMessage(
+      "That email link is invalid or has expired. " +
+      "If you were resetting your password, please request a new link."
+    );
+    return;
+  }
 
   const { data, error } = await supabase.auth.getSession();
   if (error) {
@@ -572,5 +989,15 @@ async function initialize() {
     await loadProfile(data.session);
   }
 }
+
+// A password reset link signs the person in briefly and announces it here.
+supabase.auth.onAuthStateChange((event: string) => {
+  if (event === "PASSWORD_RECOVERY") {
+    recoveryMode = true;
+    if (!document.querySelector("#new-password-form")) {
+      renderSetNewPassword();
+    }
+  }
+});
 
 void initialize();

@@ -786,3 +786,86 @@ input:focus-visible {
   color: #64748b;
   font-size: 0.9rem;
 }
+
+/* Text-style button, used for "Forgot your password?" */
+.link-button {
+  align-self: flex-start;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 10px 0;
+  color: #2459a9;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 0.92rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: #194784;
+}
+
+/* Sign-up: "I am signing up as" choices */
+.signup-kind {
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.signup-kind legend {
+  padding: 0;
+  margin-bottom: 2px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.signup-kind .season-checkbox-label {
+  margin-top: 6px;
+}
+
+.signup-kind #age-confirm[hidden] {
+  display: none;
+}
+
+/* Radio buttons match the checkboxes */
+input[type="radio"] {
+  accent-color: #2459a9;
+}
+
+.season-checkbox-label input[type="radio"] {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  margin: 0;
+}
+
+/* Review cards (umpire registrations) */
+.role-account .account-actions {
+  margin-top: 14px;
+}
+
+/* Invitation panel inside the umpire edit form */
+.invitation-panel {
+  margin: 14px 0;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.invitation-panel h4 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.invitation-panel textarea {
+  min-height: 140px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+}
+
+.invitation-panel .account-actions {
+  margin: 10px 0;
+}

@@ -130,6 +130,7 @@ export async function renderRoleManager(
     userRolesResult,
     sessionResult,
     umpiresResult,
+    contactResult,
   ] = await Promise.all([
     supabase.from("profiles")
       .select("id, display_name, email, account_status")
@@ -139,6 +140,7 @@ export async function renderRoleManager(
     supabase.from("user_roles").select("user_id, role_id"),
     supabase.auth.getSession(),
     supabase.from("umpires").select("profile_id, phone"),
+    supabase.from("account_contact").select("profile_id, phone"),
   ]);
 
   const firstError =
@@ -167,6 +169,19 @@ export async function renderRoleManager(
   if (umpiresResult.error) {
     console.error("Phone numbers not loaded:", umpiresResult.error.message);
   }
+  // An account's own phone number (set on My details) comes first; the
+  // number on a linked umpire record is the fallback.
+  if (contactResult.error) {
+    console.error("Account phones not loaded:", contactResult.error.message);
+  }
+  const accountPhones = new Map<string, string>();
+  for (const row of (contactResult.data ?? []) as {
+    profile_id: string;
+    phone: string | null;
+  }[]) {
+    if (row.phone) accountPhones.set(row.profile_id, row.phone);
+  }
+
   const phoneByAccount = new Map<string, string>();
   for (const row of (umpiresResult.data ?? []) as {
     profile_id: string | null;
@@ -222,7 +237,9 @@ export async function renderRoleManager(
               roles,
               rolesFor(account.id),
               account.id === currentUserId,
-              phoneByAccount.get(account.id) ?? null,
+              accountPhones.get(account.id) ??
+                phoneByAccount.get(account.id) ??
+                null,
             )
           ).join("")}</ul>
           <p id="role-no-match" class="directory-empty" hidden>
