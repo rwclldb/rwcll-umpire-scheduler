@@ -9,6 +9,8 @@ import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
 import { renderOutbox } from "./outbox";
 import { renderGames, resetGamesView } from "./games";
+import { renderMySchedule } from "./games/my-schedule";
+import { describeRoles } from "./role-names";
 import { addTopBar as drawTopBar, renderShell } from "./shell";
 import type { ShellPage } from "./shell";
 
@@ -67,8 +69,8 @@ function wireOutbox() {
 
 // A bar across the top of the screens that are not part of the app shell
 // (the plain account page, errors, password reset), with Sign out at the right.
-function addTopBar(name: string) {
-  drawTopBar(app!, name, () => void signOut());
+function addTopBar(name: string, roles = "") {
+  drawTopBar(app!, name, () => void signOut(), roles);
 }
 
 function showMessage(message: string, kind: "error" | "success" = "error") {
@@ -398,6 +400,7 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
     if (pages.length > 0) {
       renderShell(app!, {
         name: profile.display_name,
+        roles: describeRoles(roleIds),
         pages,
         onSignOut: () => void signOut(),
       });
@@ -405,11 +408,11 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
     }
   }
 
-  renderAccountStatus(profile);
+  renderAccountStatus(profile, describeRoles(roleIds));
 }
 
 
-function renderAccountStatus(profile: Profile) {
+function renderAccountStatus(profile: Profile, roles = "") {
   const details: Record<AccountStatus, { title: string; text: string }> = {
     pending: {
       title: "Awaiting approval",
@@ -470,7 +473,7 @@ function renderAccountStatus(profile: Profile) {
     void signOut();
   });
 
-  addTopBar(profile.display_name);
+  addTopBar(profile.display_name, roles);
 }
 
 
@@ -722,8 +725,8 @@ function renderDetailsPage(container: HTMLElement) {
   }
 }
 
-// The umpire's own home page. Availability and assignments will appear here
-// when scheduling is switched on.
+// The umpire's own home page: their assigned games (which they can print or
+// download), with availability to follow.
 function renderUmpireHomePage(
   container: HTMLElement,
   name: string,
@@ -735,17 +738,27 @@ function renderUmpireHomePage(
         <p class="eyebrow">RWCLL · UMPIRE</p>
         <h1>Welcome${name ? `, ${escapeHtml(name)}` : ""}</h1>
         <p class="intro">
-          Your umpire account is active. Your availability and your game
-          assignments will appear here as soon as scheduling is switched on.
-          Meanwhile, please keep your contact details up to date.
+          Your umpire account is active. Your game assignments appear below
+          as soon as the scheduler assigns you, and you can print them.
+          Entering your availability will be added here soon. Meanwhile,
+          please keep your contact details up to date.
         </p>
         ${openDetails
           ? `<button id="home-open-details" class="secondary-button"
               type="button">Open My details</button>`
           : ""}
+
+        <div id="my-schedule-container"></div>
       </section>
     </main>
   `;
+
+  const scheduleContainer =
+    container.querySelector<HTMLElement>("#my-schedule-container");
+
+  if (scheduleContainer) {
+    void renderMySchedule(scheduleContainer);
+  }
 
   if (openDetails) {
     container.querySelector("#home-open-details")

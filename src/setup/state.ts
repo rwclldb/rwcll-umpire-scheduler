@@ -15,6 +15,8 @@ export const state = {
   editingLocationId: null as string | null,
   editingTeamId: null as string | null,
   teamSeasonFilter: "",
+  // "" shows every division; "__none__" shows teams that have no division
+  teamDivisionFilter: "",
 
   // Most recently loaded data, shared by the form helpers.
   ageCharts: [] as AgeChartRecord[],

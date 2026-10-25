@@ -261,6 +261,11 @@ export async function renderLeagueSetup(
       state.teamSeasonFilter = target.value;
       teamsPanel.innerHTML = renderTeamsPanel();
     }
+
+    if (target instanceof HTMLSelectElement && target.id === "team-division-filter") {
+      state.teamDivisionFilter = target.value;
+      teamsPanel.innerHTML = renderTeamsPanel();
+    }
   });
 
   if (teamEditor) {

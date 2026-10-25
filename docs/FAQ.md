@@ -63,6 +63,9 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 30. [The Games tab](#30-the-games-tab)
 31. [Importing games from the master calendar](#31-importing-games-from-the-master-calendar)
 32. [Creating a season from the registration files](#32-creating-a-season-from-the-registration-files)
+33. [Printing and exporting schedules](#33-printing-and-exporting-schedules)
+34. [Running all the checks at once](#34-running-all-the-checks-at-once)
+35. [Colors and appearance](#35-colors-and-appearance)
 
 ---
 
@@ -173,7 +176,7 @@ Also called "run the security check", "run the rules check", and so on.
 1. Open the Supabase dashboard and pick the project you mean. **Check the project name at the top left.**
 2. Open **SQL Editor** and start a new query.
 3. Open the script file from `supabase\tests`, copy **all** of it, and paste it in.
-4. If the script has a line like `test_user uuid := '00000000-...'`, replace the zeros with an account id (section 7).
+4. `rls_check_ordinary_user.sql` has a line `test_user uuid := '00000000-...'`. **Leave it as it is**: the script then picks an approved ordinary account by itself (preferring one linked to an umpire record) and says which kind it used. Only replace the zeros if you want it to test as one particular account (section 7). Do not hard-code an id into the saved file: the test and live projects have different ids.
 5. Click **Run**.
 6. **The run ends with a red error. That is expected.** The report is inside the error message, and raising an error guarantees nothing is saved. The editor may also warn about "destructive operations" because the text contains delete statements; that is expected too.
 7. Read the report lines (`PASS`, `FAIL`, `CHECK`, `SKIP`, `INFO`).
@@ -369,7 +372,8 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 |---|---|---|
 | `scripts\backup-live.ps1` | Saves a backup of the LIVE project to `D:\sandbox\RWCLL-backups` | No (reads only) |
 | `scripts\restore-to-test.ps1` | Loads a backup into an empty TEST project | Test only |
-| `supabase\tests\rls_check_ordinary_user.sql` | Tries forbidden actions as an ordinary account | No (always rolls back) |
+| `scripts\run-all-checks.ps1` (and `scripts\run-checks.mjs`) | Runs **every** check script below against TEST or LIVE and reports which ones have problems (section 34) | No (every check is rolled back) |
+| `supabase\tests\rls_check_ordinary_user.sql` | Tries forbidden actions as an ordinary account (picks one by itself) | No (always rolls back) |
 | `supabase\tests\rls_check_admin_access.sql` | Confirms a super admin can read everything | No (always rolls back) |
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
@@ -453,7 +457,7 @@ rwcll-umpire-scheduler\
   src\setup\               the League Setup pieces (leagues, seasons, divisions, teams, locations, ...)
   supabase\migrations\     database changes, in order
   supabase\tests\          check scripts and the schema fingerprint
-  scripts\                 backup and restore scripts
+  scripts\                 backup, restore and run-all-checks scripts
   docs\                    this FAQ, RECOVERY.md and EMAIL-SETUP.md
   .github\workflows\       the daily keep-alive job
   .env                     LIVE settings        (never committed)
@@ -470,10 +474,11 @@ If the same file already exists, **overwrite it**.
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
 | `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
-| `backup-live.ps1`, `restore-to-test.ps1` | `scripts` |
-| App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `season-plan.ts`, `season-import.ts` (the two season import files) | `src\setup` (the folder that already holds the other setup files) |
-| `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the ten files in the `games` folder) | `src\games` (a folder inside `src`, next to `games.ts`) |
+| `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
+| App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting; with the ten above, fifteen files in all) | `src\games` |
+| `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
+| `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
 | `style.css` | `src` (it replaces `src\style.css`) |
 | `FAQ.md`, `RECOVERY.md`, `EMAIL-SETUP.md` | `docs` |
@@ -686,17 +691,19 @@ These are enforced by the database itself, so they hold no matter which screen i
 
 ## 29. Menus and pages: who sees what
 
-After signing in, an approved person sees a **top bar** (their name and **Sign out**) and, if they have more than one page, a **menu** of tabs under it. Which pages they get depends on their roles. People with several roles get the pages of each.
+After signing in, an approved person sees a **top bar** (their name, their **roles** in small italics beneath it, and **Sign out**) and, if they have more than one page, a **menu** of tabs under it. Which pages they get depends on their roles. People with several roles get the pages of each.
 
 | Role | Pages |
 |---|---|
 | Super admin | **Administration** (accounts, registrations, roles, league setup, umpire directory, Outbox, My details) and **Games** |
 | Umpire chief | **Umpire Management** (registrations, umpire directory, Outbox, My details) and **Games** |
 | Scheduler | **Umpires** (directory and Outbox), **Games**, **League Setup**, **My details** |
-| Youth or adult umpire | **Home**, **My details** |
+| Youth or adult umpire | **Home** (with their own printable schedule), **My details** |
 | Treasurer, feedback reviewer, read-only admin, parent | The plain account page for now (their pages come with their features) |
 
 Combinations: chief and scheduler get *Umpire Management*, *Games* and *League Setup*. A scheduler who is also an umpire gets *Umpires*, *Games*, *League Setup*, *As an umpire*, and *My details*.
+
+**Your roles** are listed under your name in the top bar (most important first, for example *Super admin, Scheduler, Adult umpire*), and again on **My details**. Hover over them to see the full list on a small screen.
 
 **The address bar follows the page**, for example `.../#/setup`. Back, Forward, and bookmarks work. If the address names a page the person is not allowed to see, they get their first page instead. **Signing out clears it**, so the next person starts at their own first page.
 
@@ -726,10 +733,11 @@ Canceled games never cause or receive conflicts. A game with only one of its two
 
 **Delete a game** only if it should never have existed. A game that is on the master calendar is better set to **Canceled**, because importing again would otherwise add it back. Deleting a game also removes its umpire assignments, and the confirmation tells you how many.
 
+**Printing and downloading the schedule** is described in section 33.
+
 **What comes next on this tab**
 
-1. **Export and print** the calendar with fields, teams and umpire assignments.
-2. **Assigning umpires**, and umpires entering their availability.
+1. **Assigning umpires** to games, and umpires entering their availability.
 
 **Importing from the master calendar spreadsheet** is built: see section 31.
 
@@ -794,6 +802,91 @@ Canceled games never cause or receive conflicts. A game with only one of its two
 
 **Running it again is safe.** The season is found by name, nothing is created twice, and the button says "Nothing new to add". If the registration system later gets **another team**, import the new Team Detail file: only that team is added. A team the registration has moved to another division is **not** moved here (you are warned), and teams here that are not in the file are listed but never touched.
 
-**After it has run:** open **Seasons** to choose an age chart, and **Divisions** to set each division's age range if you use them. Then import the calendar (section 31): its teams, divisions and games line up automatically.
+**After it has run:** open **Seasons** to choose an age chart, and **Divisions** to set each division's age range if you use them. Then import the calendar (section 31): its teams, divisions and games line up automatically. The **Teams** list in League Setup can be filtered by season **and by division** (each division shows how many teams it has).
 
 **Limits:** files up to 2 MB, 200 divisions and 2,000 teams at a time.
+
+## 33. Printing and exporting schedules
+
+**Where:** the **Games** tab (super admins, umpire chiefs and schedulers). Umpires print their own from their **Home** page.
+
+**The day-by-day schedule.** On the Games tab, set the filters to what you want (season, division, field, dates, status), then:
+
+| Button | What you get |
+|---|---|
+| **Print schedule** | A printable page with a heading for each day, and under it a table: time, division, field (with its address), the two teams, the plate umpire and the field umpire. It prints exactly the games shown on screen. |
+| **Download CSV** | The same games as a spreadsheet file (opens in Excel or Google Sheets), one row per game. An umpire spot that is still empty is an **empty cell**, so you can filter for it. |
+| *Start each day on a new page* (tick box) | Each day begins on a fresh sheet, handy for posting one day at a time. |
+
+On paper, an umpire spot that is still empty is boxed and marked **OPEN**, so it stands out even on a black-and-white printer. Canceled games (when you choose to show them) are struck through and marked CANCELED. A long day continues onto the next page with its column headings repeated. The printout header says what is being shown and when it was printed, with the time zone.
+
+**Tip: save as PDF.** In the print window, choose **Save as PDF** as the printer to email the schedule instead of printing it.
+
+**One umpire's schedule.** Press **One umpire's schedule**, choose an umpire, and you see all their games across every season, with **From** and **To** dates (it starts from today; clear **From** to include past games) and **Include canceled games**. **Print this schedule** and **Download CSV** then act on what is shown. It lists the date, time, position (**Plate** or **Field**), the field with its address, the game and the division.
+
+**For umpires.** Each umpire's **Home** page has **My schedule** with the same dates, **Print this schedule** and **Download CSV**. An umpire can see **only their own games**, with their own position, and **never another umpire's name**, even when they work a game together. If their account is not connected to an umpire record yet, the page says so.
+
+**CSV columns.** Day schedule: Date, Day, Start, End, Division, Field, Address, Home, Away, Plate umpire, Field umpire, Status, Type, Master Game ID, Notes. Umpire schedule: Date, Day, Start, End, Position, Field, Address, Division, Home, Away, Status, Master Game ID. Dates are written as `2026-10-04` so they sort correctly. Text that begins with `=`, `+`, `-` or `@` gets a `'` in front, so a spreadsheet never treats a name as a formula.
+
+**Times** are shown in the time zone of the computer doing the printing.
+
+## 34. Running all the checks at once
+
+There are about ten check scripts. Instead of pasting each into the SQL Editor, one command runs all of them and says which ones have problems.
+
+**Run it** from the project folder:
+
+```
+powershell -ExecutionPolicy Bypass -File .\scripts\run-all-checks.ps1
+```
+
+It asks for the **Session pooler host** and the database **password** (typed hidden, never saved), the same as `restore-to-test.ps1`. It defaults to the **test** project. For live:
+
+```
+powershell -ExecutionPolicy Bypass -File .\scripts\run-all-checks.ps1 -Target live
+```
+
+It asks you to type `LIVE` first. To run only some checks, add `-Only` and part of a file name, for example `-Only games`.
+
+**What you see**
+
+```
+  [ PASS ]  account_details_check.sql    16 tests passed
+  [ FAIL ]  games_rules_check.sql        1 problem in 18 tests
+            FAIL  G3  a team from a different division was accepted
+  [ STOP ]  import_games_check.sql       could not finish: ERROR: relation ... does not exist
+
+RESULT: 2 OF 10 CHECKS NEED ATTENTION on TEST
+```
+
+| Mark | Meaning |
+|---|---|
+| **PASS** | The check ran to the end and found no problems |
+| **FAIL** | The check ran, and one or more tests failed (the failing lines are shown) |
+| **STOP** | The check could not finish (for example a missing table, or a typing slip in the script). **This is never counted as a pass.** |
+
+The last line is the answer: **ALL ... CHECKS PASSED**, or how many need attention and which. A full log of every check's output is saved in `D:\sandbox\RWCLL-backups\check-results` (named with the project and time), which is handy to send to Claude if something fails.
+
+**It is safe on live.** Every check runs inside a transaction that is **always rolled back**, even if a check script had a mistake, so nothing is ever saved.
+
+**New checks are included automatically.** Any file in `supabase\tests` with `check` in its name is run (`schema_fingerprint.sql` is not a check, so it is skipped).
+
+**Where it looks for the check scripts.** It finds the project itself (from where `run-all-checks.ps1` lives), so it does not matter which folder you run it from. It looks in `supabase\tests` first, then in the other likely places (`supabase`, `scripts`, `docs`, `tests`, `sql`, and the project folder), and says if it had to use a different folder. If it finds **no** check scripts, it lists where it looked and tells you to create `supabase\tests` and copy the `*_check.sql` files into it. If it sees them in your **Downloads** folder, it gives the exact commands to move them.
+
+**If it will not start:** "psql was not found" means passing the real location with `-PsqlPath`; "Could not connect" shows the reason from the database (a wrong host or password are the usual causes).
+
+## 35. Colors and appearance
+
+The app uses the league colors: **forest green, black and white**, with neutral grays. The white button text and the green links all pass the standard contrast test (the textbook "forest green" `#228b22` does not, so a slightly deeper green is used).
+
+| Use | Color |
+|---|---|
+| Main green (buttons, links, headings accents) | `#1b6b3a` |
+| Darker green (hover, active text) | `#14532d` |
+| Light green tint (selected tab, highlights) | `#e6f2ea` |
+| Top bar | black `#0f1210` with a green rule |
+| Green for use on black | `#4fbf7a` |
+| Text | near-black `#14171a`, with grays `#4a4f52` and `#656b6e` |
+| Page background | `#f2f4f2` |
+
+Red and amber are kept for **errors** and **warnings** only, so they keep their meaning. All of it lives in `style.css`. When the graphical theming happens later, these are the colors to start from.

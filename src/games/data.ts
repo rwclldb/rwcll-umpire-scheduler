@@ -4,7 +4,7 @@ import type {
   DivisionOption,
   Game,
   GamesContext,
-  NamedOption,
+  LocationOption,
   SeasonOption,
   TeamOption,
 } from "./types";
@@ -57,7 +57,7 @@ export async function loadContext(): Promise<{
         .order("name")
         .range(from, to)
     ),
-    supabase.from("locations").select("id, name, is_active").order("name"),
+    supabase.from("locations").select("id, name, is_active, address").order("name"),
     fetchAll<{ id: string; display_name: string }>((from, to) =>
       supabase.from("umpires").select("id, display_name").order("id").range(from, to)
     ),
@@ -77,8 +77,17 @@ export async function loadContext(): Promise<{
       seasons: (seasons.data ?? []) as SeasonOption[],
       divisions: (divisions.data ?? []) as DivisionOption[],
       teams: teams.rows,
-      locations: (locations.data ?? []) as NamedOption[],
-      umpireNames: new Map(umpires.rows.map((row) => [row.id, row.display_name])),
+      locations: (locations.data ?? []) as LocationOption[],
+      // (the row type is written out, so this line never depends on how the
+      // database client's types happen to be inferred)
+      umpireNames: new Map<string, string>(
+        umpires.rows.map(
+          (row: { id: string; display_name: string }): [string, string] => [
+            row.id,
+            row.display_name,
+          ]
+        )
+      ),
     },
     error: null,
   };
@@ -121,4 +130,45 @@ export async function loadSeasonGames(seasonId: string): Promise<{
     assignments: assignments.rows.filter((row) => ids.has(row.game_id)),
     error: null,
   };
+}
+
+// Every game one umpire is assigned to, across all seasons. An umpire can read
+// only their own assignments, so this works for the umpire themselves and for
+// administrators.
+export async function loadUmpireGames(umpireId: string): Promise<{
+  games: Game[];
+  assignments: Assignment[];
+  error: string | null;
+}> {
+  const assignments = await fetchAll<Assignment>((from, to) =>
+    supabase
+      .from("game_assignments")
+      .select("game_id, position, umpire_id")
+      .eq("umpire_id", umpireId)
+      .order("game_id")
+      .range(from, to)
+  );
+
+  if (assignments.error) return { games: [], assignments: [], error: assignments.error };
+
+  // The games are asked for in groups of 100 so the request stays short.
+  const ids = [...new Set(assignments.rows.map((row) => row.game_id))];
+  const games: Game[] = [];
+
+  for (let start = 0; start < ids.length; start += 100) {
+    const group = ids.slice(start, start + 100);
+    const page = await fetchAll<Game>((from, to) =>
+      supabase
+        .from("games")
+        .select(GAME_COLUMNS)
+        .in("id", group)
+        .order("starts_at")
+        .range(from, to)
+    );
+
+    if (page.error) return { games: [], assignments: [], error: page.error };
+    games.push(...page.rows);
+  }
+
+  return { games, assignments: assignments.rows, error: null };
 }

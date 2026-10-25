@@ -16,6 +16,7 @@ export function addTopBar(
   root: HTMLElement,
   name: string,
   onSignOut: () => void,
+  roles = "",
 ): void {
   root.querySelector(".topbar")?.remove();
 
@@ -24,7 +25,12 @@ export function addTopBar(
     `
       <header class="topbar">
         <span class="topbar-user">
-          ${name ? `Signed in as ${escapeHtml(name)}` : "Signed in"}
+          <span class="topbar-name">
+            ${name ? `Signed in as ${escapeHtml(name)}` : "Signed in"}
+          </span>
+          ${roles
+            ? `<em class="topbar-roles" title="${escapeHtml(roles)}">${escapeHtml(roles)}</em>`
+            : ""}
         </span>
         <button id="topbar-signout" class="secondary-button"
           type="button">Sign out</button>
@@ -44,7 +50,7 @@ let hashListener: (() => void) | null = null;
 // page names (such as email-link details) are ignored.
 export function renderShell(
   root: HTMLElement,
-  options: { name: string; pages: ShellPage[]; onSignOut: () => void },
+  options: { name: string; roles?: string; pages: ShellPage[]; onSignOut: () => void },
 ): void {
   const { pages } = options;
 
@@ -64,7 +70,7 @@ export function renderShell(
     <div id="page-content"></div>
   `;
 
-  addTopBar(root, options.name, options.onSignOut);
+  addTopBar(root, options.name, options.onSignOut, options.roles ?? "");
 
   const navigate = (pageId: string) => {
     window.location.hash = `#/${pageId}`;
