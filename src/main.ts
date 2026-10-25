@@ -8,6 +8,7 @@ import { renderRoleManager } from "./roles";
 import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
 import { renderOutbox } from "./outbox";
+import { renderGames, resetGamesView } from "./games";
 import { addTopBar as drawTopBar, renderShell } from "./shell";
 import type { ShellPage } from "./shell";
 
@@ -645,6 +646,23 @@ function renderChiefPage(container: HTMLElement) {
   wireOutbox();
 }
 
+function renderGamesPage(container: HTMLElement) {
+  container.innerHTML = `
+    <main class="page">
+      <section class="auth-card admin-card">
+        <div id="games-container"></div>
+      </section>
+    </main>
+  `;
+
+  const gamesContainer =
+    container.querySelector<HTMLElement>("#games-container");
+
+  if (gamesContainer) {
+    void renderGames(gamesContainer);
+  }
+}
+
 // The umpire directory, for people who manage umpires but are not the chief.
 function renderUmpiresPage(container: HTMLElement) {
   container.innerHTML = `
@@ -736,9 +754,9 @@ function renderUmpireHomePage(
 }
 
 // The pages a signed-in person can see, from their roles.
-//  - super admin: Administration (everything, as before)
-//  - umpire chief: Umpire Management
-//  - scheduler: Umpires and League Setup
+//  - super admin: Administration (everything, as before) and Games
+//  - umpire chief: Umpire Management and Games
+//  - scheduler: Umpires, Games and League Setup
 //  - youth or adult umpire: Home
 //  - My details, for everyone whose page does not already include it
 function pagesFor(
@@ -767,12 +785,23 @@ function pagesFor(
       });
     }
 
-    if (flags.isScheduler) {
-      if (!flags.isUmpireChief) {
-        pages.push({ id: "umpires", label: "Umpires", render: renderUmpiresPage });
-      }
-      pages.push({ id: "setup", label: "League Setup", render: renderSetupPage });
+    if (flags.isScheduler && !flags.isUmpireChief) {
+      pages.push({ id: "umpires", label: "Umpires", render: renderUmpiresPage });
     }
+  }
+
+  // Everyone who manages the schedule can see and change the games.
+  if (flags.isSuperAdmin || flags.isUmpireChief || flags.isScheduler) {
+    pages.push({
+      id: "games",
+      label: "Games",
+      render: (container) => renderGamesPage(container),
+    });
+  }
+
+  // (The administration page already includes league setup.)
+  if (!flags.isSuperAdmin && flags.isScheduler) {
+    pages.push({ id: "setup", label: "League Setup", render: renderSetupPage });
   }
 
   // The administration and chief pages already include My details.
@@ -1154,6 +1183,7 @@ async function signOut() {
 
   // Forget which page was open, so the next person starts at their first page.
   window.history.replaceState(null, "", window.location.pathname);
+  resetGamesView();
 
   renderAuthForm();
 }

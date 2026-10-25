@@ -60,6 +60,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 27. [The Outbox: email stubs, and how to switch on real sending](#27-the-outbox-email-stubs-and-how-to-switch-on-real-sending)
 28. [Rules about teams and games](#28-rules-about-teams-and-games)
 29. [Menus and pages: who sees what](#29-menus-and-pages-who-sees-what)
+30. [The Games tab](#30-the-games-tab)
 
 ---
 
@@ -181,6 +182,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
+| `games_master_id_check.sql` | The master calendar Game ID rules work (optional, unique within a season, no stray spaces) | `Failures: 0` |
 | `games_rules_check.sql` | The team and game rules work (a team's division is in its league; a game's teams are in its season and division; bracket slots; game types) | `Failures: 0` |
 | `email_outbox_check.sql` | The Outbox works and stays private (only scheduling admins can queue or read, no direct writes, the internal path cannot be called from the app) | `Failures: 0` |
 | `registration_check.sql` | Registration and invitations work (sign-up choices grant nothing, unconfirmed or expired invitations are not honoured, approval enforces the age rules, only a super admin or umpire chief can approve) | `Failures: 0` |
@@ -368,6 +370,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
+| `supabase\tests\games_master_id_check.sql` | Tests the master calendar Game ID rules (builds its own tiny league; your data is not used) | No (always rolls back) |
 | `supabase\tests\games_rules_check.sql` | Tests the team and game rules (builds its own tiny league; your data is not used) | No (always rolls back) |
 | `supabase\tests\registration_check.sql` | Tests sign-up, invitations and approval (creates temporary test accounts) | No (always rolls back) |
 | `supabase\tests\schema_fingerprint.sql` | Summarises a database's structure for comparison | No (reads only) |
@@ -457,9 +460,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1` | `scripts` |
-| App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `league_setup.ts`, `ui.ts` | `src` |
+| App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
+| `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts` (the five files in the `games` folder) | `src\games` (a new folder) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
 | `style.css` | `src` (it replaces `src\style.css`) |
 | `FAQ.md`, `RECOVERY.md`, `EMAIL-SETUP.md` | `docs` |
@@ -664,6 +668,7 @@ These are enforced by the database itself, so they hold no matter which screen i
 - A game has a **type**: regular, tournament, or scrimmage.
 - A team cannot play itself, and a game must end after it starts.
 - The "last changed" time is kept by the database.
+- A game can carry the **master calendar's Game ID**. It is optional, **unique within a season** (so the master calendar may restart its numbering each year), and may not start or end with a space.
 
 **Not enforced as a hard rule (the games screen will warn instead):** two games at the same field at overlapping times, and a team in two games at once. Real leagues sometimes need exceptions, so these will be warnings you can see, not walls.
 
@@ -675,14 +680,44 @@ After signing in, an approved person sees a **top bar** (their name and **Sign o
 
 | Role | Pages |
 |---|---|
-| Super admin | **Administration** (accounts, registrations, roles, league setup, umpire directory, Outbox, My details). One page, so no menu. |
-| Umpire chief | **Umpire Management** (registrations, umpire directory, Outbox, My details). One page, so no menu. |
-| Scheduler | **Umpires** (directory and Outbox), **League Setup**, **My details** |
+| Super admin | **Administration** (accounts, registrations, roles, league setup, umpire directory, Outbox, My details) and **Games** |
+| Umpire chief | **Umpire Management** (registrations, umpire directory, Outbox, My details) and **Games** |
+| Scheduler | **Umpires** (directory and Outbox), **Games**, **League Setup**, **My details** |
 | Youth or adult umpire | **Home**, **My details** |
 | Treasurer, feedback reviewer, read-only admin, parent | The plain account page for now (their pages come with their features) |
 
-Combinations: chief and scheduler get *Umpire Management* and *League Setup*. A scheduler who is also an umpire gets *Umpires*, *League Setup*, *As an umpire*, and *My details*.
+Combinations: chief and scheduler get *Umpire Management*, *Games* and *League Setup*. A scheduler who is also an umpire gets *Umpires*, *Games*, *League Setup*, *As an umpire*, and *My details*.
 
 **The address bar follows the page**, for example `.../#/setup`. Back, Forward, and bookmarks work. If the address names a page the person is not allowed to see, they get their first page instead. **Signing out clears it**, so the next person starts at their own first page.
 
-**Games, availability, and assignments will each be a new tab** in this menu.
+**Availability and assignments will each be a new tab** in this menu.
+
+## 30. The Games tab
+
+**Who:** super admins, umpire chiefs and schedulers. Find it in the menu as **Games**.
+
+**The idea.** The master calendar belongs to the league; the umpire system holds a **copy** of it. When the master calendar changes, an administrator makes the same change here, either by editing the game on this tab or (coming next) by importing the updated spreadsheet. Games copied from the master calendar carry its **Game ID**, which is how a re-import will know which game to update instead of adding a duplicate. A game made by hand has no Game ID, and an import will never touch it.
+
+**Reading the list.** It opens on the current season, from **today** onward, hiding canceled games. Change **Season**, **Division**, **Field**, **From**/**To**, or **Status**, or type in **Search** (it finds teams, fields, umpires, divisions and master Game IDs). **Only games with warnings** shows just the ones that need attention. The line above the list counts what you are looking at. Times are shown in your computer's time zone. On a phone each game is a small card.
+
+**Warnings.** They never stop you from saving anything. They are there to be seen:
+
+| Warning | When it appears |
+|---|---|
+| **No umpire assigned** | A draft or scheduled game, today or later, with nobody assigned. (Games in the past, canceled games and completed games are never flagged.) |
+| **Field conflict** | Another game is at the same field at an overlapping time. A game that starts exactly when the previous one ends is **not** a conflict. |
+| **Team conflict** | A team is in another game at an overlapping time, even at a different field. |
+
+Canceled games never cause or receive conflicts. A game with only one of its two umpires assigned is not flagged yet; that comes with the assignment screens. A game with many conflicts shows the first three and "...and N more".
+
+**Add a game** with the **Add game** button. Choose the season and division first: the team lists then show only that season's, that division's, active teams. For a tournament slot that is not decided yet, choose **Not decided yet (bracket slot)** and type a short label such as "Winner of Game 3". The **Master calendar Game ID** is optional.
+
+**Edit a game** with its **Edit** button. If it has a master Game ID, the form reminds you that your change may be replaced the next time the spreadsheet is imported.
+
+**Delete a game** only if it should never have existed. A game that is on the master calendar is better set to **Canceled**, because importing again would otherwise add it back. Deleting a game also removes its umpire assignments, and the confirmation tells you how many.
+
+**What comes next on this tab**
+
+1. **Import from a spreadsheet:** a preview first (new games, changed games, unchanged games, and problems), then apply. Games are matched on the master Game ID.
+2. **Export and print** the calendar with fields, teams and umpire assignments.
+3. **Assigning umpires**, and umpires entering their availability.
