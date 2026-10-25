@@ -8,6 +8,8 @@ import { renderRoleManager } from "./roles";
 import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
 import { renderOutbox } from "./outbox";
+import { addTopBar as drawTopBar, renderShell } from "./shell";
+import type { ShellPage } from "./shell";
 
 type AccountStatus = "pending" | "approved" | "rejected" | "suspended";
 
@@ -62,26 +64,10 @@ function wireOutbox() {
   document.addEventListener("outbox:changed", outboxChangedListener);
 }
 
-// A bar across the top of every signed-in screen, with Sign out at the right.
-// It sticks to the top as the page scrolls.
+// A bar across the top of the screens that are not part of the app shell
+// (the plain account page, errors, password reset), with Sign out at the right.
 function addTopBar(name: string) {
-  app!.insertAdjacentHTML(
-    "afterbegin",
-    `
-      <header class="topbar">
-        <span class="topbar-user">
-          ${name ? `Signed in as ${escapeHtml(name)}` : "Signed in"}
-        </span>
-        <button id="topbar-signout" class="secondary-button"
-          type="button">Sign out</button>
-      </header>
-    `
-  );
-
-  document.querySelector("#topbar-signout")?.addEventListener(
-    "click",
-    () => void signOut()
-  );
+  drawTopBar(app!, name, () => void signOut());
 }
 
 function showMessage(message: string, kind: "error" | "success" = "error") {
@@ -392,21 +378,30 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
     return;
   }
 
-  const isSuperAdmin =
-    roleRows?.some((role) => role.role_id === "super_admin") ?? false;
-  const isUmpireChief =
-    roleRows?.some(
-      (role: { role_id: string }) => role.role_id === "umpire_chief"
-    ) ?? false;
+  const roleIds: string[] = (roleRows ?? []).map(
+    (role: { role_id: string }) => role.role_id
+  );
 
-  if (profile.account_status === "approved" && isSuperAdmin) {
-    renderAdminDashboard(profile);
-    return;
-  }
+  if (profile.account_status === "approved") {
+    const pages = pagesFor(
+      {
+        isSuperAdmin: roleIds.includes("super_admin"),
+        isUmpireChief: roleIds.includes("umpire_chief"),
+        isScheduler: roleIds.includes("scheduler"),
+        isUmpire:
+          roleIds.includes("youth_umpire") || roleIds.includes("adult_umpire"),
+      },
+      profile
+    );
 
-  if (profile.account_status === "approved" && isUmpireChief) {
-    renderChiefDashboard(profile);
-    return;
+    if (pages.length > 0) {
+      renderShell(app!, {
+        name: profile.display_name,
+        pages,
+        onSignOut: () => void signOut(),
+      });
+      return;
+    }
   }
 
   renderAccountStatus(profile);
@@ -484,8 +479,8 @@ type PendingProfile = {
   email: string | null;
 };
 
-function renderAdminDashboard(profile: Profile) {
-  app!.innerHTML = `
+function renderAdminPage(container: HTMLElement) {
+  container.innerHTML = `
     <main class="page">
       <section class="auth-card admin-card">
         <p class="eyebrow">RWCLL · ADMINISTRATION</p>
@@ -526,21 +521,9 @@ function renderAdminDashboard(profile: Profile) {
         <div id="league-setup-container"></div>
 
         <div id="umpire-directory-container"></div>
-
-        <p class="security-note">
-          Signed in as ${escapeHtml(profile.display_name || "Administrator")}
-        </p>
-
-        <button id="signout-button" class="secondary-button"
-          type="button">Sign out</button>
       </section>
     </main>
   `;
-
-  document.querySelector("#signout-button")?.addEventListener(
-    "click",
-    () => void signOut()
-  );
 
   document.querySelector("#refresh-accounts")?.addEventListener(
     "click",
@@ -605,13 +588,12 @@ function renderAdminDashboard(profile: Profile) {
   }
 
   wireOutbox();
-  addTopBar(profile.display_name);
 }
 
-// A smaller dashboard for the umpire chief: review new umpire
-// registrations and manage the umpire directory.
-function renderChiefDashboard(profile: Profile) {
-  app!.innerHTML = `
+// A smaller page for the umpire chief: review new umpire registrations and
+// manage the umpire directory.
+function renderChiefPage(container: HTMLElement) {
+  container.innerHTML = `
     <main class="page">
       <section class="auth-card admin-card">
         <p class="eyebrow">RWCLL · UMPIRE CHIEF</p>
@@ -635,21 +617,9 @@ function renderChiefDashboard(profile: Profile) {
         <hr class="directory-divider" />
 
         <div id="umpire-directory-container"></div>
-
-        <p class="security-note">
-          Signed in as ${escapeHtml(profile.display_name || "Umpire chief")}
-        </p>
-
-        <button id="signout-button" class="secondary-button"
-          type="button">Sign out</button>
       </section>
     </main>
   `;
-
-  document.querySelector("#signout-button")?.addEventListener(
-    "click",
-    () => void signOut()
-  );
 
   const directoryContainer =
     document.querySelector<HTMLElement>("#umpire-directory-container");
@@ -673,7 +643,159 @@ function renderChiefDashboard(profile: Profile) {
   }
 
   wireOutbox();
-  addTopBar(profile.display_name);
+}
+
+// The umpire directory, for people who manage umpires but are not the chief.
+function renderUmpiresPage(container: HTMLElement) {
+  container.innerHTML = `
+    <main class="page">
+      <section class="auth-card admin-card">
+        <details class="role-legend" id="outbox-details">
+          <summary>Outbox (messages waiting to be sent)</summary>
+          <div id="outbox-container"></div>
+        </details>
+
+        <div id="umpire-directory-container"></div>
+      </section>
+    </main>
+  `;
+
+  const directoryContainer =
+    container.querySelector<HTMLElement>("#umpire-directory-container");
+
+  if (directoryContainer) {
+    renderUmpireDirectory(directoryContainer);
+  }
+
+  wireOutbox();
+}
+
+function renderSetupPage(container: HTMLElement) {
+  container.innerHTML = `
+    <main class="page">
+      <section class="auth-card admin-card">
+        <div id="league-setup-container"></div>
+      </section>
+    </main>
+  `;
+
+  const setupContainer =
+    container.querySelector<HTMLElement>("#league-setup-container");
+
+  if (setupContainer) {
+    void renderLeagueSetup(setupContainer);
+  }
+}
+
+function renderDetailsPage(container: HTMLElement) {
+  container.innerHTML = `
+    <main class="page">
+      <section class="auth-card admin-card">
+        <div id="my-details-page"></div>
+      </section>
+    </main>
+  `;
+
+  const detailsContainer =
+    container.querySelector<HTMLElement>("#my-details-page");
+
+  if (detailsContainer) {
+    void renderMyDetails(detailsContainer);
+  }
+}
+
+// The umpire's own home page. Availability and assignments will appear here
+// when scheduling is switched on.
+function renderUmpireHomePage(
+  container: HTMLElement,
+  name: string,
+  openDetails: (() => void) | null
+) {
+  container.innerHTML = `
+    <main class="page">
+      <section class="auth-card admin-card">
+        <p class="eyebrow">RWCLL · UMPIRE</p>
+        <h1>Welcome${name ? `, ${escapeHtml(name)}` : ""}</h1>
+        <p class="intro">
+          Your umpire account is active. Your availability and your game
+          assignments will appear here as soon as scheduling is switched on.
+          Meanwhile, please keep your contact details up to date.
+        </p>
+        ${openDetails
+          ? `<button id="home-open-details" class="secondary-button"
+              type="button">Open My details</button>`
+          : ""}
+      </section>
+    </main>
+  `;
+
+  if (openDetails) {
+    container.querySelector("#home-open-details")
+      ?.addEventListener("click", openDetails);
+  }
+}
+
+// The pages a signed-in person can see, from their roles.
+//  - super admin: Administration (everything, as before)
+//  - umpire chief: Umpire Management
+//  - scheduler: Umpires and League Setup
+//  - youth or adult umpire: Home
+//  - My details, for everyone whose page does not already include it
+function pagesFor(
+  flags: {
+    isSuperAdmin: boolean;
+    isUmpireChief: boolean;
+    isScheduler: boolean;
+    isUmpire: boolean;
+  },
+  profile: Profile
+): ShellPage[] {
+  const pages: ShellPage[] = [];
+
+  if (flags.isSuperAdmin) {
+    pages.push({
+      id: "admin",
+      label: "Administration",
+      render: (container) => renderAdminPage(container),
+    });
+  } else {
+    if (flags.isUmpireChief) {
+      pages.push({
+        id: "chief",
+        label: "Umpire Management",
+        render: (container) => renderChiefPage(container),
+      });
+    }
+
+    if (flags.isScheduler) {
+      if (!flags.isUmpireChief) {
+        pages.push({ id: "umpires", label: "Umpires", render: renderUmpiresPage });
+      }
+      pages.push({ id: "setup", label: "League Setup", render: renderSetupPage });
+    }
+  }
+
+  // The administration and chief pages already include My details.
+  const hasDetailsPage = !flags.isSuperAdmin && !flags.isUmpireChief;
+
+  if (flags.isUmpire) {
+    pages.push({
+      id: "home",
+      label: pages.length === 0 ? "Home" : "As an umpire",
+      render: (container, navigate) =>
+        renderUmpireHomePage(
+          container,
+          profile.display_name,
+          hasDetailsPage ? () => navigate("details") : null
+        ),
+    });
+  }
+
+  if (hasDetailsPage && pages.length > 0) {
+    pages.push({ id: "details", label: "My details", render: renderDetailsPage });
+  }
+
+  return pages;
 }
 
 function escapeHtml(value: string): string {
@@ -1029,6 +1151,10 @@ async function signOut() {
 
   recoveryMode = false;
   currentView = "login";
+
+  // Forget which page was open, so the next person starts at their first page.
+  window.history.replaceState(null, "", window.location.pathname);
+
   renderAuthForm();
 }
 
