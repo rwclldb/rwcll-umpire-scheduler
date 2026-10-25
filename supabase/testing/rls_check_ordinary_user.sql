@@ -85,7 +85,7 @@ begin
       ('insert', 'umpire_private_details', 'Create private umpire details',
         $q$insert into public.umpire_private_details (umpire_id) values (gen_random_uuid())$q$, ''),
       ('insert', 'games', 'Create a game',
-        $q$insert into public.games (season_id, home_team_id, away_team_id, location_id, starts_at, ends_at) values (gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), now(), now() + interval '1 hour')$q$, ''),
+        $q$insert into public.games (season_id, division_id, home_team_id, away_team_id, location_id, starts_at, ends_at) values (gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), now(), now() + interval '1 hour')$q$, ''),
       ('insert', 'game_assignments', 'Assign an umpire to a game',
         $q$insert into public.game_assignments (game_id, umpire_id, position) values (gen_random_uuid(), gen_random_uuid(), 'plate')$q$, ''),
       ('insert', 'little_league_age_charts', 'Create an age chart directly',
