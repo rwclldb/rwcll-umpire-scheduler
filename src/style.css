@@ -869,3 +869,59 @@ input[type="radio"] {
 .invitation-panel .account-actions {
   margin: 10px 0;
 }
+
+/* Top bar on every signed-in screen: Sign out at the right */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgb(243 246 250 / 94%);
+  border-bottom: 1px solid #e0e6ef;
+  backdrop-filter: blur(6px);
+}
+
+.topbar-user {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #566176;
+  font-size: 0.9rem;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar .secondary-button {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 14px;
+}
+
+/* The page below the bar keeps the full screen height without overflowing */
+.topbar + .page {
+  min-height: calc(100vh - 58px);
+}
+
+/* Outbox (messages waiting to be sent) */
+.outbox-body {
+  margin-top: 10px;
+}
+
+.outbox-body summary {
+  min-height: 32px;
+  color: #2459a9;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.outbox-body textarea {
+  margin: 8px 0;
+  background: #f8fafc;
+}

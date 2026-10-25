@@ -56,6 +56,8 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 23. [Clean up leftover test records](#23-clean-up-leftover-test-records)
 24. [Where personal data is stored and who can see it](#24-where-personal-data-is-stored-and-who-can-see-it)
 25. [How umpire registration and invitations work](#25-how-umpire-registration-and-invitations-work)
+26. [Email: why sign-up fails on live, and the plan](#26-email-why-sign-up-fails-on-live-and-the-plan)
+27. [The Outbox: email stubs, and how to switch on real sending](#27-the-outbox-email-stubs-and-how-to-switch-on-real-sending)
 
 ---
 
@@ -177,6 +179,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
+| `email_outbox_check.sql` | The Outbox works and stays private (only scheduling admins can queue or read, no direct writes, the internal path cannot be called from the app) | `Failures: 0` |
 | `registration_check.sql` | Registration and invitations work (sign-up choices grant nothing, unconfirmed or expired invitations are not honoured, approval enforces the age rules, only a super admin or umpire chief can approve) | `Failures: 0` |
 
 A `SKIP` is not a failure. It means there was nothing to test against yet (for example, no games exist
@@ -361,6 +364,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\rls_check_admin_access.sql` | Confirms a super admin can read everything | No (always rolls back) |
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
+| `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\registration_check.sql` | Tests sign-up, invitations and approval (creates temporary test accounts) | No (always rolls back) |
 | `supabase\tests\schema_fingerprint.sql` | Summarises a database's structure for comparison | No (reads only) |
 | `supabase\migrations\*.sql` | The database changes, applied in file-name order | Yes, when pushed |
@@ -404,6 +408,8 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `running scripts is disabled` | PowerShell blocks `.ps1` files by default | Run them exactly as written here, with `-ExecutionPolicy Bypass -File` |
 | `npm run build` prints errors | A code problem | Copy the errors exactly and send them to Claude |
 | `git push` is rejected | GitHub has changes you do not | Ask Claude before doing anything else |
+| The Outbox looks empty after inviting someone | Older versions only reloaded when opened. The current version updates by itself and has a **Refresh** button. | Press **Refresh**. If it is still empty, run this in the SQL Editor to see what really exists: `select created_at, kind, to_email, subject, status from public.email_outbox order by created_at desc limit 10;` |
+| Signing up on **live** says the email "cannot be used as it is not authorized" | Supabase's built-in email sender only reaches your own team's addresses (error code `email_address_not_authorized`). Sign-up needs a confirmation email, so everyone else is refused. | A real email provider has to be connected (see section 26). Until then only team members can register on live. |
 | Someone signed up as an umpire but is not in **Umpire registrations** | They must confirm their email and then sign in once; the record is created at that sign-in | Ask them to confirm the email and sign in. People who never confirm never appear (this keeps spam out). |
 | An invited person registered but was not approved automatically | The email must match the invitation exactly, be **confirmed**, and the invitation must be open (not expired or revoked) and the record not already linked. They must also **sign in once** after confirming. | Open Edit on their umpire record: the Invitation panel shows the status. Renew it if it expired. |
 
@@ -427,12 +433,12 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 
 ```
 rwcll-umpire-scheduler\
-  src\                     the app (main.ts, roles.ts, umpires.ts, my-details.ts, registrations.ts, league_setup.ts, style.css, ...)
+  src\                     the app (main.ts, roles.ts, umpires.ts, my-details.ts, registrations.ts, email.ts, outbox.ts, league_setup.ts, style.css, ...)
   src\setup\               the League Setup pieces (leagues, seasons, divisions, teams, locations, ...)
   supabase\migrations\     database changes, in order
   supabase\tests\          check scripts and the schema fingerprint
   scripts\                 backup and restore scripts
-  docs\                    this FAQ and RECOVERY.md
+  docs\                    this FAQ, RECOVERY.md and EMAIL-SETUP.md
   .github\workflows\       the daily keep-alive job
   .env                     LIVE settings        (never committed)
   .env.test                TEST settings        (never committed)
@@ -447,12 +453,12 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1` | `scripts` |
-| App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `league_setup.ts`, `ui.ts` | `src` |
+| App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
 | `style.css` | `src` (it replaces `src\style.css`) |
-| `FAQ.md`, `RECOVERY.md` | `docs` |
+| `FAQ.md`, `RECOVERY.md`, `EMAIL-SETUP.md` | `docs` |
 | `keep-alive.yml` | `.github\workflows` |
 | A `.zip` | Unzip into the project folder (see below) |
 
@@ -511,6 +517,7 @@ This is enforced by the database itself, not just by the screens.
 | An account's outside IDs | `account_admin_details` | Scheduling admins only (the person never sees them) | Scheduling admins |
 | Roles | `user_roles` | You see your own; super admins see all | Super admins only |
 | Umpire invitations | `umpire_invitations` | Scheduling admins | Only through the invite, renew and revoke functions |
+| Queued emails (the Outbox) | `email_outbox` | Scheduling admins only | Only through the queue, mark-sent and skip functions |
 | Game assignments | `game_assignments` | Scheduling admins; an umpire sees only their own | Scheduling admins |
 
 Things worth knowing:
@@ -554,6 +561,8 @@ The database refuses an approval that breaks the age rules: no birth date for a 
 | Not linked | No account and no invitation |
 | Rejected / Suspended | The linked account was rejected or suspended |
 
+**Until the email provider is connected, nobody outside your Supabase team can register on live.** The sign-up screen reports the email as "not authorized". The test project is unaffected because "Confirm email" is off there.
+
 **Rules that keep this safe**
 
 - Nothing happens until the person's **email is confirmed**. That is how an invitation proves the right person is claiming it. **Never switch "Confirm email" off on the live project.**
@@ -568,3 +577,67 @@ The database refuses an approval that breaks the age rules: no birth date for a 
 2. Press **Edit** on the new record and look at the Invitation panel and the message.
 3. Sign out. Choose **Create account**, register with `invitee.one@example.test` (choose adult umpire), and sign in.
 4. You should land on **Account approved**. Sign back in as super admin: the directory should show **Linked**, and the Roles list should show the new account with the **Adult umpire** role.
+
+## 26. Email: why sign-up fails on live, and the plan
+
+**What happens today.** Supabase includes a built-in email sender for testing. It only delivers to
+addresses on your Supabase project team, and only a few messages per hour. Everyone else gets the
+error "Email address ... cannot be used as it is not authorized". Sign-up, password reset and
+invitations all need email, so on **live** only your own team can use them. The **test** project works
+because "Confirm email" is switched off there, so no email is sent.
+
+**The fix.** Connect a real email service ("custom SMTP") that Supabase uses for sign-up confirmation
+and password-reset emails. There are two sensible routes, and we do not have to choose yet.
+
+**Step by step, including a ten-minute go/no-go test for Route A: `docs\EMAIL-SETUP.md`.**
+
+**Route A: your league's Google Workspace (the first thing to look at)**
+
+- Supabase signs in to Google's mail server with a username and password: server `smtp.gmail.com`, port 587 (or 465), username = the full address of a **dedicated Workspace mailbox**, password = a Google **app password** (this needs 2-Step Verification on that mailbox, and your Workspace administrator may need to allow app passwords).
+- Google's own documentation gives a limit of **2,000 messages per day** for this route.
+- Google already signs mail from your domain if your admin mailboxes work, so **no new provider and probably no new DNS records**.
+- Replies land in a real inbox that a person can read, if you use a shared address such as `umpires@rwcll.org` as the sender.
+- Things to check: the mailbox must be a real, licensed Workspace user (an alias or a group cannot sign in), so there may be a licence cost; and the app password is a key to that mailbox, so it is stored only in Supabase and never shared.
+
+**Route B: a mail service such as Brevo or Resend**
+
+- Brevo's free plan allows 300 emails a day; Resend's allows 100 a day (3,000 a month). Both need an account and a few DNS records on a **subdomain** such as `mail.rwcll.org`, so your admin mailboxes are not touched.
+- More deliverability reporting, but one more service to look after.
+
+**About rwcll.org.** Umpires do **not** need an rwcll.org address: their own emails stay as they are. The domain only
+provides the **"From" identity** of the system's messages.
+
+**What will be needed (either route):**
+
+1. The sender mailbox or provider account, and its SMTP details.
+2. The SMTP details entered in the Supabase dashboard (Authentication, then SMTP Settings) for the test and live projects.
+3. A test: register from an address that is **not** on the Supabase team.
+
+**Keep in mind:** invitations rely on the email being confirmed, so "Confirm email" must stay **on** for live.
+
+## 27. The Outbox: email stubs, and how to switch on real sending
+
+Real email sending is **not switched on yet**. So that it can be added later without changing any screen,
+everything that wants to send an email adds the message to an **Outbox** instead.
+
+**What you can do today** (super admin or umpire chief). Open **Outbox (messages waiting to be sent)** on your
+dashboard. It lists waiting messages. For each one: open it, press **Copy message**, send it yourself from your
+own email, then press **Mark as sent**. **Skip** sets a message aside without sending it. "Everything" shows the
+history. Inviting an umpire now also adds the invitation message to the Outbox.
+
+**Two different kinds of email (they are set up separately):**
+
+| Kind | Examples | Sent by | Switched on by |
+|---|---|---|---|
+| **Sign-in emails** | Confirm your email, reset your password | Supabase Auth | Entering SMTP details in the Supabase dashboard (section 26) |
+| **App messages** | Invitations, game assignments, schedule changes, reminders | The Outbox | A sender that reads the Outbox (to be built when you are ready) |
+
+**How real sending will be switched on later** (nothing here needs to be done now):
+
+1. Choose the route in section 26 and get its SMTP details.
+2. A small scheduled server function reads **waiting** Outbox messages, sends each one through that service, and records the result (`sent` by `smtp`, or `failed` with the reason so it can be retried).
+3. The screens keep working unchanged. The Outbox then becomes a record of what was sent, and "Mark as sent" is only needed if something fails.
+
+**For whoever builds the next features:** every screen asks for an email through one function (`queueEmail` in `src\email.ts`),
+which calls the database function `queue_email`. Automatic emails triggered inside the database (for example "an assignment
+changed") use the internal function `enqueue_email`, which cannot be called from the app.

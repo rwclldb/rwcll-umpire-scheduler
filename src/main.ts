@@ -7,6 +7,7 @@ import { renderLeagueSetup } from "./league_setup";
 import { renderRoleManager } from "./roles";
 import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
+import { renderOutbox } from "./outbox";
 
 type AccountStatus = "pending" | "approved" | "rejected" | "suspended";
 
@@ -32,6 +33,56 @@ const linkParams = new URLSearchParams(
 );
 let recoveryMode = linkParams.get("type") === "recovery";
 const linkHadError = linkParams.has("error_description");
+
+// The Outbox is loaded from the database every time its section is opened,
+// and again whenever a message is queued while it is open, so it is never
+// out of date.
+let outboxChangedListener: (() => void) | null = null;
+
+function wireOutbox() {
+  const details = document.querySelector<HTMLDetailsElement>("#outbox-details");
+  const container = document.querySelector<HTMLElement>("#outbox-container");
+  if (!details || !container) return;
+
+  details.addEventListener("toggle", () => {
+    if (details.open) {
+      void renderOutbox(container);
+    }
+  });
+
+  // Only one listener at a time, even if the dashboard is drawn again.
+  if (outboxChangedListener) {
+    document.removeEventListener("outbox:changed", outboxChangedListener);
+  }
+  outboxChangedListener = () => {
+    if (details.isConnected && details.open) {
+      void renderOutbox(container);
+    }
+  };
+  document.addEventListener("outbox:changed", outboxChangedListener);
+}
+
+// A bar across the top of every signed-in screen, with Sign out at the right.
+// It sticks to the top as the page scrolls.
+function addTopBar(name: string) {
+  app!.insertAdjacentHTML(
+    "afterbegin",
+    `
+      <header class="topbar">
+        <span class="topbar-user">
+          ${name ? `Signed in as ${escapeHtml(name)}` : "Signed in"}
+        </span>
+        <button id="topbar-signout" class="secondary-button"
+          type="button">Sign out</button>
+      </header>
+    `
+  );
+
+  document.querySelector("#topbar-signout")?.addEventListener(
+    "click",
+    () => void signOut()
+  );
+}
 
 function showMessage(message: string, kind: "error" | "success" = "error") {
   const element = document.querySelector<HTMLParagraphElement>("#message");
@@ -309,6 +360,7 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
       "click",
       () => void signOut()
     );
+    addTopBar("");
     return;
   }
 
@@ -421,6 +473,8 @@ function renderAccountStatus(profile: Profile) {
   document.querySelector("#signout-button")?.addEventListener("click", () => {
     void signOut();
   });
+
+  addTopBar(profile.display_name);
 }
 
 
@@ -441,6 +495,11 @@ function renderAdminDashboard(profile: Profile) {
         <details class="role-legend">
           <summary>My details (phone and text messages)</summary>
           <div id="my-details-admin"></div>
+        </details>
+
+        <details class="role-legend" id="outbox-details">
+          <summary>Outbox (messages waiting to be sent)</summary>
+          <div id="outbox-container"></div>
         </details>
 
         <p id="admin-message" class="message"
@@ -544,6 +603,9 @@ function renderAdminDashboard(profile: Profile) {
   if (registrationsContainer) {
     void renderUmpireRegistrations(registrationsContainer);
   }
+
+  wireOutbox();
+  addTopBar(profile.display_name);
 }
 
 // A smaller dashboard for the umpire chief: review new umpire
@@ -561,6 +623,11 @@ function renderChiefDashboard(profile: Profile) {
         <details class="role-legend">
           <summary>My details (phone and text messages)</summary>
           <div id="my-details-admin"></div>
+        </details>
+
+        <details class="role-legend" id="outbox-details">
+          <summary>Outbox (messages waiting to be sent)</summary>
+          <div id="outbox-container"></div>
         </details>
 
         <div id="registrations-container"></div>
@@ -604,6 +671,9 @@ function renderChiefDashboard(profile: Profile) {
   if (myDetailsAdmin) {
     void renderMyDetails(myDetailsAdmin, { heading: false });
   }
+
+  wireOutbox();
+  addTopBar(profile.display_name);
 }
 
 function escapeHtml(value: string): string {
@@ -881,6 +951,8 @@ function renderSetNewPassword() {
       event.preventDefault();
       void submitNewPassword();
     });
+
+  addTopBar("");
 }
 
 async function submitNewPassword() {

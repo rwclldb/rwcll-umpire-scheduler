@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { queueEmail } from "./email";
 
 type UmpireClassification = "youth" | "adult";
 type EligibilityStatus = "active" | "inactive" | "suspended";
@@ -27,6 +28,7 @@ type Umpire = UmpireRow & {
   email: string | null;
   email_from_account: boolean;
   account_status: string | null;
+  account_name: string | null;
   invitation: PendingInvitation | null;
 };
 
@@ -102,6 +104,21 @@ function isValidEmail(value: string): boolean {
   return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function sameName(a: string, b: string): boolean {
+  const clean = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+  return clean(a) === clean(b);
+}
+
+// A linked umpire whose own account name differs from the roster name.
+function accountNameDiffers(umpire: Umpire): boolean {
+  return (
+    umpire.profile_id !== null &&
+    umpire.account_name !== null &&
+    umpire.account_name.trim() !== "" &&
+    !sameName(umpire.account_name, umpire.display_name)
+  );
+}
+
 function isExpired(invitation: PendingInvitation): boolean {
   return new Date(invitation.expires_at).getTime() < Date.now();
 }
@@ -124,6 +141,33 @@ function accountLabel(umpire: Umpire): string {
   }
 
   return "Not linked";
+}
+
+// Adds the invitation note to the Outbox (email sending is not set up yet,
+// so an administrator sends it by hand from there). A failure here must never
+// undo the invitation itself, so the result is returned for the caller to
+// mention.
+async function queueInvitationEmail(
+  umpireId: string,
+  email: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data } = await supabase
+    .from("umpire_invitations")
+    .select("expires_at")
+    .eq("umpire_id", umpireId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  const expiresAt =
+    (data as { expires_at: string } | null)?.expires_at ??
+    new Date(Date.now() + 30 * 86400000).toISOString();
+
+  return queueEmail({
+    kind: "invitation",
+    toEmail: email,
+    subject: "You are invited to the RWCLL umpire list",
+    body: invitationMessage(email, expiresAt),
+  });
 }
 
 // The note an administrator copies and sends to the person. No email is
@@ -167,7 +211,8 @@ function renderRows(searchTerm = "") {
       umpire.email ?? "",
       umpire.phone ?? "",
       umpire.eligibility_status,
-      accountLabel(umpire)
+      accountLabel(umpire),
+      umpire.account_name ?? ""
     ].some((value) => value.toLowerCase().includes(query));
   });
 
@@ -212,7 +257,12 @@ function renderRows(searchTerm = "") {
                   ${statusLabel(umpire.eligibility_status)}
                 </span>
               </td>
-              <td>${escapeHtml(accountLabel(umpire))}</td>
+              <td>
+                ${escapeHtml(accountLabel(umpire))}
+                ${accountNameDiffers(umpire)
+                  ? `<br><span class="season-dates">Account name: ${escapeHtml(umpire.account_name ?? "")}</span>`
+                  : ""}
+              </td>
                 <td>
                 <button type="button" class="secondary-button"
                     data-edit-umpire="${umpire.id}">
@@ -268,7 +318,7 @@ async function loadUmpires() {
   // for this user, the emails are simply left blank.
   const [privateResult, accountsResult, invitationsResult] = await Promise.all([
     supabase.from("umpire_private_details").select("umpire_id, email"),
-    supabase.from("profiles").select("id, email, account_status"),
+    supabase.from("profiles").select("id, email, account_status, display_name"),
     supabase.from("umpire_invitations")
       .select("id, umpire_id, email, expires_at")
       .eq("status", "pending"),
@@ -294,13 +344,16 @@ async function loadUmpires() {
 
   const accountEmails = new Map<string, string>();
   const accountStatuses = new Map<string, string>();
+  const accountNames = new Map<string, string>();
   for (const row of (accountsResult.data ?? []) as {
     id: string;
     email: string | null;
     account_status: string;
+    display_name: string | null;
   }[]) {
     if (row.email) accountEmails.set(row.id, row.email);
     accountStatuses.set(row.id, row.account_status);
+    if (row.display_name) accountNames.set(row.id, row.display_name);
   }
 
   const invitations = new Map<string, PendingInvitation>();
@@ -329,6 +382,9 @@ async function loadUmpires() {
       email_from_account: accountEmail !== null,
       account_status: umpire.profile_id
         ? accountStatuses.get(umpire.profile_id) ?? null
+        : null,
+      account_name: umpire.profile_id
+        ? accountNames.get(umpire.profile_id) ?? null
         : null,
       invitation: invitations.get(umpire.id) ?? null,
     };
@@ -422,6 +478,7 @@ async function createUmpire(form: HTMLFormElement) {
     if (error) throw error;
 
     let invited = false;
+    let queuedInOutbox = false;
 
     if (email && created && invite) {
       // Inviting also stores the email in the private details.
@@ -442,6 +499,7 @@ async function createUmpire(form: HTMLFormElement) {
         return;
       }
       invited = true;
+      queuedInOutbox = (await queueInvitationEmail(created.id, email)).ok;
     } else if (email && created) {
       // The email is kept in the administrator-only private details.
       const { error: emailError } = await supabase
@@ -470,8 +528,11 @@ async function createUmpire(form: HTMLFormElement) {
 
     if (message) {
       message.textContent = invited
-        ? "Umpire created and invitation recorded. Open Edit on the new " +
-          "record to copy the message to send them."
+        ? queuedInOutbox
+          ? "Umpire created, invitation recorded, and the message was added " +
+            "to the Outbox."
+          : "Umpire created and invitation recorded. Open Edit on the new " +
+            "record to copy the message to send them."
         : "Umpire created successfully.";
       message.className = "message success";
     }
@@ -635,9 +696,12 @@ async function refreshInvitationPanel(
           return;
         }
 
+        const queued = await queueInvitationEmail(umpireId, email);
         await loadUmpires();
         await refreshInvitationPanel(umpireId, {
-          text: "Invitation created. Copy the message below and send it to the person.",
+          text: queued.ok
+            ? "Invitation created and added to the Outbox. You can also copy the message below and send it yourself."
+            : `Invitation created, but it could not be added to the Outbox (${queued.error}). Copy the message below and send it yourself.`,
           kind: "success",
         });
         return;
@@ -760,6 +824,17 @@ async function showEditForm(umpireId: string) {
         maxlength="254" autocomplete="off"
         value="${escapeHtml(privateDetails?.email ?? "")}">`}
 
+      ${accountNameDiffers(umpire)
+        ? `<p class="season-dates">
+            The person's own account uses the name
+            <strong>${escapeHtml(umpire.account_name ?? "")}</strong>.
+            The roster name above is what you typed. They are the same
+            person; this is only a difference in spelling or style.
+          </p>
+          <button type="button" class="secondary-button"
+            id="use-account-name">Use the account's name</button>`
+        : ""}
+
       ${umpire.profile_id ? "" : `<div id="invitation-panel"></div>`}
 
       <label for="edit-birth-date">Birth date</label>
@@ -817,6 +892,16 @@ async function showEditForm(umpireId: string) {
   document.querySelector("#edit-classification")
     ?.addEventListener("change", updateAgeHint);
   updateAgeHint();
+
+  // Copies the account's name into the Display Name box (not saved until
+  // Save Changes is pressed).
+  document.querySelector("#use-account-name")?.addEventListener("click", () => {
+    const nameInput =
+      document.querySelector<HTMLInputElement>("#edit-display-name");
+    if (nameInput && umpire.account_name) {
+      nameInput.value = umpire.account_name;
+    }
+  });
 
   if (!umpire.profile_id) {
     void refreshInvitationPanel(umpireId);
