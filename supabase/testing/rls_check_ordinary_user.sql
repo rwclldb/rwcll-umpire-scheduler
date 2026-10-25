@@ -15,7 +15,7 @@
 --   FAIL   the action was allowed: a security problem to fix
 --   CHECK  an unexpected error: send it to Claude
 --   SKIP   no rows exist in that table, so the test proves nothing yet
---   INFO   what this account can read (not a pass/fail test)
+--   INFO   something worth knowing (not a pass/fail test)
 
 do $$
 declare
@@ -132,14 +132,17 @@ begin
       ('read1', 'profiles', 'See other people''s profiles',
         $q$select count(*) from public.profiles$q$, ''),
 
-      ('info', 'umpires', 'Umpire records this account can read',
-        $q$select count(*) from public.umpires$q$, ''),
-      ('info', 'umpires', 'Umpire phone numbers this account can read',
-        $q$select count(*) from public.umpires where phone is not null$q$, ''),
-      ('info', 'games', 'Games this account can read',
-        $q$select count(*) from public.games$q$, ''),
-      ('info', 'game_assignments', 'Assignments this account can read',
-        $q$select count(*) from public.game_assignments$q$, '')
+      ('read0', 'umpires', 'Read OTHER people''s umpire records',
+        $q$select count(*) from public.umpires where profile_id is distinct from auth.uid()$q$, ''),
+      ('read0', 'umpires', 'Read OTHER people''s phone numbers',
+        $q$select count(*) from public.umpires where phone is not null and profile_id is distinct from auth.uid()$q$, ''),
+      ('read0', 'game_assignments', 'Read OTHER umpires'' assignments',
+        $q$select count(*) from public.game_assignments ga where not exists (select 1 from public.umpires u where u.id = ga.umpire_id and u.profile_id = auth.uid())$q$, ''),
+
+      ('info', 'umpires', 'Your own umpire record (0 or 1 is fine)',
+        $q$select count(*) from public.umpires where profile_id = auth.uid()$q$, ''),
+      ('info', 'games', 'Games this account can read (schedules are not personal data)',
+        $q$select count(*) from public.games$q$, '')
     ) as v(kind, tbl, label, stmt, expect)
   loop
     status := null;
