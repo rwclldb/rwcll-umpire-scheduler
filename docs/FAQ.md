@@ -58,6 +58,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 25. [How umpire registration and invitations work](#25-how-umpire-registration-and-invitations-work)
 26. [Email: why sign-up fails on live, and the plan](#26-email-why-sign-up-fails-on-live-and-the-plan)
 27. [The Outbox: email stubs, and how to switch on real sending](#27-the-outbox-email-stubs-and-how-to-switch-on-real-sending)
+28. [Rules about teams and games](#28-rules-about-teams-and-games)
 
 ---
 
@@ -179,6 +180,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
+| `games_rules_check.sql` | The team and game rules work (a team's division is in its league; a game's teams are in its season and division; bracket slots; game types) | `Failures: 0` |
 | `email_outbox_check.sql` | The Outbox works and stays private (only scheduling admins can queue or read, no direct writes, the internal path cannot be called from the app) | `Failures: 0` |
 | `registration_check.sql` | Registration and invitations work (sign-up choices grant nothing, unconfirmed or expired invitations are not honoured, approval enforces the age rules, only a super admin or umpire chief can approve) | `Failures: 0` |
 
@@ -365,6 +367,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
+| `supabase\tests\games_rules_check.sql` | Tests the team and game rules (builds its own tiny league; your data is not used) | No (always rolls back) |
 | `supabase\tests\registration_check.sql` | Tests sign-up, invitations and approval (creates temporary test accounts) | No (always rolls back) |
 | `supabase\tests\schema_fingerprint.sql` | Summarises a database's structure for comparison | No (reads only) |
 | `supabase\migrations\*.sql` | The database changes, applied in file-name order | Yes, when pushed |
@@ -453,7 +456,7 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -641,3 +644,26 @@ history. Inviting an umpire now also adds the invitation message to the Outbox.
 **For whoever builds the next features:** every screen asks for an email through one function (`queueEmail` in `src\email.ts`),
 which calls the database function `queue_email`. Automatic emails triggered inside the database (for example "an assignment
 changed") use the internal function `enqueue_email`, which cannot be called from the app.
+
+## 28. Rules about teams and games
+
+These are enforced by the database itself, so they hold no matter which screen is used.
+
+**Teams**
+
+- A team's **division must belong to the team's own league**. The Teams screen only offers that league's divisions, and the database refuses anything else.
+- A division that has teams **cannot be moved to another league**.
+- A team with games **cannot be deleted**. Mark it inactive instead.
+
+**Games**
+
+- Every game belongs to a **season** and a **division**.
+- **Both teams must be in the game's season and in the game's division.** A team with no division cannot play in a division game: set the team's division first.
+- A side can be an **undecided bracket slot** such as "Winner of Game 3" (a short label, up to 100 characters) instead of a team. Each side is **either** a team **or** a label, never both and never neither. This is how tournament brackets will work.
+- A game has a **type**: regular, tournament, or scrimmage.
+- A team cannot play itself, and a game must end after it starts.
+- The "last changed" time is kept by the database.
+
+**Not enforced as a hard rule (the games screen will warn instead):** two games at the same field at overlapping times, and a team in two games at once. Real leagues sometimes need exceptions, so these will be warnings you can see, not walls.
+
+**Games with umpires** (the plate and field umpires, availability, and conflicts) come with the assignment screens.
