@@ -1,7 +1,7 @@
 import { supabase } from "../supabase";
 import { escapeHtml } from "../ui";
 import { availabilityFor } from "./availability";
-import type { Window } from "./availability";
+import type { UmpireAvailability } from "./availability";
 import { loadAvailability } from "./data";
 import { formatTime } from "./format";
 import {
@@ -64,7 +64,7 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
   let statusChanged = false;
 
   // what each umpire has said they can do (null until it is loaded, or if it cannot be)
-  let availability: Map<string, Window[]> | null = null;
+  let availability: Map<string, UmpireAvailability> | null = null;
 
   // who the age rule does not allow on this game, and what could not be checked
   let eligibility = new Map<string, Eligibility>();
@@ -110,7 +110,7 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
 
   // Whether this umpire said they can umpire at this game's time.
   const availabilityOf = (umpireId: string) =>
-    availability ? availabilityFor(game, availability.get(umpireId) ?? []) : null;
+    availability ? availabilityFor(game, availability.get(umpireId)) : null;
 
   // The reason the database gave is that this is the division they play in
   // (not their age).
@@ -139,7 +139,7 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
           `${umpire.eligibility !== "active" ? " (not active)" : ""}` +
           ` \u00b7 ${gamesText(workload(umpire.id, options.games, options.assignments))}` +
           `${busy ? " \u00b7 busy at this time" : ""}` +
-          `${availabilityOf(umpire.id) === "unavailable" ? " \u00b7 not available then" : availabilityOf(umpire.id) === "none" ? " \u00b7 no availability entered" : ""}` +
+          `${availabilityOf(umpire.id) === "cannot" ? " \u00b7 marked unavailable" : availabilityOf(umpire.id) === "unavailable" ? " \u00b7 not available then" : availabilityOf(umpire.id) === "none" ? " \u00b7 no availability entered" : ""}` +
           `${blocked ? (isOwnDivision(umpire.id) ? " \u00b7 their own division" : " \u00b7 age rule") : ""}`;
         return `<option value="${escapeHtml(umpire.id)}" ${umpire.id === choose ? "selected" : ""} ${blocked ? "disabled" : ""}>${escapeHtml(label)}</option>`;
       }).join("")}
@@ -163,7 +163,9 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
         });
       }
 
-      if (availabilityOf(umpireId) === "unavailable") {
+      if (availabilityOf(umpireId) === "cannot") {
+        lines.push({ kind: "warn", text: `${nameOf(umpireId)} has marked themselves unavailable at this time.` });
+      } else if (availabilityOf(umpireId) === "unavailable") {
         lines.push({ kind: "warn", text: `${nameOf(umpireId)} has not said they can umpire at this time.` });
       }
 

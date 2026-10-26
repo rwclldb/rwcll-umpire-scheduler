@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import { escapeHtml } from "./ui";
 import { availabilityFor } from "./games/availability";
-import type { Window } from "./games/availability";
+import type { UmpireAvailability } from "./games/availability";
 import { loadAvailability, loadContactNumbers, loadContext, loadDeclines, loadSeasonGames } from "./games/data";
 import type { ContactNumbers } from "./games/contacts";
 import { renderAssignPanel } from "./games/assign";
@@ -124,7 +124,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   let games: Game[] = [];
   let assignments: Assignment[] = [];
   let declines: Decline[] = [];
-  let availability: Map<string, Window[]> | null = null;
+  let availability: Map<string, UmpireAvailability> | null = null;
   let remindersChecked = false;
 
   const sideName = (game: Game, side: "home" | "away"): string =>
@@ -307,7 +307,8 @@ export async function renderGames(container: HTMLElement): Promise<void> {
       for (const row of assignments) {
         const item = gameById.get(row.game_id);
         if (!item) continue;
-        if (availabilityFor(item, availability.get(row.umpire_id) ?? []) !== "unavailable") continue;
+        const status = availabilityFor(item, availability.get(row.umpire_id));
+        if (status !== "unavailable" && status !== "cannot") continue;
 
         const names = unavailableNames.get(row.game_id) ?? [];
         names.push(context.umpireNames.get(row.umpire_id) ?? "Unknown umpire");

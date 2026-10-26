@@ -40,8 +40,10 @@ whenever the league's needs change.
 - Stage **5c** (a youth umpire cannot umpire the division they play in, and messages to
   administrators when an umpire takes a game) is built and tested here. Its database
   change is waiting for its first run on your own test database. That completes Phase 5.
-- Next: availability ranges and weekly patterns, which you asked for. Sending real email
-  (Phase 7) is postponed until you are ready.
+- Availability now also has repeating times (ending with their season), dates an umpire
+  can't umpire, and a month calendar. It is built and tested here; its database change is
+  waiting for its first run on your own test database.
+- Next: your choice. Sending real email (Phase 7) is postponed until you are ready.
 
 ---
 
@@ -150,7 +152,8 @@ whenever the league's needs change.
   someone who has entered none is shown as "no availability entered"
 - The assignment screen and the Games list warn when an umpire is not available (a warning
   only, never a block); umpires are still offered games to take whatever their availability
-- Later: weekly patterns such as "weekdays after 5 PM"
+- Repeating times (days of the week plus times) that end automatically when their season does,
+  and dates an umpire can't umpire, which override everything else; a month calendar shows it all
 
 ### Phase 7: Notifications and sending email ⬜
 
@@ -245,9 +248,11 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 - **Own division and messages:** a youth umpire cannot umpire the division they play in (recorded
   on their record; if blank, any division whose ages include theirs). Administrators are told
   straight away when an umpire takes a game within 48 hours, otherwise in a daily summary.
-- **Availability:** umpires list when they CAN umpire, as one-off dates and times (weekly
-  patterns may come later). Being unavailable only warns administrators; the game is still
-  offered to the umpire in "Games you can take".
+- **Availability:** umpires list when they CAN umpire, as single dates and times or as repeating
+  times that end automatically with their season, and can mark dates they CAN'T umpire, which
+  override everything else. Being unavailable only warns administrators; the game is still
+  offered to the umpire in "Games you can take". Umpires and administrators see it as a list
+  and as a month calendar.
 - **Self-assigning:** an administrator turns it on for each division, and can turn it off
   for any single umpire. An umpire cannot take a game that overlaps one of their own, and
   the league can set a limit on how many upcoming games an umpire can take for themselves

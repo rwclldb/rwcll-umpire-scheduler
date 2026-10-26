@@ -1,6 +1,6 @@
 import { supabase } from "../supabase";
-import { groupWindows } from "./availability";
-import type { Window } from "./availability";
+import { groupAvailability } from "./availability";
+import type { PatternRow, UmpireAvailability } from "./availability";
 import { combineContacts } from "./contacts";
 import type { ContactNumbers } from "./contacts";
 import type {
@@ -182,33 +182,56 @@ export async function loadSeasonGames(seasonId: string): Promise<{
   };
 }
 
-// An entry of availability, as the editing screen shows it.
+// An entry of availability, as the editing screen shows it: a time the umpire
+// can umpire ("available") or a time they cannot ("unavailable").
 export type AvailabilityRow = {
   id: string;
   umpire_id: string;
   starts_at: string;
   ends_at: string;
   notes: string | null;
+  kind: "available" | "unavailable";
 };
 
-// Everything every umpire has said they can do that is still to come, by
-// umpire. Only administrators can read other umpires' entries. If it cannot be
+const AVAILABILITY_COLUMNS = "id, umpire_id, starts_at, ends_at, notes, kind";
+const PATTERN_COLUMNS = "id, umpire_id, season_id, weekdays, start_time, end_time, starts_on, notes";
+
+// Everything every umpire has entered that is still to come, by umpire: their
+// one-off times, their "I can't" times, and their repeating times turned into
+// dates. Only administrators can read other umpires' entries. If it cannot be
 // read the answer is null (not "nobody has entered any"), so the screens show
 // no hints rather than wrong ones.
-export async function loadAvailability(): Promise<Map<string, Window[]> | null> {
-  const result = await fetchAll<AvailabilityRow>((from, to) =>
-    supabase
-      .from("umpire_availability")
-      .select("id, umpire_id, starts_at, ends_at, notes")
-      .gt("ends_at", new Date().toISOString())
-      .order("starts_at")
-      .range(from, to)
+export async function loadAvailability(): Promise<Map<string, UmpireAvailability> | null> {
+  const [rows, patterns, seasons] = await Promise.all([
+    fetchAll<AvailabilityRow>((from, to) =>
+      supabase
+        .from("umpire_availability")
+        .select(AVAILABILITY_COLUMNS)
+        .gt("ends_at", new Date().toISOString())
+        .order("starts_at")
+        .range(from, to)
+    ),
+    fetchAll<PatternRow>((from, to) =>
+      supabase
+        .from("umpire_availability_patterns")
+        .select(PATTERN_COLUMNS)
+        .order("starts_on")
+        .range(from, to)
+    ),
+    supabase.from("seasons").select("id, ends_on"),
+  ]);
+
+  if (rows.error || patterns.error || seasons.error) return null;
+
+  const seasonEnds = new Map(
+    ((seasons.data ?? []) as { id: string; ends_on: string | null }[]).map((season) => [season.id, season.ends_on])
   );
 
-  return result.error ? null : groupWindows(result.rows);
+  return groupAvailability(rows.rows, patterns.rows, seasonEnds);
 }
 
-// One umpire's entries still to come (soonest first), for the editing screen.
+// One umpire's one-off and "I can't" entries still to come (soonest first),
+// for the editing screen.
 export async function loadUmpireAvailability(umpireId: string): Promise<{
   rows: AvailabilityRow[];
   error: string | null;
@@ -216,7 +239,7 @@ export async function loadUmpireAvailability(umpireId: string): Promise<{
   const result = await fetchAll<AvailabilityRow>((from, to) =>
     supabase
       .from("umpire_availability")
-      .select("id, umpire_id, starts_at, ends_at, notes")
+      .select(AVAILABILITY_COLUMNS)
       .eq("umpire_id", umpireId)
       .gt("ends_at", new Date().toISOString())
       .order("starts_at")
@@ -224,6 +247,44 @@ export async function loadUmpireAvailability(umpireId: string): Promise<{
   );
 
   return { rows: result.rows, error: result.error };
+}
+
+// One umpire's repeating times, for the editing screen.
+export async function loadUmpirePatterns(umpireId: string): Promise<{
+  rows: PatternRow[];
+  error: string | null;
+}> {
+  const result = await fetchAll<PatternRow>((from, to) =>
+    supabase
+      .from("umpire_availability_patterns")
+      .select(PATTERN_COLUMNS)
+      .eq("umpire_id", umpireId)
+      .order("starts_on")
+      .range(from, to)
+  );
+
+  return { rows: result.rows, error: result.error };
+}
+
+// The seasons a repeating time can belong to (it ends when its season does).
+export type AvailabilitySeason = {
+  id: string;
+  name: string;
+  starts_on: string | null;
+  ends_on: string | null;
+  is_active: boolean;
+};
+
+export async function loadSeasonOptions(): Promise<{
+  seasons: AvailabilitySeason[];
+  error: string | null;
+}> {
+  const { data, error } = await supabase
+    .from("seasons")
+    .select("id, name, starts_on, ends_on, is_active")
+    .order("starts_on", { ascending: false });
+
+  return { seasons: (data ?? []) as AvailabilitySeason[], error: error?.message ?? null };
 }
 
 // The games with these ids (asked for in groups of 100 so each request stays short).

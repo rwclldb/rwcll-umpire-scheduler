@@ -102,6 +102,10 @@ test on the league's own database.
 - In the assignment panel, each umpire is marked *not available then* or *no availability entered*, and a note names a selected umpire who is not available. It is a warning only: the assignment can still be saved
 - The Games list warns "Not available: Ann Lee" for a game whose umpire has entered availability that does not cover it, counted in the summary
 - Games an umpire can take for themselves are still offered whatever their availability
+- **Repeating times** 🆕: days of the week plus times (or all day), starting on a chosen date and ending automatically when the season does; listed in plain words
+- **Dates and times an umpire can't umpire** 🆕: these always win over single and repeating times, and count even when nothing else was entered
+- A month calendar shows what has been entered: available all day, part of the day, marked unavailable (striped, so it does not depend on color), and nothing; pressing a day picks it in the form
+- The assignment panel and the Games list use all of it, with their own wording when an umpire marked the time unavailable
 
 **Umpires assigning themselves** 🆕
 
