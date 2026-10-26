@@ -1549,3 +1549,36 @@ input[type="radio"] {
   font-size: 0.78rem;
   font-style: italic;
 }
+
+/* Games list: the Umpires and Edit buttons sit side by side */
+.game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.game-actions .secondary-button {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+}
+
+/* A place that still needs an umpire */
+.game-open {
+  color: #9b2c25;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+/* Warning: some, but not all, of the umpires a game needs */
+.game-warning-short_staffed {
+  color: #8a4b00;
+  background: #fff1d6;
+}
+
+/* The assignment panel's clash notes */
+.assign-clashes {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}

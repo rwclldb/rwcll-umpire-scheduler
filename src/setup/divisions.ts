@@ -63,6 +63,7 @@ export function renderDivisions(
               ? `<span class="setup-status">${escapeHtml(division.age_group)}</span>`
               : ""}
             <p class="season-dates">${escapeHtml(range)}</p>
+            <p class="season-dates">${(division.umpires_per_game ?? 2) === 1 ? "1 umpire" : "2 umpires"} per game</p>
             ${showLeague && league
               ? `<p class="season-dates">${escapeHtml(league.name)}</p>`
               : ""}
@@ -156,6 +157,16 @@ export function renderDivisionForm(
         type="number" inputmode="numeric" step="1"
         min="${MIN_LL_AGE}" max="${MAX_LL_AGE}"
         value="${escapeHtml(String(oldest))}" />
+
+      <label for="division-umpires">Umpires needed per game</label>
+      <select id="division-umpires" name="umpires_per_game">
+        <option value="2" ${(division?.umpires_per_game ?? 2) === 2 ? "selected" : ""}>2 umpires (plate and field)</option>
+        <option value="1" ${division?.umpires_per_game === 1 ? "selected" : ""}>1 umpire</option>
+      </select>
+      <p class="season-dates">
+        This is the starting number for every game in the division. The
+        umpire chief can change it for an individual game.
+      </p>
 
       <label for="division-description">Description (optional)</label>
       <textarea id="division-description" name="description"
@@ -264,6 +275,7 @@ export function wireDivisionForm(container: HTMLElement): void {
       name,
       youngest_ll_age: ages.youngest,
       oldest_ll_age: ages.oldest,
+      umpires_per_game: Number(data.get("umpires_per_game")) === 1 ? 1 : 2,
       description: description || null,
       is_active: isActive,
     };

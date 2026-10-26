@@ -36,7 +36,7 @@ export async function renderLeagueSetup(
       .select("id, name, starts_on, ends_on, is_active, age_chart_id")
       .order("starts_on", { ascending: false }),
     supabase.from("divisions")
-      .select("id, name, age_group, league_id, description, youngest_ll_age, oldest_ll_age, is_active")
+      .select("id, name, age_group, league_id, description, youngest_ll_age, oldest_ll_age, umpires_per_game, is_active")
       .order("name"),
     supabase.from("locations")
       .select("id, name, address, notes, is_active").order("name"),

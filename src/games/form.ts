@@ -126,6 +126,14 @@ export function renderGameForm(
       <input id="game-duration" type="number" min="15" max="600" step="5"
         value="${duration}" />
 
+      <label for="game-umpires">Umpires needed for this game</label>
+      <select id="game-umpires">
+        <option value="">Use the division's default</option>
+        <option value="0">No umpire needed</option>
+        <option value="1">1 umpire</option>
+        <option value="2">2 umpires</option>
+      </select>
+
       <label for="game-status">Status</label>
       <select id="game-status">
         ${(Object.keys(STATUS_LABELS) as GameStatus[]).map((value) => `
@@ -168,6 +176,7 @@ export function renderGameForm(
   const homeLabel = get<HTMLInputElement>("game-home-label");
   const awayLabel = get<HTMLInputElement>("game-away-label");
   const fieldSelect = get<HTMLSelectElement>("game-field");
+  const umpiresSelect = get<HTMLSelectElement>("game-umpires");
   const message = get<HTMLElement>("game-form-message");
 
   const say = (text: string, kind: "error" | "success" = "error") => {
@@ -238,7 +247,20 @@ export function renderGameForm(
     fieldSelect.value = current;
   };
 
+  // The first choice says what the division's default is, so the person can
+  // see what "use the default" means for the division chosen.
+  const showDivisionDefault = () => {
+    const division = context.divisions.find((item) => item.id === divisionSelect.value);
+    const count = division?.umpires_per_game ?? 2;
+    umpiresSelect.options[0].textContent =
+      `Use the division's default (${count} ${count === 1 ? "umpire" : "umpires"})`;
+  };
+
   fillDivisions(game?.division_id ?? options.defaultDivisionId);
+  umpiresSelect.value = game?.umpires_needed === null || game?.umpires_needed === undefined
+    ? ""
+    : String(game.umpires_needed);
+  showDivisionDefault();
   fillTeams(homeSelect, homeLabel, game?.home_team_id ?? null, game?.home_label ?? null);
   fillTeams(awaySelect, awayLabel, game?.away_team_id ?? null, game?.away_label ?? null);
   fillFields();
@@ -258,7 +280,10 @@ export function renderGameForm(
   };
 
   seasonSelect.addEventListener("change", refillTeams);
-  divisionSelect.addEventListener("change", refillTeams);
+  divisionSelect.addEventListener("change", () => {
+    refillTeams();
+    showDivisionDefault();
+  });
 
   for (const [select, label] of [[homeSelect, homeLabel], [awaySelect, awayLabel]] as const) {
     select.addEventListener("change", () => {
@@ -320,6 +345,7 @@ export function renderGameForm(
       location_id: fieldSelect.value,
       starts_at: startsAt,
       ends_at: addMinutes(startsAt, minutes),
+      umpires_needed: umpiresSelect.value === "" ? null : Number(umpiresSelect.value),
       status: get<HTMLSelectElement>("game-status").value,
       notes: notes || null,
       external_game_id: externalId || null,

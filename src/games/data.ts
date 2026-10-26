@@ -7,6 +7,7 @@ import type {
   LocationOption,
   SeasonOption,
   TeamOption,
+  UmpireOption,
 } from "./types";
 
 const PAGE_SIZE = 1000;
@@ -14,7 +15,7 @@ const PAGE_SIZE = 1000;
 export const GAME_COLUMNS =
   "id, season_id, division_id, game_type, home_team_id, away_team_id, " +
   "home_label, away_label, location_id, starts_at, ends_at, status, notes, " +
-  "external_game_id";
+  "external_game_id, umpires_needed";
 
 // The database sends at most 1,000 rows per request, so longer lists are
 // read in pages until there are no more.
@@ -49,7 +50,7 @@ export async function loadContext(): Promise<{
 }> {
   const [seasons, divisions, teams, locations, umpires] = await Promise.all([
     supabase.from("seasons").select("id, name, is_active, starts_on"),
-    supabase.from("divisions").select("id, name, is_active, league_id").order("name"),
+    supabase.from("divisions").select("id, name, is_active, league_id, umpires_per_game").order("name"),
     fetchAll<TeamOption>((from, to) =>
       supabase
         .from("teams")
@@ -58,8 +59,12 @@ export async function loadContext(): Promise<{
         .range(from, to)
     ),
     supabase.from("locations").select("id, name, is_active, address").order("name"),
-    fetchAll<{ id: string; display_name: string }>((from, to) =>
-      supabase.from("umpires").select("id, display_name").order("id").range(from, to)
+    fetchAll<{ id: string; display_name: string; classification: string; eligibility_status: string }>((from, to) =>
+      supabase
+        .from("umpires")
+        .select("id, display_name, classification, eligibility_status")
+        .order("id")
+        .range(from, to)
     ),
   ]);
 
@@ -75,7 +80,10 @@ export async function loadContext(): Promise<{
   return {
     context: {
       seasons: (seasons.data ?? []) as SeasonOption[],
-      divisions: (divisions.data ?? []) as DivisionOption[],
+      divisions: ((divisions.data ?? []) as DivisionOption[]).map((division) => ({
+        ...division,
+        umpires_per_game: division.umpires_per_game ?? 2,
+      })),
       teams: teams.rows,
       locations: (locations.data ?? []) as LocationOption[],
       // (the row type is written out, so this line never depends on how the
@@ -87,6 +95,17 @@ export async function loadContext(): Promise<{
             row.display_name,
           ]
         )
+      ),
+      umpires: umpires.rows.map(
+        (row): UmpireOption => ({
+          id: row.id,
+          name: row.display_name,
+          classification: row.classification === "youth" ? "youth" : "adult",
+          eligibility:
+            row.eligibility_status === "inactive" || row.eligibility_status === "suspended"
+              ? row.eligibility_status
+              : "active",
+        })
       ),
     },
     error: null,

@@ -66,6 +66,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 33. [Printing and exporting schedules](#33-printing-and-exporting-schedules)
 34. [Running all the checks at once](#34-running-all-the-checks-at-once)
 35. [Colors and appearance](#35-colors-and-appearance)
+36. [Assigning umpires, and how many a game needs](#36-assigning-umpires-and-how-many-a-game-needs)
 
 ---
 
@@ -187,6 +188,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
+| `umpire_assignments_check.sql` | The umpires-per-game settings and the assignment rules work (only 0 to 2; active umpires only; nobody on a canceled game; swaps work; a refused change saves nothing; only scheduling admins can assign) | `Failures: 0` |
 | `import_season_check.sql` | Creating a season from a file works and is all-or-nothing (a refused import saves nothing; only scheduling admins can run it) | `Failures: 0` |
 | `import_games_check.sql` | The spreadsheet import works and is all-or-nothing (a failed import saves nothing; only scheduling admins can run it) | `Failures: 0` |
 | `games_master_id_check.sql` | The master calendar Game ID rules work (optional, unique within a season, no stray spaces) | `Failures: 0` |
@@ -378,6 +380,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
+| `supabase\tests\umpire_assignments_check.sql` | Tests the umpires-per-game settings and the assignment rules (builds its own tiny league and umpires; your data is not used) | No (always rolls back) |
 | `supabase\tests\import_season_check.sql` | Tests the season import function (builds its own tiny leagues; your data is not used) | No (always rolls back) |
 | `supabase\tests\import_games_check.sql` | Tests the spreadsheet import function (builds its own tiny league; your data is not used) | No (always rolls back) |
 | `supabase\tests\games_master_id_check.sql` | Tests the master calendar Game ID rules (builds its own tiny league; your data is not used) | No (always rolls back) |
@@ -473,10 +476,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting; with the ten above, fifteen files in all) | `src\games` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts` (assigning umpires; with the ten below, seventeen files in all) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -721,11 +724,12 @@ Combinations: chief and scheduler get *Umpire Management*, *Games* and *League S
 
 | Warning | When it appears |
 |---|---|
-| **No umpire assigned** | A draft or scheduled game, today or later, with nobody assigned. (Games in the past, canceled games and completed games are never flagged.) |
+| **No umpire assigned** | A draft or scheduled game that needs umpires, today or later, with nobody assigned. (Games in the past, canceled games and completed games are never flagged, and neither is a game that needs no umpire.) |
+| **Needs a plate / field umpire** | Some umpires are assigned, but fewer than the game needs. It names the place that is still open. |
 | **Field conflict** | Another game is at the same field at an overlapping time. A game that starts exactly when the previous one ends is **not** a conflict. |
 | **Team conflict** | A team is in another game at an overlapping time, even at a different field. |
 
-Canceled games never cause or receive conflicts. A game with only one of its two umpires assigned is not flagged yet; that comes with the assignment screens. A game with many conflicts shows the first three and "...and N more".
+Canceled games never cause or receive conflicts. A game with many conflicts shows the first three and "...and N more".
 
 **Add a game** with the **Add game** button. Choose the season and division first: the team lists then show only that season's, that division's, active teams. For a tournament slot that is not decided yet, choose **Not decided yet (bracket slot)** and type a short label such as "Winner of Game 3". The **Master calendar Game ID** is optional.
 
@@ -733,11 +737,11 @@ Canceled games never cause or receive conflicts. A game with only one of its two
 
 **Delete a game** only if it should never have existed. A game that is on the master calendar is better set to **Canceled**, because importing again would otherwise add it back. Deleting a game also removes its umpire assignments, and the confirmation tells you how many.
 
-**Printing and downloading the schedule** is described in section 33.
+**Assigning umpires** is described in section 36, and **printing and downloading the schedule** in section 33.
 
 **What comes next on this tab**
 
-1. **Assigning umpires** to games, and umpires entering their availability.
+1. Umpires entering their availability.
 
 **Importing from the master calendar spreadsheet** is built: see section 31.
 
@@ -890,3 +894,45 @@ The app uses the league colors: **forest green, black and white**, with neutral 
 | Page background | `#f2f4f2` |
 
 Red and amber are kept for **errors** and **warnings** only, so they keep their meaning. All of it lives in `style.css`. When the graphical theming happens later, these are the colors to start from.
+
+## 36. Assigning umpires, and how many a game needs
+
+**Who:** super admins, umpire chiefs and schedulers. Every game on the **Games** tab has an **Umpires** button next to **Edit**.
+
+**How many umpires a game needs**
+
+- Each **division** has a default: **1 or 2 umpires per game** (starting at 2). Change it in **League Setup**, under the division, at **Umpires needed per game**. For example, a division whose games use only one umpire can be set to 1.
+- Any single **game** can use its own number: **None**, **1**, or **2**. Set it in the game's **Edit** form (**Umpires needed for this game**) or in the **Umpires** panel. Leave it on **Use the division's default** to follow the division. A tournament game, or a game where one umpire is fine, is set here.
+- Importing the master calendar never changes this setting, so your choices survive a re-import.
+
+**A game is fully staffed when it has at least as many umpires as it needs.** It is counted by number, not by name: if you change a two-umpire game to **1 umpire** and the umpire who is there is listed as the *field* umpire, the game is still fully staffed.
+
+**What the list shows.** In the **Umpires** column: each umpire's name, **OPEN** (in red) for a place that still needs someone, nothing for a place the game does not need, and a note such as *1 needed (set for this game)* when the game has its own number. Warnings: **No umpire assigned** (nobody yet) and **Needs a field umpire** / **Needs a plate umpire** (some, but not all). The summary line counts them (*2 need an umpire*, *1 partly staffed*).
+
+**The Umpires panel**
+
+1. Press **Umpires** on the game. The panel shows the game and a **Umpires needed for this game** choice.
+2. Choose the **Plate** and, if the game needs two, the **Field** umpire. Each list shows the **active** umpires, in name order, with how many games they already have this season. Youth umpires are marked *(youth)*.
+3. Choosing someone who is already in the other place **swaps** the two.
+4. **Save umpires.** The umpires are saved together, all or nothing. **Cancel** saves nothing.
+
+**Clash warnings.** An umpire who already has a game that overlaps this one is marked **busy at this time** in the list, and a note under the choices says which game. This is a **warning only**: you can still save, because real leagues sometimes need an exception. Canceled games never count as a clash, and a game that starts exactly when another ends is not a clash.
+
+**What the database refuses** (and tells you why)
+
+| Refused | Why |
+|---|---|
+| An umpire who is **inactive or suspended** | Only active umpires can be put on a game. An umpire who became inactive *after* being assigned can stay on that game. |
+| Any umpire on a **canceled game** | Canceled games need no umpires. You can still clear the umpires of a game that was canceled later. |
+| The **same umpire as both plate and field** | One person cannot hold two places. |
+| Anyone who is **not a scheduling administrator** | Umpires and other accounts cannot assign umpires. |
+
+Who made each assignment is recorded.
+
+**Printing and CSV.** The printed schedule shows **OPEN** only where someone is still needed, and a dash where no umpire is needed. The CSV has a new column, **Umpires needed**, after **Field umpire**.
+
+**One umpire's own view.** An umpire sees only their own games on their **My schedule**, and an administrator can look at any one umpire's schedule from the Games tab (section 33). Both now show the games you assign here.
+
+**Not built yet:** umpires entering when they are available (so the panel could warn about it), and sending umpires their assignments.
+
+**Check script:** `umpire_assignments_check.sql` tests all of the above in the database (section 6).
