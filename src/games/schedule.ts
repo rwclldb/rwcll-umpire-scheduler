@@ -11,9 +11,9 @@ import {
   timeRange,
   weekdayName,
 } from "./format";
-import { slotStates, umpiresNeeded } from "./staffing";
+import { POSITIONS, POSITION_LABEL, POSITION_NAME, divisionNeed, slotStates, umpiresNeeded } from "./staffing";
 import type { SlotState } from "./staffing";
-import type { Assignment, Game, GameStatus, GameType, GamesContext } from "./types";
+import type { Assignment, Game, GameStatus, GameType, GamesContext, Position } from "./types";
 
 // How names are looked up. Anything not found has a safe fallback.
 export type Lookups = {
@@ -30,7 +30,7 @@ export function lookupsFor(context: GamesContext): Lookups {
   const teams = new Map(context.teams.map((team) => [team.id, team.name]));
   const fields = new Map(context.locations.map((field) => [field.id, field]));
   const divisions = new Map(context.divisions.map((division) => [division.id, division.name]));
-  const defaults = new Map(context.divisions.map((division) => [division.id, division.umpires_per_game ?? 2]));
+  const divisionById = new Map(context.divisions.map((division) => [division.id, division]));
 
   return {
     teamName: (id) => teams.get(id) ?? "A team",
@@ -38,7 +38,8 @@ export function lookupsFor(context: GamesContext): Lookups {
     fieldAddress: (id) => fields.get(id)?.address ?? "",
     divisionName: (id) => divisions.get(id) ?? "",
     umpireName: (id) => context.umpireNames.get(id) ?? "Unknown umpire",
-    umpiresNeeded: (game) => umpiresNeeded(game, (divisionId) => defaults.get(divisionId) ?? 2),
+    umpiresNeeded: (game) =>
+      umpiresNeeded(game, (divisionId, gameType) => divisionNeed(divisionById.get(divisionId), gameType)),
   };
 }
 
@@ -56,11 +57,9 @@ export type ScheduleGame = {
   address: string;
   home: string;
   away: string;
-  plate: string | null; // null: nobody assigned
-  fieldUmpire: string | null;
+  umpires: Record<Position, string | null>; // the umpire in each place (null: nobody)
   needed: number; // how many umpires this game needs
-  plateSlot: SlotState; // assigned, open (someone is needed) or not needed
-  fieldSlot: SlotState;
+  slots: Record<Position, SlotState>; // for each place: assigned, open (someone is needed) or not needed
   status: GameStatus;
   type: GameType;
   masterId: string;
@@ -84,7 +83,7 @@ export function buildScheduleGames(
   assignments: Assignment[],
   look: Lookups
 ): ScheduleGame[] {
-  const byGame = new Map<string, { plate?: string; field?: string }>();
+  const byGame = new Map<string, Partial<Record<Position, string>>>();
   for (const row of assignments) {
     const entry = byGame.get(row.game_id) ?? {};
     entry[row.position] = look.umpireName(row.umpire_id);
@@ -95,7 +94,7 @@ export function buildScheduleGames(
     .map((game): ScheduleGame => {
       const umpires = byGame.get(game.id);
       const needed = look.umpiresNeeded(game);
-      const slots = slotStates({ plate: umpires?.plate, field: umpires?.field }, needed);
+      const slots = slotStates(umpires ?? {}, needed);
       return {
         id: game.id,
         day: localDateKey(game.starts_at),
@@ -110,11 +109,15 @@ export function buildScheduleGames(
         address: look.fieldAddress(game.location_id),
         home: sideText(game, "home", look),
         away: sideText(game, "away", look),
-        plate: umpires?.plate ?? null,
-        fieldUmpire: umpires?.field ?? null,
+        umpires: {
+          plate: umpires?.plate ?? null,
+          first_base: umpires?.first_base ?? null,
+          second_base: umpires?.second_base ?? null,
+          third_base: umpires?.third_base ?? null,
+          field: umpires?.field ?? null,
+        },
         needed,
-        plateSlot: slots.plate,
-        fieldSlot: slots.field,
+        slots,
         status: game.status,
         type: game.game_type,
         masterId: game.external_game_id ?? "",
@@ -145,7 +148,8 @@ export function groupByDay(list: ScheduleGame[]): DayGroup[] {
 
 export const DAY_CSV_HEADERS = [
   "Date", "Day", "Start", "End", "Division", "Field", "Address",
-  "Home", "Away", "Plate umpire", "Field umpire", "Umpires needed", "Status", "Type",
+  "Home", "Away", "Plate umpire", "Field umpire", "1B umpire", "2B umpire", "3B umpire",
+  "Umpires needed", "Status", "Type",
   "Master Game ID", "Notes",
 ];
 
@@ -153,14 +157,16 @@ export const DAY_CSV_HEADERS = [
 export function dayCsvRows(list: ScheduleGame[]): string[][] {
   return [...list].sort(byTime).map((game) => [
     game.day, game.weekday, game.start, game.end, game.division, game.field,
-    game.address, game.home, game.away, game.plate ?? "", game.fieldUmpire ?? "",
+    game.address, game.home, game.away,
+    game.umpires.plate ?? "", game.umpires.field ?? "",
+    game.umpires.first_base ?? "", game.umpires.second_base ?? "", game.umpires.third_base ?? "",
     String(game.needed), game.status, game.type, game.masterId, game.notes,
   ]);
 }
 
 // -------------------------------------------------------------- by umpire
 
-export type UmpireGame = ScheduleGame & { position: "Plate" | "Field" };
+export type UmpireGame = ScheduleGame & { position: string }; // "Plate", "First base", ...
 
 // The games of ONE umpire, from that umpire's assignments.
 export function buildUmpireSchedule(
@@ -169,10 +175,10 @@ export function buildUmpireSchedule(
   assignments: (Assignment)[],
   look: Lookups
 ): UmpireGame[] {
-  const mine = new Map<string, "Plate" | "Field">();
+  const mine = new Map<string, string>();
   for (const row of assignments) {
     if (row.umpire_id === umpireId) {
-      mine.set(row.game_id, row.position === "plate" ? "Plate" : "Field");
+      mine.set(row.game_id, POSITION_NAME[row.position] ?? row.position);
     }
   }
 
@@ -221,12 +227,21 @@ function fieldCell(game: ScheduleGame): string {
   return `${escapeHtml(game.field)}${game.address ? `<br><small>${escapeHtml(game.address)}</small>` : ""}`;
 }
 
-// An assigned umpire's name; OPEN where a person is still needed; a dash where
-// no umpire is needed (or the game is canceled).
-function umpireCell(name: string | null, slot: SlotState, game: ScheduleGame): string {
-  if (name) return escapeHtml(name);
-  if (game.status === "canceled" || slot === "not_needed") return "&mdash;";
-  return `<span class="print-open">OPEN</span>`;
+// One line for each place that has an umpire or still needs one: the place and
+// the umpire's name, or OPEN. A dash where no umpire is needed (or the game is
+// canceled).
+function umpireCell(game: ScheduleGame): string {
+  if (game.status === "canceled") return "&mdash;";
+
+  const lines = POSITIONS.map((position) => {
+    const name = game.umpires[position];
+    if (name) return `<div>${POSITION_LABEL[position]}: ${escapeHtml(name)}</div>`;
+    return game.slots[position] === "open"
+      ? `<div>${POSITION_LABEL[position]}: <span class="print-open">OPEN</span></div>`
+      : "";
+  }).filter(Boolean);
+
+  return lines.length ? lines.join("") : "&mdash;";
 }
 
 // The whole schedule, one section per day.
@@ -255,7 +270,7 @@ export function dayPrintHtml(groups: DayGroup[], meta: PrintMeta): string {
             <thead>
               <tr>
                 <th class="c-time">Time</th><th>Division</th><th>Field</th>
-                <th>Game</th><th>Plate umpire</th><th>Field umpire</th>
+                <th>Game</th><th>Umpires</th>
               </tr>
             </thead>
             <tbody>
@@ -265,8 +280,7 @@ export function dayPrintHtml(groups: DayGroup[], meta: PrintMeta): string {
                   <td>${escapeHtml(game.division)}</td>
                   <td>${fieldCell(game)}</td>
                   <td>${gameCell(game)}</td>
-                  <td>${umpireCell(game.plate, game.plateSlot, game)}</td>
-                  <td>${umpireCell(game.fieldUmpire, game.fieldSlot, game)}</td>
+                  <td class="print-umpires">${umpireCell(game)}</td>
                 </tr>
               `).join("")}
             </tbody>

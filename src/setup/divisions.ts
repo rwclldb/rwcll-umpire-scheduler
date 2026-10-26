@@ -39,6 +39,26 @@ export function validateDivisionAges(
   return { youngest, oldest };
 }
 
+// The choices for how many umpires a game needs (0 is for divisions that use none).
+const UMPIRE_CHOICES: [number, string][] = [
+  [0, "No umpire"],
+  [1, "1 umpire (plate)"],
+  [2, "2 umpires (plate, field)"],
+  [3, "3 umpires (plate, first base, third base)"],
+  [4, "4 umpires (plate, first, second, third base)"],
+];
+
+function umpireNumber(value: FormDataEntryValue | null, fallback: number): number {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 && number <= 4 ? number : fallback;
+}
+
+// "No umpire", "1 umpire per game", "3 umpires per game"
+function umpiresText(count: number, perGame = true): string {
+  const text = count === 0 ? "No umpire" : `${count} ${count === 1 ? "umpire" : "umpires"}`;
+  return perGame && count !== 0 ? `${text} per game` : text;
+}
+
 export function renderDivisions(
   divisions: DivisionRecord[],
   leagues: SetupRecord[],
@@ -63,7 +83,10 @@ export function renderDivisions(
               ? `<span class="setup-status">${escapeHtml(division.age_group)}</span>`
               : ""}
             <p class="season-dates">${escapeHtml(range)}</p>
-            <p class="season-dates">${(division.umpires_per_game ?? 2) === 1 ? "1 umpire" : "2 umpires"} per game</p>
+            <p class="season-dates">${umpiresText(division.umpires_per_game ?? 2)}${
+              division.tournament_umpires !== null && division.tournament_umpires !== undefined
+                ? `; tournaments: ${umpiresText(division.tournament_umpires, false)}`
+                : ""}</p>
             ${showLeague && league
               ? `<p class="season-dates">${escapeHtml(league.name)}</p>`
               : ""}
@@ -160,12 +183,18 @@ export function renderDivisionForm(
 
       <label for="division-umpires">Umpires needed per game</label>
       <select id="division-umpires" name="umpires_per_game">
-        <option value="2" ${(division?.umpires_per_game ?? 2) === 2 ? "selected" : ""}>2 umpires (plate and field)</option>
-        <option value="1" ${division?.umpires_per_game === 1 ? "selected" : ""}>1 umpire</option>
+        ${UMPIRE_CHOICES.map(([value, text]) => `<option value="${value}" ${(division?.umpires_per_game ?? 2) === value ? "selected" : ""}>${text}</option>`).join("")}
+      </select>
+
+      <label for="division-tournament-umpires">Umpires needed for tournament games</label>
+      <select id="division-tournament-umpires" name="tournament_umpires">
+        <option value="" ${division?.tournament_umpires === null || division?.tournament_umpires === undefined ? "selected" : ""}>Same as regular games</option>
+        ${UMPIRE_CHOICES.map(([value, text]) => `<option value="${value}" ${division?.tournament_umpires === value ? "selected" : ""}>${text}</option>`).join("")}
       </select>
       <p class="season-dates">
-        This is the starting number for every game in the division. The
-        umpire chief can change it for an individual game.
+        These are the starting numbers for every game in the division. Choose
+        "No umpire" for a division that does not use umpires. The umpire
+        chief can change the number for an individual game.
       </p>
 
       <label for="division-description">Description (optional)</label>
@@ -275,7 +304,8 @@ export function wireDivisionForm(container: HTMLElement): void {
       name,
       youngest_ll_age: ages.youngest,
       oldest_ll_age: ages.oldest,
-      umpires_per_game: Number(data.get("umpires_per_game")) === 1 ? 1 : 2,
+      umpires_per_game: umpireNumber(data.get("umpires_per_game"), 2),
+      tournament_umpires: data.get("tournament_umpires") === "" ? null : umpireNumber(data.get("tournament_umpires"), 2),
       description: description || null,
       is_active: isActive,
     };

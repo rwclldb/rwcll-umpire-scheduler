@@ -1,35 +1,88 @@
 // How many umpires a game needs, which of its places are still open, and who
 // already has a game at the same time.
 //
-// A game is staffed by COUNT: it needs a certain number of umpires, and any
-// umpires assigned count towards it. So if the chief decides a two-umpire game
-// will be worked by one umpire, that one umpire (wherever they are listed)
-// is enough.
+// A game is staffed by COUNT: it needs a certain number of umpires (0 to 4),
+// and any umpires assigned count towards it. So if the chief decides a
+// two-umpire game will be worked by one umpire, that one umpire (wherever they
+// are listed) is enough.
 
-import type { Assignment, Game } from "./types";
+import type { Assignment, DivisionOption, Game, Position } from "./types";
 
-export type Position = "plate" | "field";
+export type { Position };
 
-// The plate umpire is filled first, then the field umpire.
-export const POSITIONS: Position[] = ["plate", "field"];
+// The order the places are listed in.
+export const POSITIONS: Position[] = ["plate", "first_base", "second_base", "third_base", "field"];
 
+// Short names for lists and printouts, and full names for sentences.
 export const POSITION_LABEL: Record<Position, string> = {
   plate: "Plate",
+  first_base: "1B",
+  second_base: "2B",
+  third_base: "3B",
   field: "Field",
 };
 
+export const POSITION_NAME: Record<Position, string> = {
+  plate: "Plate",
+  first_base: "First base",
+  second_base: "Second base",
+  third_base: "Third base",
+  field: "Field",
+};
+
+export const MAX_UMPIRES = 4;
+
+// The places a game of each size uses.
+const LAYOUT: Record<number, Position[]> = {
+  0: [],
+  1: ["plate"],
+  2: ["plate", "field"],
+  3: ["plate", "first_base", "third_base"],
+  4: ["plate", "first_base", "second_base", "third_base"],
+};
+
+export function layoutFor(needed: number): Position[] {
+  return LAYOUT[Math.max(0, Math.min(MAX_UMPIRES, Math.trunc(needed) || 0))];
+}
+
+// "2 umpires (plate, field)"
+export function needLabel(needed: number): string {
+  if (needed === 0) return "No umpire needed";
+  const places = layoutFor(needed).map((position) => POSITION_LABEL[position]).join(", ");
+  return `${needed} ${needed === 1 ? "umpire" : "umpires"} (${places})`;
+}
+
+// "No umpire", "1 umpire", "3 umpires"
+export function countLabel(needed: number): string {
+  return needed === 0 ? "No umpire needed" : `${needed} ${needed === 1 ? "umpire" : "umpires"}`;
+}
+
+// The division's number for this kind of game: tournament games use the
+// division's tournament number when it has one.
+export function divisionNeed(
+  division: Pick<DivisionOption, "umpires_per_game" | "tournament_umpires"> | undefined,
+  gameType: string | undefined
+): number {
+  if (!division) return 2;
+  if (gameType === "tournament" && division.tournament_umpires !== null && division.tournament_umpires !== undefined) {
+    return division.tournament_umpires;
+  }
+  return division.umpires_per_game ?? 2;
+}
+
 // This game's own setting, or else its division's default (2 when unknown).
 export function umpiresNeeded(
-  game: Pick<Game, "umpires_needed" | "division_id">,
-  divisionDefault: (divisionId: string) => number
+  game: Pick<Game, "umpires_needed" | "division_id"> & { game_type?: string },
+  divisionDefault: (divisionId: string, gameType?: string) => number
 ): number {
-  return game.umpires_needed ?? divisionDefault(game.division_id);
+  return game.umpires_needed ?? divisionDefault(game.division_id, game.game_type);
 }
 
 export type SlotState = "assigned" | "open" | "not_needed";
 
 // For each position: someone is there, it is still open (a person is
-// needed), or it is not needed.
+// needed), or it is not needed. Open places are taken from the game's layout,
+// in order, as many as are still missing.
 export function slotStates(
   assigned: Partial<Record<Position, unknown>>,
   needed: number
@@ -39,17 +92,23 @@ export function slotStates(
 
   const result = {} as Record<Position, SlotState>;
   for (const position of POSITIONS) {
-    if (assigned[position]) {
-      result[position] = "assigned";
-    } else if (openLeft > 0) {
+    result[position] = assigned[position] ? "assigned" : "not_needed";
+  }
+
+  for (const position of layoutFor(needed)) {
+    if (!assigned[position] && openLeft > 0) {
       result[position] = "open";
       openLeft -= 1;
-    } else {
-      result[position] = "not_needed";
     }
   }
 
   return result;
+}
+
+// The places still waiting for someone, in order.
+export function openPlaces(assigned: Partial<Record<Position, unknown>>, needed: number): Position[] {
+  const states = slotStates(assigned, needed);
+  return POSITIONS.filter((position) => states[position] === "open");
 }
 
 // The assignments of each game, by position.

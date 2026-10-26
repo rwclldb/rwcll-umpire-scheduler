@@ -1,6 +1,6 @@
 import type { Game } from "./types";
 import { formatTime, startOfToday } from "./format";
-import { POSITIONS, POSITION_LABEL, slotStates } from "./staffing";
+import { openPlaces } from "./staffing";
 import type { Position } from "./staffing";
 
 export type Warning = {
@@ -49,6 +49,14 @@ type Found = { count: number; lines: string[] };
 // starts exactly when another ends is fine (back to back).
 // Canceled games never cause or receive conflicts. A completed game can cause
 // a conflict warning on a game still to be played, but never receives one.
+const PHRASE: Record<Position, string> = {
+  plate: "plate",
+  first_base: "first base",
+  second_base: "second base",
+  third_base: "third base",
+  field: "field",
+};
+
 export function computeWarnings(input: WarningInput): Map<string, Warning[]> {
   const result = new Map<string, Warning[]>();
   const todayStart = startOfToday(input.now).getTime();
@@ -70,12 +78,14 @@ export function computeWarnings(input: WarningInput): Map<string, Warning[]> {
       result.set(game.id, [{ kind: "no_umpire", text: "No umpire assigned" }]);
     } else if (count > 0 && count < needed) {
       const positions = input.assignedPositions?.get(game.id);
-      const open = positions
-        ? POSITIONS.find((position) => slotStates(positions, needed)[position] === "open")
-        : undefined;
+      const open = positions ? openPlaces(positions, needed) : [];
+      const missing = needed - count;
       result.set(game.id, [{
         kind: "short_staffed",
-        text: open ? `Needs a ${POSITION_LABEL[open].toLowerCase()} umpire` : "Needs another umpire",
+        text:
+          open.length === 1 ? `Needs a ${PHRASE[open[0]]} umpire`
+          : positions ? `Needs ${missing} more umpires`
+          : "Needs another umpire",
       }]);
     }
   }

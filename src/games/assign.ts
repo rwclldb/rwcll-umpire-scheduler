@@ -1,9 +1,19 @@
 import { supabase } from "../supabase";
 import { escapeHtml } from "../ui";
 import { formatTime } from "./format";
-import { POSITIONS, POSITION_LABEL, assignmentsByGame, clashingGames, umpiresNeeded, workload } from "./staffing";
-import type { Position } from "./staffing";
-import type { Assignment, Game, GamesContext } from "./types";
+import {
+  MAX_UMPIRES,
+  POSITIONS,
+  POSITION_NAME,
+  assignmentsByGame,
+  clashingGames,
+  countLabel,
+  divisionNeed,
+  layoutFor,
+  umpiresNeeded,
+  workload,
+} from "./staffing";
+import type { Assignment, Game, GamesContext, Position } from "./types";
 
 export type AssignOptions = {
   context: GamesContext;
@@ -18,25 +28,37 @@ export type AssignOptions = {
   onDone: (message: string | null) => void;
 };
 
+type Eligibility = { problem: string | null; note: string | null };
+
+const emptyPlaces = (): Record<Position, string> => ({
+  plate: "",
+  first_base: "",
+  second_base: "",
+  third_base: "",
+  field: "",
+});
+
 // Choose the umpires for one game. Clashes are shown as warnings but never
-// stop a save, because real leagues sometimes need an exception.
+// stop a save, because real leagues sometimes need an exception. Youth umpires
+// the age rule does not allow are shown but cannot be chosen (the database
+// enforces the rule as well).
 export function renderAssignPanel(container: HTMLElement, options: AssignOptions): void {
   const { context, game } = options;
 
   const division = context.divisions.find((item) => item.id === game.division_id);
-  const divisionDefault = division?.umpires_per_game ?? 2;
+  const divisionDefault = divisionNeed(division, game.game_type);
 
   const current = assignmentsByGame(options.assignments).get(game.id) ?? {};
-  const selection: Record<Position, string> = {
-    plate: current.plate ?? "",
-    field: current.field ?? "",
-  };
-  const originally = { ...selection };
+  const selection: Record<Position, string> = { ...emptyPlaces(), ...current };
+  const originally: Record<Position, string> = { ...selection };
 
   let needed = umpiresNeeded(game, () => divisionDefault);
   let neededValue: string = game.umpires_needed === null || game.umpires_needed === undefined
     ? ""
     : String(game.umpires_needed);
+
+  // who the age rule does not allow on this game, and what could not be checked
+  let eligibility = new Map<string, Eligibility>();
 
   container.innerHTML = `
     <form id="assign-form" class="create-umpire-form game-form assign-panel" novalidate>
@@ -45,10 +67,8 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
 
       <label for="assign-needed">Umpires needed for this game</label>
       <select id="assign-needed">
-        <option value="">Use the division's default (${divisionDefault} ${divisionDefault === 1 ? "umpire" : "umpires"})</option>
-        <option value="0">No umpire needed</option>
-        <option value="1">1 umpire</option>
-        <option value="2">2 umpires</option>
+        <option value="">Use the division's default (${escapeHtml(countLabel(divisionDefault).replace(" needed", ""))})</option>
+        ${Array.from({ length: MAX_UMPIRES + 1 }, (_, n) => `<option value="${n}">${escapeHtml(countLabel(n))}</option>`).join("")}
       </select>
 
       <div id="assign-slots"></div>
@@ -81,8 +101,9 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
 
   const gamesText = (n: number) => `${n} ${n === 1 ? "game" : "games"}`;
 
-  // The choices for one position: open, or any active umpire (with how many
-  // games they have, and whether they are busy at this time).
+  // The choices for one place: open, or any active umpire (with how many
+  // games they have, and whether they are busy at this time). An umpire the
+  // age rule does not allow here is listed but cannot be chosen.
   const optionsFor = (position: Position): string => {
     const choose = selection[position];
 
@@ -94,46 +115,68 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
       <option value="">&mdash; open &mdash;</option>
       ${list.map((umpire) => {
         const busy = clashingGames(umpire.id, game, options.games, options.assignments).length > 0;
+        const blocked = Boolean(eligibility.get(umpire.id)?.problem) && umpire.id !== choose;
         const label =
           `${umpire.name}${umpire.classification === "youth" ? " (youth)" : ""}` +
           `${umpire.eligibility !== "active" ? " (not active)" : ""}` +
           ` \u00b7 ${gamesText(workload(umpire.id, options.games, options.assignments))}` +
-          `${busy ? " \u00b7 busy at this time" : ""}`;
-        return `<option value="${escapeHtml(umpire.id)}" ${umpire.id === choose ? "selected" : ""}>${escapeHtml(label)}</option>`;
+          `${busy ? " \u00b7 busy at this time" : ""}` +
+          `${blocked ? " \u00b7 age rule" : ""}`;
+        return `<option value="${escapeHtml(umpire.id)}" ${umpire.id === choose ? "selected" : ""} ${blocked ? "disabled" : ""}>${escapeHtml(label)}</option>`;
       }).join("")}
     `;
   };
 
   const showNotes = () => {
-    const lines: string[] = [];
+    const lines: { text: string; kind: "warn" | "info" }[] = [];
 
     for (const position of POSITIONS) {
       const umpireId = selection[position];
       if (!umpireId) continue;
 
       for (const other of clashingGames(umpireId, game, options.games, options.assignments)) {
-        lines.push(
-          `${nameOf(umpireId)} is also assigned to ${options.sideText(other)} at ` +
-          `${formatTime(other.starts_at)} (${options.fieldName(other.location_id)}), ` +
-          `which overlaps this game.`
-        );
+        lines.push({
+          kind: "warn",
+          text:
+            `${nameOf(umpireId)} is also assigned to ${options.sideText(other)} at ` +
+            `${formatTime(other.starts_at)} (${options.fieldName(other.location_id)}), ` +
+            `which overlaps this game.`,
+        });
       }
+
+      const found = eligibility.get(umpireId);
+      if (found?.problem) lines.push({ kind: "warn", text: `${nameOf(umpireId)}: ${found.problem}` });
+      if (found?.note) lines.push({ kind: "info", text: `${nameOf(umpireId)}: ${found.note}` });
+    }
+
+    // Youth umpires who are not offered, so it is clear why they are missing.
+    const hidden = context.umpires
+      .filter((umpire) => umpire.eligibility === "active" && eligibility.get(umpire.id)?.problem && !POSITIONS.some((p) => selection[p] === umpire.id))
+      .map((umpire) => umpire.name)
+      .sort((a, b) => a.localeCompare(b));
+
+    if (hidden.length) {
+      lines.push({
+        kind: "info",
+        text: `Not available for this division because of the youth age rule: ${hidden.join(", ")}.`,
+      });
     }
 
     notes.innerHTML = lines.length
-      ? `<ul class="imp-list assign-clashes">${lines.map((line) => `<li class="imp-warn">${escapeHtml(line)}</li>`).join("")}</ul>`
+      ? `<ul class="imp-list assign-clashes">${lines.map((line) => `<li class="${line.kind === "warn" ? "imp-warn" : "imp-note"}">${escapeHtml(line.text)}</li>`).join("")}</ul>`
       : "";
   };
 
   // The places shown: those the game needs, plus any that already has someone.
   const drawSlots = () => {
+    const wanted = layoutFor(needed);
     const shown = POSITIONS.filter(
-      (position, index) => index < needed || selection[position] || originally[position]
+      (position) => wanted.includes(position) || selection[position] || originally[position]
     );
 
     slots.innerHTML = shown.length
       ? shown.map((position) => `
-          <label for="assign-${position}">${POSITION_LABEL[position]} umpire</label>
+          <label for="assign-${position}">${POSITION_NAME[position]} umpire</label>
           <select id="assign-${position}" data-position="${position}">${optionsFor(position)}</select>
         `).join("")
       : `<p class="directory-description">No umpire is needed for this game. Change the number above if one is.</p>`;
@@ -142,6 +185,23 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
   };
 
   drawSlots();
+
+  // The age rule needs birth dates, which only the database may see, so it
+  // answers. If it cannot (for example before it has been installed) the panel
+  // simply works without the extra hints; the database still enforces the rule.
+  void (async () => {
+    const { data, error } = await supabase.rpc("game_umpire_eligibility", { p_game_id: game.id });
+    if (error || !Array.isArray(data)) return;
+
+    eligibility = new Map(
+      (data as { umpire_id: string; problem: string | null; note: string | null }[]).map((row) => [
+        row.umpire_id,
+        { problem: row.problem ?? null, note: row.note ?? null },
+      ])
+    );
+
+    if (container.contains(form)) drawSlots();
+  })();
 
   neededSelect.addEventListener("change", () => {
     neededValue = neededSelect.value;
@@ -154,12 +214,12 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
     if (!(target instanceof HTMLSelectElement) || !target.dataset.position) return;
 
     const position = target.dataset.position as Position;
-    const other: Position = position === "plate" ? "field" : "plate";
 
-    // Choosing an umpire who is already in the other place swaps the two, so
-    // nobody is ever in both places.
-    if (target.value && selection[other] === target.value) {
-      selection[other] = selection[position];
+    // Choosing an umpire who is already in another place swaps the two, so
+    // nobody is ever in two places.
+    if (target.value) {
+      const elsewhere = POSITIONS.find((other) => other !== position && selection[other] === target.value);
+      if (elsewhere) selection[elsewhere] = selection[position];
     }
 
     selection[position] = target.value;
@@ -194,11 +254,13 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
     }
 
     // 2. the umpires, if they were changed
-    if (selection.plate !== originally.plate || selection.field !== originally.field) {
+    if (POSITIONS.some((position) => selection[position] !== originally[position])) {
+      const places: Record<string, string | null> = {};
+      for (const position of POSITIONS) places[position] = selection[position] || null;
+
       const { error } = await supabase.rpc("set_game_umpires", {
         p_game_id: game.id,
-        p_plate: selection.plate || null,
-        p_field: selection.field || null,
+        p_umpires: places,
       });
 
       if (error) {

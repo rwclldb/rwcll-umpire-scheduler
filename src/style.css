@@ -1582,3 +1582,15 @@ input[type="radio"] {
   padding: 0;
   list-style: none;
 }
+
+/* An informational note (not a warning) in the assignment panel */
+.imp-note {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #1d2b22;
+  background: #eaf2ec;
+}
+
+.assign-clashes li {
+  margin: 6px 0;
+}

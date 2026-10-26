@@ -20,6 +20,8 @@ export type DivisionRecord = SetupRecord & {
   oldest_ll_age: number | null;
   // the default number of umpires a game in this division needs (1 or 2)
   umpires_per_game: number;
+  // the default for tournament games; null means "the same as regular games"
+  tournament_umpires: number | null;
 };
 
 export type LocationRecord = SetupRecord & {
