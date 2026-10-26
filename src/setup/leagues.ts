@@ -6,7 +6,7 @@ import { escapeHtml } from "../ui";
 
 // A league as the League Setup screen holds it. The warning period is read
 // with the league; it is missing only from places that do not need it.
-type League = SetupRecord & { unconfirmed_warning_days?: number };
+type League = SetupRecord & { unconfirmed_warning_days?: number; self_assign_max_games?: number | null };
 
 function unconfirmedText(days: number): string {
   return days === 0
@@ -24,6 +24,7 @@ export function renderLeagues(leagues: League[]): string {
               ${league.is_active ? "Active" : "Inactive"}
             </span>
             <p class="season-dates">${unconfirmedText(league.unconfirmed_warning_days ?? 7)}</p>
+            <p class="season-dates">${league.self_assign_max_games ? `An umpire can take up to ${league.self_assign_max_games} upcoming ${league.self_assign_max_games === 1 ? "game" : "games"} for themselves` : "No limit on games umpires take for themselves"}</p>
           </div>
           <button type="button"
             class="secondary-button season-edit-button"
@@ -74,6 +75,17 @@ export function renderLeagueForm(league: League | null): string {
       <p class="season-dates">
         When an umpire has still not confirmed an assignment this many days
         before the game, the administrators are warned. Use 0 for no warning.
+      </p>
+
+      <label for="league-self-assign-max">Most upcoming games an umpire can take for themselves</label>
+      <input id="league-self-assign-max" name="self_assign_max_games"
+        type="number" min="1" max="500" step="1" inputmode="numeric"
+        placeholder="No limit"
+        value="${league?.self_assign_max_games ?? ""}" />
+      <p class="season-dates">
+        Leave blank for no limit. Games already played and canceled games do not
+        count. It limits only games an umpire takes for themselves, never
+        assignments an administrator makes.
       </p>
       ${league
         ? `<button id="delete-league-button" type="button"
@@ -148,6 +160,17 @@ export function wireLeagueForm(container: HTMLElement): void {
       return;
     }
 
+    const maxText = String(data.get("self_assign_max_games") ?? "").trim();
+    const maxGames = maxText === "" ? null : Number(maxText);
+
+    if (maxGames !== null && (!Number.isInteger(maxGames) || maxGames < 1 || maxGames > 500)) {
+      if (message) {
+        message.textContent = "Enter a whole number of games from 1 to 500 for the limit, or leave it blank for no limit.";
+        message.className = "message error";
+      }
+      return;
+    }
+
     const saveButton = form.querySelector<HTMLButtonElement>(
       'button[type="submit"]',
     );
@@ -156,7 +179,7 @@ export function wireLeagueForm(container: HTMLElement): void {
       saveButton.textContent = "Saving…";
     }
 
-    const values = { name, is_active: isActive, unconfirmed_warning_days: days };
+    const values = { name, is_active: isActive, unconfirmed_warning_days: days, self_assign_max_games: maxGames };
 
     const result = state.editingLeagueId
       ? await supabase.from("leagues")

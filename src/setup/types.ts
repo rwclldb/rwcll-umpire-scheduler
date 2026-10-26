@@ -22,6 +22,8 @@ export type DivisionRecord = SetupRecord & {
   umpires_per_game: number;
   // the default for tournament games; null means "the same as regular games"
   tournament_umpires: number | null;
+  // may umpires assign themselves to games in this division?
+  allow_self_assign: boolean;
 };
 
 export type LocationRecord = SetupRecord & {

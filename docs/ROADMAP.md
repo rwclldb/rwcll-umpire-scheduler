@@ -32,8 +32,11 @@ whenever the league's needs change.
   is built and tested here. Its database change is waiting for its first run on
   your own test database.
 - Stage **5b-2a** (phone numbers on the printed schedule, with a youth umpire's own
-  and parent's numbers) is built and tested here; it needs no database change.
-- Stage **5b-2b** is next: umpires assigning themselves.
+  and parent's numbers) is built, tested, and in use.
+- Stage **5b-2b** (umpires assigning themselves) is built and tested here. Its
+  database change is waiting for its first run on your own test database.
+- What remains of Phase 5 is **5c**, further assignment rules. Phase 6, umpires
+  entering their availability, is the next major piece.
 
 ---
 
@@ -110,15 +113,23 @@ whenever the league's needs change.
   parent's, taken from the emergency contact on their record
 - Nothing is printed if the numbers cannot be looked up
 
-**5b-2b. Self-assigning** ⏳ *next*
+**5b-2b. Self-assigning** ✅ *(built and tested; the database change has not yet had its first run on your database)*
 
-- Umpires assign themselves to open places, in the divisions that allow it; such
-  assignments are Confirmed and marked as self-assigned
+- An administrator turns self-assigning on for a division (off to begin with), and can
+  turn it off for any one umpire (on to begin with)
+- Umpires see the open places they may take on their Home page and take one with a
+  button; it is Confirmed straight away and marked as self-assigned, and they can decline
+  it later
+- Refused when the game overlaps one of the umpire's own, when the place is no longer
+  open, when the youth age rule forbids it, or when the umpire already has as many
+  upcoming games as the league's limit allows (blank for no limit; played and canceled
+  games do not count; it limits only games umpires take for themselves)
 
 **5c. Further assignment rules** ⬜
 
 - A youth umpire cannot umpire the division they play in
-- More rules for self-assigning
+- More rules for self-assigning (for example, a limit for each umpire rather than for the league)
+- Tell the administrators when an umpire takes a game, if they want that
 - More rules for self-assigning
 - Warnings for assignments that are still unconfirmed close to game time
 
@@ -197,9 +208,6 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 
 ## Questions waiting for an answer
 
-- **Self-assigning (5b-2b):** which divisions should allow it to begin with, and should an
-  umpire be stopped from taking a game that overlaps another of their games? (Proposed: off
-  in every division until an administrator turns it on, and yes, overlapping games are refused.)
 - **Paying umpires (Phase 12):** how are youth umpires paid today, and how much? Does the
   league take W-9s or issue any tax forms? What do the league's accountant, insurer and
   Little League district say about paying minors (including work-permit rules) and about
@@ -220,6 +228,10 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 - **Phone numbers on printouts:** an option, for administrators; for a youth umpire,
   both their own and a parent's number (the emergency contact on their record, until
   parents have accounts of their own).
+- **Self-assigning:** an administrator turns it on for each division, and can turn it off
+  for any single umpire. An umpire cannot take a game that overlaps one of their own, and
+  the league can set a limit on how many upcoming games an umpire can take for themselves
+  (unlimited to begin with; played games do not count).
 - **Warnings do not block:** a clash or a missing umpire is shown, but never stops the
   person from saving. The youth age rule is different: it is a rule, so the database enforces it.
 - **The master calendar** is kept elsewhere; this system keeps a copy, and administrators

@@ -180,6 +180,24 @@ export async function loadSeasonGames(seasonId: string): Promise<{
   };
 }
 
+// The games with these ids (asked for in groups of 100 so each request stays short).
+export async function loadGamesByIds(ids: string[]): Promise<{ games: Game[]; error: string | null }> {
+  const unique = [...new Set(ids)];
+  const games: Game[] = [];
+
+  for (let start = 0; start < unique.length; start += 100) {
+    const group = unique.slice(start, start + 100);
+    const page = await fetchAll<Game>((from, to) =>
+      supabase.from("games").select(GAME_COLUMNS).in("id", group).order("starts_at").range(from, to)
+    );
+
+    if (page.error) return { games: [], error: page.error };
+    games.push(...page.rows);
+  }
+
+  return { games, error: null };
+}
+
 // The phone numbers of these umpires, for a printed schedule: the account's
 // phone (else the one on the umpire record) and, for a youth umpire, the
 // emergency contact's. Only scheduling administrators can read these, and this

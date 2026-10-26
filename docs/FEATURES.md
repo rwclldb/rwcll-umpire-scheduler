@@ -84,6 +84,14 @@ test on the league's own database.
 - Who made each assignment is recorded
 - Super admins, umpire chiefs and schedulers can assign umpires
 
+**Umpires assigning themselves** 🆕
+
+- An administrator turns this on for a division (it is off to begin with), and can turn it off for any one umpire (it is on to begin with)
+- An umpire sees the open places they may take, on their Home page, for dates they choose (the next 30 days to begin with), and takes one with a button. It is Confirmed straight away, marked as self-assigned, and they can decline it later
+- The database refuses a game that overlaps one of the umpire's own, a place that is no longer open, a game that has started or been canceled, and a youth umpire's game the age rule forbids. It also refuses the umpire's request if they are not active or an administrator has switched it off for them
+- A league can set the most upcoming games an umpire may take for themselves (blank for no limit); games already played and canceled games do not count, and assignments an administrator makes are never limited
+- Administrators see "Confirmed (self)" on the games list, and the history records that the umpire assigned themselves
+
 **Confirming and declining** 🆕
 
 - Each assignment is **Assigned** until the umpire answers, then **Confirmed**; the games list shows the status beside each umpire

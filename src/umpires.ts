@@ -12,6 +12,8 @@ type UmpireRow = {
   classification: UmpireClassification;
   phone: string | null;
   eligibility_status: EligibilityStatus;
+  // may this umpire assign themselves to games? (on unless an administrator turns it off)
+  can_self_assign?: boolean;
 };
 
 // What the directory works with: the database row plus the email to show.
@@ -300,7 +302,8 @@ async function loadUmpires() {
       display_name,
       classification,
       phone,
-      eligibility_status
+      eligibility_status,
+      can_self_assign
     `)
     .order("display_name");
 
@@ -813,6 +816,12 @@ async function showEditForm(umpireId: string) {
         <option value="suspended" ${umpire.eligibility_status === "suspended" ? "selected" : ""}>Suspended</option>
       </select>
 
+      <label class="season-checkbox-label">
+        <input id="edit-can-self-assign" name="can_self_assign" type="checkbox"
+          ${umpire.can_self_assign !== false ? "checked" : ""}>
+        Allowed to assign themselves to games (in divisions that allow it)
+      </label>
+
       <hr class="directory-divider">
       <h3>Private Details — Administrators Only</h3>
 
@@ -1002,6 +1011,7 @@ async function saveUmpireEdits(
       classification,
       phone: phone || null,
       eligibility_status: eligibility,
+      can_self_assign: formData.get("can_self_assign") === "on",
     })
     .eq("id", umpireId);
 
