@@ -1695,3 +1695,72 @@ input[type="radio"] {
 .open-games {
   margin-top: 28px;
 }
+
+/* ---- Administration: a page of buttons, and a row of tabs inside each part ---- */
+
+.admin-menu {
+  display: grid;
+  gap: 18px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-menu-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-menu-button {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  text-align: left;
+}
+
+.admin-menu-help {
+  padding-left: 4px;
+  color: #3d4a42;
+  font-size: 0.9rem;
+  font-style: italic;
+  line-height: 1.35;
+}
+
+.admin-subnav {
+  margin: 0 0 18px;
+  border-bottom: 1px solid #d6ddd8;
+}
+
+.admin-subnav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  margin: 0;
+  padding: 0 0 6px;
+  list-style: none;
+}
+
+.admin-subnav-button {
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+  padding: 6px 12px;
+  color: #4a4f52;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-subnav-button:hover {
+  background: #eef3ef;
+}
+
+.admin-subnav-button[aria-current="page"] {
+  color: #14532d;
+  background: #e6f2ea;
+  box-shadow: inset 0 -3px 0 #1b6b3a;
+}

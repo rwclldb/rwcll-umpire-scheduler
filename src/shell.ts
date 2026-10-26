@@ -1,12 +1,16 @@
 import { escapeHtml } from "./ui";
 
 // One screen of the signed-in app. A person sees the pages their roles allow.
+//
+// A page can have sub-pages: the address "#/admin/roles" shows the page "admin"
+// and tells it which part ("roles") to show. Pages that have none ignore it.
 export type ShellPage = {
   id: string;
   label: string;
   render: (
     container: HTMLElement,
-    navigate: (pageId: string) => void,
+    navigate: (address: string) => void,
+    sub?: string,
   ) => void | Promise<void>;
 };
 
@@ -72,8 +76,9 @@ export function renderShell(
 
   addTopBar(root, options.name, options.onSignOut, options.roles ?? "");
 
-  const navigate = (pageId: string) => {
-    window.location.hash = `#/${pageId}`;
+  // "admin" or "admin/roles"
+  const navigate = (address: string) => {
+    window.location.hash = `#/${address}`;
   };
 
   root.querySelector(".app-nav")?.addEventListener("click", (event) => {
@@ -88,9 +93,13 @@ export function renderShell(
     const content = document.querySelector<HTMLElement>("#page-content");
     if (!content) return;   // the shell has been replaced (for example on sign out)
 
-    const wanted = /^#\/([a-z0-9-]+)$/.exec(window.location.hash)?.[1];
+    const parts = /^#\/([a-z0-9-]+)(?:\/([a-z0-9-]+))?$/.exec(window.location.hash);
+    const wanted = parts?.[1];
     const page = pages.find((item) => item.id === wanted) ?? pages[0];
     if (!page) return;
+
+    // a sub-page only counts when the address named a real page
+    const sub = page.id === wanted ? parts?.[2] : undefined;
 
     document.querySelectorAll<HTMLButtonElement>(".app-nav-button")
       .forEach((button) => {
@@ -102,7 +111,7 @@ export function renderShell(
       });
 
     content.innerHTML = "";
-    void page.render(content, navigate);
+    void page.render(content, navigate, sub);
     window.scrollTo(0, 0);
   };
 
