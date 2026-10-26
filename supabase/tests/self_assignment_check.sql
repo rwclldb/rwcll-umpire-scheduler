@@ -83,6 +83,13 @@ begin
   insert into public.umpire_private_details (umpire_id, birth_date) values (um_y, date '2013-01-15')
     on conflict (umpire_id) do update set birth_date = excluded.birth_date;
 
+  -- These tests are about the AGE rule. Since the 'division they play in' rule was added, a youth
+  -- umpire with NO division recorded is also kept off any division whose ages include theirs
+  -- (a 13-year-old would be kept off Juniors, ages 12 to 14). So this umpire is recorded as playing
+  -- the Off division, which has no ages and which nobody can take games in anyway, leaving only the
+  -- age rule to be tested here. (The new rule has its own script, further_rules_check.sql.)
+  update public.umpires set plays_in_division_id = d_off where id = um_y;
+
   -- Older assignments for A on the game played yesterday and on the canceled game (neither should count toward a limit).
   insert into public.game_assignments (game_id, umpire_id, position) values (g_past, um_a, 'plate');
   insert into public.game_assignments (game_id, umpire_id, position) values (g_canc, um_a, 'plate');

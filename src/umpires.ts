@@ -15,6 +15,8 @@ type UmpireRow = {
   eligibility_status: EligibilityStatus;
   // may this umpire assign themselves to games? (on unless an administrator turns it off)
   can_self_assign?: boolean;
+  // for a youth umpire: the division they play in (they cannot umpire it)
+  plays_in_division_id?: string | null;
 };
 
 // What the directory works with: the database row plus the email to show.
@@ -304,7 +306,8 @@ async function loadUmpires() {
       classification,
       phone,
       eligibility_status,
-      can_self_assign
+      can_self_assign,
+      plays_in_division_id
     `)
     .order("display_name");
 
@@ -788,6 +791,25 @@ async function showEditForm(umpireId: string) {
     return;
   }
 
+  // The divisions to choose from, for "the division they play in". If they
+  // cannot be loaded, the choice is left out (and the saved value untouched).
+  const [divisionsResult, leaguesResult] = await Promise.all([
+    supabase.from("divisions").select("id, name, league_id, is_active").order("name"),
+    supabase.from("leagues").select("id, name").order("name"),
+  ]);
+  const leagueNames = new Map(
+    ((leaguesResult.data ?? []) as { id: string; name: string }[]).map((league) => [league.id, league.name])
+  );
+  const divisionChoices = divisionsResult.error
+    ? null
+    : ((divisionsResult.data ?? []) as { id: string; name: string; league_id: string; is_active: boolean }[])
+        .map((division) => `
+          <option value="${escapeHtml(division.id)}"
+            ${umpire.plays_in_division_id === division.id ? "selected" : ""}>
+            ${escapeHtml(division.name)}${leagueNames.size > 1 ? ` (${escapeHtml(leagueNames.get(division.league_id) ?? "")})` : ""}${division.is_active ? "" : " (inactive)"}
+          </option>`)
+        .join("");
+
   showEditor(`
     <form id="edit-umpire-form" class="create-umpire-form">
       <h3>Edit Umpire</h3>
@@ -822,6 +844,18 @@ async function showEditForm(umpireId: string) {
           ${umpire.can_self_assign !== false ? "checked" : ""}>
         Allowed to assign themselves to games (in divisions that allow it)
       </label>
+
+      ${divisionChoices === null ? "" : `
+        <label for="edit-plays-in">Division they play in (youth umpires)</label>
+        <select id="edit-plays-in" name="plays_in_division_id">
+          <option value="">Not set: worked out from their Little League age</option>
+          ${divisionChoices}
+        </select>
+        <p class="season-dates">
+          A youth umpire cannot umpire the division they play in. If this is
+          left blank, any division whose ages include theirs counts.
+        </p>
+      `}
 
       <hr class="directory-divider">
       <h3>Private Details — Administrators Only</h3>
@@ -1025,6 +1059,10 @@ async function saveUmpireEdits(
       phone: phone || null,
       eligibility_status: eligibility,
       can_self_assign: formData.get("can_self_assign") === "on",
+      // only when the choice was on the form, so a failed load cannot erase it
+      ...(formData.has("plays_in_division_id")
+        ? { plays_in_division_id: String(formData.get("plays_in_division_id") || "") || null }
+        : {}),
     })
     .eq("id", umpireId);
 

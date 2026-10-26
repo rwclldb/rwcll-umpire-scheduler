@@ -112,6 +112,11 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
   const availabilityOf = (umpireId: string) =>
     availability ? availabilityFor(game, availability.get(umpireId) ?? []) : null;
 
+  // The reason the database gave is that this is the division they play in
+  // (not their age).
+  const isOwnDivision = (umpireId: string) =>
+    /division they play in/.test(eligibility.get(umpireId)?.problem ?? "");
+
   const gamesText = (n: number) => `${n} ${n === 1 ? "game" : "games"}`;
 
   // The choices for one place: open, or any active umpire (with how many
@@ -135,7 +140,7 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
           ` \u00b7 ${gamesText(workload(umpire.id, options.games, options.assignments))}` +
           `${busy ? " \u00b7 busy at this time" : ""}` +
           `${availabilityOf(umpire.id) === "unavailable" ? " \u00b7 not available then" : availabilityOf(umpire.id) === "none" ? " \u00b7 no availability entered" : ""}` +
-          `${blocked ? " \u00b7 age rule" : ""}`;
+          `${blocked ? (isOwnDivision(umpire.id) ? " \u00b7 their own division" : " \u00b7 age rule") : ""}`;
         return `<option value="${escapeHtml(umpire.id)}" ${umpire.id === choose ? "selected" : ""} ${blocked ? "disabled" : ""}>${escapeHtml(label)}</option>`;
       }).join("")}
     `;
@@ -168,15 +173,23 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
     }
 
     // Youth umpires who are not offered, so it is clear why they are missing.
-    const hidden = context.umpires
-      .filter((umpire) => umpire.eligibility === "active" && eligibility.get(umpire.id)?.problem && !POSITIONS.some((p) => selection[p] === umpire.id))
-      .map((umpire) => umpire.name)
-      .sort((a, b) => a.localeCompare(b));
+    const hiddenUmpires = context.umpires
+      .filter((umpire) => umpire.eligibility === "active" && eligibility.get(umpire.id)?.problem && !POSITIONS.some((p) => selection[p] === umpire.id));
 
-    if (hidden.length) {
+    const ownDivision = hiddenUmpires.filter((umpire) => isOwnDivision(umpire.id));
+    const byAge = hiddenUmpires.filter((umpire) => !isOwnDivision(umpire.id));
+    const named = (list: { name: string }[]) => list.map((umpire) => umpire.name).sort((a, b) => a.localeCompare(b)).join(", ");
+
+    if (byAge.length) {
       lines.push({
         kind: "info",
-        text: `Not available for this division because of the youth age rule: ${hidden.join(", ")}.`,
+        text: `Not available for this division because of the youth age rule: ${named(byAge)}.`,
+      });
+    }
+    if (ownDivision.length) {
+      lines.push({
+        kind: "info",
+        text: `Not available because it is the division they play in: ${named(ownDivision)}.`,
       });
     }
 

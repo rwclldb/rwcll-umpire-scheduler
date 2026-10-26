@@ -109,6 +109,14 @@ begin
     (ya, date '2013-01-15'), (yb, date '2014-01-10'), (yc, date '2011-01-05'), (ye, date '2013-06-20')
     on conflict (umpire_id) do update set birth_date = excluded.birth_date;
 
+  -- These tests are about the AGE rule (a youth umpire cannot umpire a division whose players
+  -- start at their age or older). Since the 'division they play in' rule was added, a youth
+  -- umpire with NO division recorded is also kept off any division whose ages include theirs.
+  -- So the three umpires whose ages are tested are recorded as playing D1, a division with no
+  -- ages, which leaves only the age rule to be tested here. (The new rule has its own script,
+  -- further_rules_check.sql.)
+  update public.umpires set plays_in_division_id = d1 where id in (ya, yb, yc);
+
   ----------------------------------------------------------------
   -- How many umpires: the settings themselves
   ----------------------------------------------------------------

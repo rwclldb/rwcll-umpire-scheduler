@@ -70,6 +70,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 37. [Confirming, declining and reminders](#37-confirming-declining-and-reminders)
 38. [Umpires assigning themselves](#38-umpires-assigning-themselves)
 39. [Availability: when umpires can umpire](#39-availability-when-umpires-can-umpire)
+40. [Further assignment rules: the division they play in, and messages about games umpires take](#40-further-assignment-rules-the-division-they-play-in-and-messages-about-games-umpires-take)
 
 ---
 
@@ -191,6 +192,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
+| `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
 | `availability_check.sql` | Availability works (an umpire manages only their own entries and sees nobody else's; an administrator manages anyone's; an entry cannot end before it starts, last more than 90 days, or carry a note over 200 characters; a signed-out visitor sees nothing) | `Failures: 0` |
 | `self_assignment_check.sql` | Umpires assigning themselves works (only where a division allows it and the umpire is allowed; overlapping games, taken places, played and canceled games, the limit on upcoming games and the youth age rule are all refused; the places offered are right; a signed-out visitor cannot) | `Failures: 0` |
 | `assignment_confirmation_check.sql` | Confirming, declining, the history, the queued messages and the "still unconfirmed" warning work (an umpire can answer only for themselves; a decline frees the place and tells the administrators; the warning is queued once per assignment and respects the league's number of days; nobody can edit the history) | `Failures: 0` |
@@ -431,6 +433,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
+| `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\availability_check.sql` | Tests the availability rules (builds its own sign-in accounts and umpires; your data is not changed) | No (always rolls back) |
 | `supabase\tests\self_assignment_check.sql` | Tests umpires assigning themselves (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\assignment_confirmation_check.sql` | Tests confirming, declining, the history, the queued messages and the unconfirmed warning (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
@@ -532,7 +535,7 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `further_rules_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
@@ -978,7 +981,7 @@ Red and amber are kept for **errors** and **warnings** only, so they keep their 
 - Such an umpire is still listed in the panel, marked **age rule**, but cannot be chosen, and the panel says who is not available. The database refuses it as well, with the reason.
 - **The rule never guesses.** If a youth umpire has no birth date on file, or the season's chart does not cover their birth month, they are **not** blocked. The panel shows a note ("the youth age rule could not be checked") and you decide. If a division has no age range set, no one is blocked from it.
 - Adult umpires are not affected.
-- **Not enforced yet:** that a youth umpire cannot umpire the division they themselves play in. This is a planned addition.
+- A youth umpire also cannot umpire **the division they themselves play in** (section 40).
 
 **Clash warnings.** An umpire who already has a game that overlaps this one is marked **busy at this time** in the list, and a note under the choices says which game. This is a **warning only**: you can still save, because real leagues sometimes need an exception. Canceled games never count as a clash, and a game that starts exactly when another ends is not a clash.
 
@@ -1066,11 +1069,11 @@ If nothing is offered, the section is not shown at all. If a place was taken by 
 - the place is **open** (games are staffed by number, as everywhere else);
 - they are **not already on that game**, and **no other game of theirs overlaps it** (a game that starts as another ends is fine);
 - they are **under the limit**, if the league has one; and
-- the **youth age rule** allows it (section 36).
+- the **youth rules** allow it (sections 36 and 40).
 
 **About the limit.** It counts the umpire's own games that are still to come, **whoever assigned them**; games already played and canceled games do **not** count. It applies **only to games an umpire takes for themselves**: an administrator can always assign more. When an umpire is at the limit they are offered nothing, until a game is played or they decline one.
 
-**What an administrator sees.** The Games list shows **Confirmed (self)** after such an umpire's name; the Umpires panel says *they assigned themselves*; and the history records it. Administrators are not sent a message each time an umpire takes a game (this can be added if you want it). Reminders about unconfirmed assignments (section 37) never involve these, because they are confirmed from the start.
+**What an administrator sees.** The Games list shows **Confirmed (self)** after such an umpire's name; the Umpires panel says *they assigned themselves*; and the history records it. Administrators are also told when an umpire takes a game (section 40).
 
 **Check script:** `self_assignment_check.sql` tests all of the above in the database (section 6).
 
@@ -1105,3 +1108,41 @@ If nothing is offered, the section is not shown at all. If a place was taken by 
 **Not built yet:** repeating weekly patterns (for example "weekdays after 5 PM"). Today each entry is a single date.
 
 **Check script:** `availability_check.sql` tests the database rules (section 6).
+
+## 40. Further assignment rules: the division they play in, and messages about games umpires take
+
+### A youth umpire cannot umpire the division they play in
+
+**Recording it.** Open **Administration**, **Umpire Directory**, and edit the umpire. **Division they play in (youth umpires)** lists your divisions, with **Not set** first. Choose the division and press **Save Changes**. If a division is later deleted, it is simply cleared from the umpires who had it.
+
+**How the rule works:**
+
+| What is on the umpire's record | Cannot umpire |
+|---|---|
+| A division is chosen | That division, plus any division whose players start at their Little League age or older (section 36) |
+| **Not set** | Any division whose ages **include** theirs (for example, a 12-year-old with nothing recorded cannot umpire Majors if its ages are 11 to 12), plus any whose players start at their age or older |
+
+So recording the division makes the rule **more accurate**: a 13-year-old recorded as playing Majors can umpire Juniors, but a 13-year-old with nothing recorded cannot, because Juniors' ages include 13.
+
+- **It needs no birth date when a division is recorded.** The recorded division is blocked regardless. Without a recorded division, the age rule still needs a birth date and the season's age chart; if either is missing the umpire is not blocked, and the panel shows a note (as in section 36).
+- A division with **no age range** cannot be worked out from age, so it is blocked only for an umpire who has it recorded as theirs.
+- **Adult umpires are not affected**, even if a division is recorded.
+- In the **Umpires** panel for a game, such an umpire is listed but cannot be chosen, and is marked **their own division**; a note says *Not available because it is the division they play in*. The database refuses it as well (for administrators, for direct writes, and for an umpire taking a game for themselves, where it also stops the game being offered).
+
+### Messages to administrators when an umpire takes a game
+
+When an umpire takes a game for themselves (section 38), the administrators (super admins, umpire chiefs and schedulers) are told, through the **Outbox**:
+
+| The game starts | What is queued |
+|---|---|
+| **Within 48 hours** | A message **straight away**: *Umpire took a game within 48 hours: Ann Lee* |
+| **More than 48 hours ahead** | Nothing yet. It goes in **one summary for that day**: *Umpires took 3 games on Monday, October 26*, listing each umpire, place and game |
+
+- **When the daily summary is queued.** Nothing in the system runs on a timer yet, so the summary for each **finished day** (Pacific time) is queued when an administrator **opens the Games tab**. If nobody opens it for a few days, one summary is queued for **each** of those days. Games taken **today** wait until tomorrow. When the summary is queued the Games tab says so. Sending real email on a timer comes with the email work (section 27).
+- **Each game is told about once.** A game announced straight away is not repeated in a summary, and a summary is never queued twice.
+- **Games taken before this update** are marked as already told about, so the first summary does not repeat old ones.
+- Nothing is emailed yet. As with every message, an administrator copies it from the Outbox and sends it, or leaves it (section 27).
+
+**Decided against:** a limit for each umpire (the league's limit applies to everyone).
+
+**Check script:** `further_rules_check.sql` tests all of this in the database (section 6).

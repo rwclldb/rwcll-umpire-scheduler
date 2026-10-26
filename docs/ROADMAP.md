@@ -20,7 +20,7 @@ whenever the league's needs change.
 
 ## Where we are
 
-**We are in Phase 5, assigning umpires to games.**
+**Phases 5 and 6 are built. We are between pieces.**
 
 - Phases 0 to 4 are finished: the foundations, accounts and security, league
   setup, umpire registration, and games and schedules.
@@ -37,8 +37,11 @@ whenever the league's needs change.
   database change is waiting for its first run on your own test database.
 - Phase 6 (umpires entering their availability) is built and tested here. Its
   database change is waiting for its first run on your own test database.
-- What remains of Phase 5 is **5c**, further assignment rules. After that, Phase 7
-  (notifications and sending email) is the next major piece.
+- Stage **5c** (a youth umpire cannot umpire the division they play in, and messages to
+  administrators when an umpire takes a game) is built and tested here. Its database
+  change is waiting for its first run on your own test database. That completes Phase 5.
+- Next: availability ranges and weekly patterns, which you asked for. Sending real email
+  (Phase 7) is postponed until you are ready.
 
 ---
 
@@ -85,7 +88,7 @@ whenever the league's needs change.
 - Warnings about field and team conflicts
 - Printing and downloading schedules, for administrators and for each umpire
 
-### Phase 5: Assigning umpires 🔧 ← we are here
+### Phase 5: Assigning umpires ✅
 
 **5a. The assignment screen** ✅ *(built and tested; the newest database changes have not yet had their first run on your database)*
 
@@ -128,11 +131,14 @@ whenever the league's needs change.
   upcoming games as the league's limit allows (blank for no limit; played and canceled
   games do not count; it limits only games umpires take for themselves)
 
-**5c. Further assignment rules** ⬜
+**5c. Further assignment rules** ✅ *(built and tested; the database change has not yet had its first run on your database)*
 
-- A youth umpire cannot umpire the division they play in
-- More rules for self-assigning (for example, a limit for each umpire rather than for the league)
-- Tell the administrators when an umpire takes a game, if they want that
+- A youth umpire cannot umpire the division they play in: an administrator can record it
+  on the umpire; if it is blank, any division whose ages include theirs counts
+- Administrators are told when an umpire takes a game: straight away if it starts within
+  48 hours, otherwise in one summary message for each day (queued when an administrator
+  opens the Games tab until there is a timer)
+- Decided against: a limit for each umpire (the league's limit is enough)
 - More rules for self-assigning
 - Warnings for assignments that are still unconfirmed close to game time
 
@@ -236,6 +242,9 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 - **Phone numbers on printouts:** an option, for administrators; for a youth umpire,
   both their own and a parent's number (the emergency contact on their record, until
   parents have accounts of their own).
+- **Own division and messages:** a youth umpire cannot umpire the division they play in (recorded
+  on their record; if blank, any division whose ages include theirs). Administrators are told
+  straight away when an umpire takes a game within 48 hours, otherwise in a daily summary.
 - **Availability:** umpires list when they CAN umpire, as one-off dates and times (weekly
   patterns may come later). Being unavailable only warns administrators; the game is still
   offered to the umpire in "Games you can take".
