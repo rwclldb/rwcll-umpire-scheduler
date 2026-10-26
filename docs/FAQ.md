@@ -69,6 +69,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 36. [Assigning umpires, and how many a game needs](#36-assigning-umpires-and-how-many-a-game-needs)
 37. [Confirming, declining and reminders](#37-confirming-declining-and-reminders)
 38. [Umpires assigning themselves](#38-umpires-assigning-themselves)
+39. [Availability: when umpires can umpire](#39-availability-when-umpires-can-umpire)
 
 ---
 
@@ -190,6 +191,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
+| `availability_check.sql` | Availability works (an umpire manages only their own entries and sees nobody else's; an administrator manages anyone's; an entry cannot end before it starts, last more than 90 days, or carry a note over 200 characters; a signed-out visitor sees nothing) | `Failures: 0` |
 | `self_assignment_check.sql` | Umpires assigning themselves works (only where a division allows it and the umpire is allowed; overlapping games, taken places, played and canceled games, the limit on upcoming games and the youth age rule are all refused; the places offered are right; a signed-out visitor cannot) | `Failures: 0` |
 | `assignment_confirmation_check.sql` | Confirming, declining, the history, the queued messages and the "still unconfirmed" warning work (an umpire can answer only for themselves; a decline frees the place and tells the administrators; the warning is queued once per assignment and respects the league's number of days; nobody can edit the history) | `Failures: 0` |
 | `umpire_assignments_check.sql` | The umpires-per-game settings, the places (plate to third base) and the assignment rules work (0 to 4 umpires; tournament numbers; active umpires only; nobody on a canceled game; the youth age rule; swaps work; a refused change saves nothing; only scheduling admins can assign) | `Failures: 0` |
@@ -429,6 +431,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
+| `supabase\tests\availability_check.sql` | Tests the availability rules (builds its own sign-in accounts and umpires; your data is not changed) | No (always rolls back) |
 | `supabase\tests\self_assignment_check.sql` | Tests umpires assigning themselves (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\assignment_confirmation_check.sql` | Tests confirming, declining, the history, the queued messages and the unconfirmed warning (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\umpire_assignments_check.sql` | Tests the umpires-per-game settings, the places, the youth age rule and the assignment rules (builds its own tiny league, umpires and age chart; your data is not used) | No (always rolls back) |
@@ -529,10 +532,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts` (assigning umpires; with the ten below, seventeen files in all) | `src\games` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -606,6 +609,7 @@ This is enforced by the database itself, not just by the screens.
 | Roles | `user_roles` | You see your own; super admins see all | Super admins only |
 | Umpire invitations | `umpire_invitations` | Scheduling admins | Only through the invite, renew and revoke functions |
 | Queued emails (the Outbox) | `email_outbox` | Scheduling admins only | Only through the queue, mark-sent and skip functions |
+| Availability (times an umpire can umpire) | `umpire_availability` | Scheduling admins; an umpire sees only their own | The umpire, and scheduling admins |
 | Game assignments | `game_assignments` | Scheduling admins; an umpire sees only their own | Scheduling admins |
 
 Things worth knowing:
@@ -762,7 +766,7 @@ After signing in, an approved person sees a **top bar** (their name, their **rol
 | Super admin | **Administration** (a page of buttons for Approvals, Roles, League Setup, Locations, Umpire Directory, Outbox and My details; see below) and **Games** |
 | Umpire chief | **Umpire Management** (registrations, umpire directory, Outbox, My details) and **Games** |
 | Scheduler | **Umpires** (directory and Outbox), **Games**, **League Setup**, **My details** |
-| Youth or adult umpire | **Home** (with their own printable schedule), **My details** |
+| Youth or adult umpire | **Home** (their own printable schedule, **My availability**, and games they can take), **My details** |
 | Treasurer, feedback reviewer, read-only admin, parent | The plain account page for now (their pages come with their features) |
 
 Combinations: chief and scheduler get *Umpire Management*, *Games* and *League Setup*. A scheduler who is also an umpire gets *Umpires*, *Games*, *League Setup*, *As an umpire*, and *My details*.
@@ -801,6 +805,7 @@ Other roles are unchanged: an **umpire chief** still has one **Umpire Management
 |---|---|
 | **No umpire assigned** | A draft or scheduled game that needs umpires, today or later, with nobody assigned. (Games in the past, canceled games and completed games are never flagged, and neither is a game that needs no umpire.) |
 | **Needs a field umpire** (or plate, first base, ...) | Some umpires are assigned, but fewer than the game needs. It names the place that is still open, or says *Needs 2 more umpires* when several are. |
+| **Not available: Ann Lee** | An umpire on a game still to come has entered availability that does **not** cover the game. Never shown for an umpire who has entered none. See section 39. |
 | **Field conflict** | Another game is at the same field at an overlapping time. A game that starts exactly when the previous one ends is **not** a conflict. |
 | **Team conflict** | A team is in another game at an overlapping time, even at a different field. |
 
@@ -993,7 +998,7 @@ Who made each assignment is recorded.
 
 **One umpire's own view.** An umpire sees only their own games on their **My schedule**, with their place (for example *First base*), and an administrator can look at any one umpire's schedule from the Games tab (section 34). Both show the games you assign here.
 
-**Not built yet:** umpires entering when they are available. (Confirming and declining are in section 37, umpires assigning themselves in section 38, and phone numbers on the printed schedule in section 34.)
+**Availability** (when an umpire can umpire) is in section 39. (Confirming and declining are in section 37, umpires assigning themselves in section 38, and phone numbers on the printed schedule in section 34.)
 
 **Check script:** `umpire_assignments_check.sql` tests all of the above in the database (section 6).
 
@@ -1068,3 +1073,35 @@ If nothing is offered, the section is not shown at all. If a place was taken by 
 **What an administrator sees.** The Games list shows **Confirmed (self)** after such an umpire's name; the Umpires panel says *they assigned themselves*; and the history records it. Administrators are not sent a message each time an umpire takes a game (this can be added if you want it). Reminders about unconfirmed assignments (section 37) never involve these, because they are confirmed from the start.
 
 **Check script:** `self_assignment_check.sql` tests all of the above in the database (section 6).
+
+## 39. Availability: when umpires can umpire
+
+**What it is.** Each umpire can tell the league the dates and times they **can** umpire. Schedulers then see, when assigning, who has said they are free.
+
+**How an umpire enters it.** On their **Home** page, under **My schedule**, the section **My availability** has a list of the times they have entered and a form:
+
+- **Date**, then **From** and **To** times, or tick **All day** for the whole day;
+- an optional **Note** (for example *after work*), up to 200 characters.
+
+**Add** saves it. Each entry in the list has **Change** and **Remove**. Only entries still to come are shown. An entry is one date; to be free on several days, add several entries. An entry can last at most 90 days (the database refuses anything longer, which usually means a typing slip).
+
+**How it is read.** This is the part to understand:
+
+- An umpire who has entered **some** availability is taken to be **unavailable at every other time**. Two entries that touch or overlap count as one (8 AM to 12 PM and 12 PM to 5 PM together cover a game from 9 AM to 3 PM). A game is covered only if **all** of it falls inside what they entered.
+- An umpire who has entered **nothing** (or only times that have passed) is simply **"no availability entered"**. That is not a warning: until people have filled it in, you do not know.
+
+**What administrators see.** It only **warns**; it never blocks.
+
+- In the **Umpires** panel for a game, beside each umpire's name: *not available then*, or *no availability entered* (nothing is added for an umpire who is free). A note under the choices repeats it for the umpires you have selected. You can still save.
+- On the **Games** list, a warning *Not available: Ann Lee* on a game still to come whose umpire has entered availability that does not cover it, counted in the summary (*5 with an unavailable umpire*). It also appears under **Only games with warnings**.
+- If the availability cannot be read for any reason, **none** of these appear, rather than wrong ones.
+
+**An umpire is still offered games they are not available for.** In **Games you can take** (section 38) availability is not used, as you decided. An umpire who takes a game at a time they did not mark free will show up in the warning above.
+
+**For an administrator.** Open **Administration**, **Umpire Directory**, edit the umpire: below the form is **Availability** for that umpire, where you can add, change or remove entries for them (for example after a phone call).
+
+**Privacy.** An umpire sees only their own entries. Administrators can see everyone's.
+
+**Not built yet:** repeating weekly patterns (for example "weekdays after 5 PM"). Today each entry is a single date.
+
+**Check script:** `availability_check.sql` tests the database rules (section 6).

@@ -1,4 +1,6 @@
 import { supabase } from "../supabase";
+import { groupWindows } from "./availability";
+import type { Window } from "./availability";
 import { combineContacts } from "./contacts";
 import type { ContactNumbers } from "./contacts";
 import type {
@@ -178,6 +180,50 @@ export async function loadSeasonGames(seasonId: string): Promise<{
     assignments: assignments.rows.filter((row) => ids.has(row.game_id)),
     error: null,
   };
+}
+
+// An entry of availability, as the editing screen shows it.
+export type AvailabilityRow = {
+  id: string;
+  umpire_id: string;
+  starts_at: string;
+  ends_at: string;
+  notes: string | null;
+};
+
+// Everything every umpire has said they can do that is still to come, by
+// umpire. Only administrators can read other umpires' entries. If it cannot be
+// read the answer is null (not "nobody has entered any"), so the screens show
+// no hints rather than wrong ones.
+export async function loadAvailability(): Promise<Map<string, Window[]> | null> {
+  const result = await fetchAll<AvailabilityRow>((from, to) =>
+    supabase
+      .from("umpire_availability")
+      .select("id, umpire_id, starts_at, ends_at, notes")
+      .gt("ends_at", new Date().toISOString())
+      .order("starts_at")
+      .range(from, to)
+  );
+
+  return result.error ? null : groupWindows(result.rows);
+}
+
+// One umpire's entries still to come (soonest first), for the editing screen.
+export async function loadUmpireAvailability(umpireId: string): Promise<{
+  rows: AvailabilityRow[];
+  error: string | null;
+}> {
+  const result = await fetchAll<AvailabilityRow>((from, to) =>
+    supabase
+      .from("umpire_availability")
+      .select("id, umpire_id, starts_at, ends_at, notes")
+      .eq("umpire_id", umpireId)
+      .gt("ends_at", new Date().toISOString())
+      .order("starts_at")
+      .range(from, to)
+  );
+
+  return { rows: result.rows, error: result.error };
 }
 
 // The games with these ids (asked for in groups of 100 so each request stays short).

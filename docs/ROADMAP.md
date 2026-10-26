@@ -35,8 +35,10 @@ whenever the league's needs change.
   and parent's numbers) is built, tested, and in use.
 - Stage **5b-2b** (umpires assigning themselves) is built and tested here. Its
   database change is waiting for its first run on your own test database.
-- What remains of Phase 5 is **5c**, further assignment rules. Phase 6, umpires
-  entering their availability, is the next major piece.
+- Phase 6 (umpires entering their availability) is built and tested here. Its
+  database change is waiting for its first run on your own test database.
+- What remains of Phase 5 is **5c**, further assignment rules. After that, Phase 7
+  (notifications and sending email) is the next major piece.
 
 ---
 
@@ -134,10 +136,15 @@ whenever the league's needs change.
 - More rules for self-assigning
 - Warnings for assignments that are still unconfirmed close to game time
 
-### Phase 6: Availability ⬜
+### Phase 6: Availability ✅ *(built and tested; the database change has not yet had its first run on your database)*
 
-- Umpires enter when they can and cannot umpire
-- The assignment screen uses it to show who is available
+- Umpires enter the dates and times they CAN umpire (one date at a time, or all day);
+  administrators can enter them for any umpire
+- Someone who has entered some availability counts as unavailable at other times;
+  someone who has entered none is shown as "no availability entered"
+- The assignment screen and the Games list warn when an umpire is not available (a warning
+  only, never a block); umpires are still offered games to take whatever their availability
+- Later: weekly patterns such as "weekdays after 5 PM"
 
 ### Phase 7: Notifications and sending email ⬜
 
@@ -229,6 +236,9 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 - **Phone numbers on printouts:** an option, for administrators; for a youth umpire,
   both their own and a parent's number (the emergency contact on their record, until
   parents have accounts of their own).
+- **Availability:** umpires list when they CAN umpire, as one-off dates and times (weekly
+  patterns may come later). Being unavailable only warns administrators; the game is still
+  offered to the umpire in "Games you can take".
 - **Self-assigning:** an administrator turns it on for each division, and can turn it off
   for any single umpire. An umpire cannot take a game that overlaps one of their own, and
   the league can set a limit on how many upcoming games an umpire can take for themselves

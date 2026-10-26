@@ -1764,3 +1764,64 @@ input[type="radio"] {
   background: #e6f2ea;
   box-shadow: inset 0 -3px 0 #1b6b3a;
 }
+
+/* ---- Availability ---- */
+.av-callout {
+  margin: 8px 0 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #8a4b00;
+  background: #fff1d6;
+}
+
+.availability {
+  margin-top: 24px;
+}
+
+.availability-admin {
+  margin-top: 28px;
+  padding-top: 8px;
+  border-top: 1px solid #d6ddd8;
+}
+
+.av-list {
+  margin: 8px 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.av-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e3e8e5;
+}
+
+.av-when {
+  flex: 1 1 220px;
+}
+
+.av-note {
+  display: block;
+  color: #3d4a42;
+  font-size: 0.9rem;
+}
+
+.av-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.av-actions button {
+  width: auto;
+  margin: 0;
+}
+
+/* Warning: an umpire on the game said they can umpire, but not then */
+.game-warning-unavailable {
+  color: #8a4b00;
+  background: #fff1d6;
+}

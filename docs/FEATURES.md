@@ -84,6 +84,16 @@ test on the league's own database.
 - Who made each assignment is recorded
 - Super admins, umpire chiefs and schedulers can assign umpires
 
+**Availability** 🆕
+
+- Each umpire can enter the dates and times they **can** umpire (one date at a time, or all day, with an optional note), change or remove them, and see them listed soonest first
+- An administrator can enter, change or remove availability for any umpire from that umpire's record
+- An umpire sees only their own entries; administrators see everyone's
+- An umpire who has entered some availability is taken to be unavailable at other times; one who has entered none is shown as "no availability entered" (never a warning)
+- In the assignment panel, each umpire is marked *not available then* or *no availability entered*, and a note names a selected umpire who is not available. It is a warning only: the assignment can still be saved
+- The Games list warns "Not available: Ann Lee" for a game whose umpire has entered availability that does not cover it, counted in the summary
+- Games an umpire can take for themselves are still offered whatever their availability
+
 **Umpires assigning themselves** 🆕
 
 - An administrator turns this on for a division (it is off to begin with), and can turn it off for any one umpire (it is on to begin with)

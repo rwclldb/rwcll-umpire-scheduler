@@ -1,5 +1,8 @@
 import { supabase } from "../supabase";
 import { escapeHtml } from "../ui";
+import { availabilityFor } from "./availability";
+import type { Window } from "./availability";
+import { loadAvailability } from "./data";
 import { formatTime } from "./format";
 import {
   MAX_UMPIRES,
@@ -60,6 +63,9 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
   // set when an administrator records a confirmation, so the list is refreshed when the panel closes
   let statusChanged = false;
 
+  // what each umpire has said they can do (null until it is loaded, or if it cannot be)
+  let availability: Map<string, Window[]> | null = null;
+
   // who the age rule does not allow on this game, and what could not be checked
   let eligibility = new Map<string, Eligibility>();
 
@@ -102,6 +108,10 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
   const nameOf = (id: string) =>
     context.umpires.find((item) => item.id === id)?.name ?? context.umpireNames.get(id) ?? "An umpire";
 
+  // Whether this umpire said they can umpire at this game's time.
+  const availabilityOf = (umpireId: string) =>
+    availability ? availabilityFor(game, availability.get(umpireId) ?? []) : null;
+
   const gamesText = (n: number) => `${n} ${n === 1 ? "game" : "games"}`;
 
   // The choices for one place: open, or any active umpire (with how many
@@ -124,6 +134,7 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
           `${umpire.eligibility !== "active" ? " (not active)" : ""}` +
           ` \u00b7 ${gamesText(workload(umpire.id, options.games, options.assignments))}` +
           `${busy ? " \u00b7 busy at this time" : ""}` +
+          `${availabilityOf(umpire.id) === "unavailable" ? " \u00b7 not available then" : availabilityOf(umpire.id) === "none" ? " \u00b7 no availability entered" : ""}` +
           `${blocked ? " \u00b7 age rule" : ""}`;
         return `<option value="${escapeHtml(umpire.id)}" ${umpire.id === choose ? "selected" : ""} ${blocked ? "disabled" : ""}>${escapeHtml(label)}</option>`;
       }).join("")}
@@ -145,6 +156,10 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
             `${formatTime(other.starts_at)} (${options.fieldName(other.location_id)}), ` +
             `which overlaps this game.`,
         });
+      }
+
+      if (availabilityOf(umpireId) === "unavailable") {
+        lines.push({ kind: "warn", text: `${nameOf(umpireId)} has not said they can umpire at this time.` });
       }
 
       const found = eligibility.get(umpireId);
@@ -222,6 +237,12 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
     );
 
     if (container.contains(form)) drawSlots();
+  })();
+
+  // What each umpire has said they can do (administrators can read it all).
+  void (async () => {
+    availability = await loadAvailability();
+    if (availability && container.contains(form)) drawSlots();
   })();
 
   neededSelect.addEventListener("change", () => {
