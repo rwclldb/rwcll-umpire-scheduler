@@ -4,7 +4,17 @@ import { supabase } from "../supabase";
 import type { SetupRecord } from "./types";
 import { escapeHtml } from "../ui";
 
-export function renderLeagues(leagues: SetupRecord[]): string {
+// A league as the League Setup screen holds it. The warning period is read
+// with the league; it is missing only from places that do not need it.
+type League = SetupRecord & { unconfirmed_warning_days?: number };
+
+function unconfirmedText(days: number): string {
+  return days === 0
+    ? "No warning about unconfirmed assignments"
+    : `Warns about unconfirmed assignments ${days} ${days === 1 ? "day" : "days"} before a game`;
+}
+
+export function renderLeagues(leagues: League[]): string {
   const items = leagues.length
     ? `<ul class="setup-list">${leagues.map((league) => `
         <li class="season-item">
@@ -13,6 +23,7 @@ export function renderLeagues(leagues: SetupRecord[]): string {
             <span class="setup-status">
               ${league.is_active ? "Active" : "Inactive"}
             </span>
+            <p class="season-dates">${unconfirmedText(league.unconfirmed_warning_days ?? 7)}</p>
           </div>
           <button type="button"
             class="secondary-button season-edit-button"
@@ -37,7 +48,7 @@ export function renderLeagues(leagues: SetupRecord[]): string {
   `;
 }
 
-export function renderLeagueForm(league: SetupRecord | null): string {
+export function renderLeagueForm(league: League | null): string {
   const name = league?.name ?? "";
   const active = league?.is_active ?? true;
 
@@ -55,6 +66,15 @@ export function renderLeagueForm(league: SetupRecord | null): string {
           ${active ? "checked" : ""} />
         Active league
       </label>
+
+      <label for="league-unconfirmed-days">Warn about unconfirmed assignments (days before a game)</label>
+      <input id="league-unconfirmed-days" name="unconfirmed_warning_days"
+        type="number" min="0" max="60" step="1" inputmode="numeric"
+        value="${league?.unconfirmed_warning_days ?? 7}" />
+      <p class="season-dates">
+        When an umpire has still not confirmed an assignment this many days
+        before the game, the administrators are warned. Use 0 for no warning.
+      </p>
       ${league
         ? `<button id="delete-league-button" type="button"
             class="secondary-button">
@@ -117,6 +137,17 @@ export function wireLeagueForm(container: HTMLElement): void {
       return;
     }
 
+    const daysText = String(data.get("unconfirmed_warning_days") ?? "").trim();
+    const days = Number(daysText);
+
+    if (daysText === "" || !Number.isInteger(days) || days < 0 || days > 60) {
+      if (message) {
+        message.textContent = "Enter a whole number of days from 0 to 60 for the unconfirmed-assignment warning.";
+        message.className = "message error";
+      }
+      return;
+    }
+
     const saveButton = form.querySelector<HTMLButtonElement>(
       'button[type="submit"]',
     );
@@ -125,7 +156,7 @@ export function wireLeagueForm(container: HTMLElement): void {
       saveButton.textContent = "Saving…";
     }
 
-    const values = { name, is_active: isActive };
+    const values = { name, is_active: isActive, unconfirmed_warning_days: days };
 
     const result = state.editingLeagueId
       ? await supabase.from("leagues")

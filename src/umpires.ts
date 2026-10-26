@@ -842,12 +842,12 @@ async function showEditForm(umpireId: string) {
         value="${escapeHtml(privateDetails?.birth_date ?? "")}">
       <p id="edit-age-hint" class="season-dates"></p>
 
-      <label for="edit-emergency-contact-name">Emergency Contact Name</label>
+      <label for="edit-emergency-contact-name">Emergency Contact Name (for a youth umpire: a parent or guardian)</label>
       <input id="edit-emergency-contact-name"
         name="emergency_contact_name"
         value="${escapeHtml(privateDetails?.emergency_contact_name ?? "")}">
 
-      <label for="edit-emergency-contact-phone">Emergency Contact Phone</label>
+      <label for="edit-emergency-contact-phone">Emergency Contact Phone (printed as the parent's number for a youth umpire)</label>
       <input id="edit-emergency-contact-phone"
         name="emergency_contact_phone"
         value="${escapeHtml(privateDetails?.emergency_contact_phone ?? "")}">

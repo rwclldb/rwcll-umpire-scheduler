@@ -47,10 +47,26 @@ export type UmpireOption = {
   eligibility: "active" | "inactive" | "suspended";
 };
 
+export type AssignmentStatus = "assigned" | "confirmed";
+
 export type Assignment = {
   game_id: string;
   position: Position;
   umpire_id: string;
+  // "assigned": an administrator made it and the umpire has not answered;
+  // "confirmed": the umpire (or an administrator for them) confirmed it
+  status: AssignmentStatus;
+  self_assigned: boolean;
+  confirmed_at: string | null;
+};
+
+// An umpire gave a place up (kept so administrators can see it was declined).
+export type Decline = {
+  game_id: string;
+  umpire_id: string;
+  position: Position;
+  note: string | null;
+  created_at: string;
 };
 
 // Everything the Games screens need to show names and fill drop-downs.
@@ -61,4 +77,6 @@ export type GamesContext = {
   locations: LocationOption[];
   umpireNames: Map<string, string>;
   umpires: UmpireOption[];
+  // league id -> how many days before a game an unconfirmed assignment is warned about (0 = never)
+  unconfirmedDays: Map<string, number>;
 };

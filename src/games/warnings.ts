@@ -4,7 +4,7 @@ import { openPlaces } from "./staffing";
 import type { Position } from "./staffing";
 
 export type Warning = {
-  kind: "no_umpire" | "short_staffed" | "field_conflict" | "team_conflict";
+  kind: "no_umpire" | "short_staffed" | "unconfirmed" | "field_conflict" | "team_conflict";
   text: string;
 };
 
@@ -22,6 +22,11 @@ export type WarningInput = {
   neededFor?: (game: Game) => number;
   // Which positions are filled, so a short-staffed game can say which is missing.
   assignedPositions?: Map<string, Partial<Record<Position, string>>>;
+  // For the "still not confirmed" warning: the names of the umpires on each
+  // game who have not confirmed yet, and how many days ahead of a game to warn
+  // (0 or missing: never).
+  unconfirmedNames?: Map<string, string[]>;
+  unconfirmedDaysFor?: (game: Game) => number;
 };
 
 // A game with its start and end as plain numbers, worked out once.
@@ -43,6 +48,8 @@ type Found = { count: number; lines: string[] };
 //  - no umpire: a game that needs umpires, still to be played (today or
 //    later), with nobody assigned
 //  - short staffed: some umpires are assigned, but fewer than the game needs
+//  - unconfirmed: a game coming up within its league's warning period still has
+//    umpires who have not confirmed (any other warning stays too)
 //  - field conflict: another game at the same field at an overlapping time
 //  - team conflict: a team is in another game at an overlapping time
 // Two games overlap when each starts before the other ends, so a game that
@@ -87,6 +94,27 @@ export function computeWarnings(input: WarningInput): Map<string, Warning[]> {
           : positions ? `Needs ${missing} more umpires`
           : "Needs another umpire",
       }]);
+    }
+  }
+
+  // ---- assignments still waiting for the umpire to confirm, shortly before the game
+  if (input.unconfirmedNames && input.unconfirmedDaysFor) {
+    const nowMs = input.now.getTime();
+
+    for (const { game, start } of timed) {
+      if (!needsAttention(game) || start <= nowMs) continue;
+
+      const days = input.unconfirmedDaysFor(game);
+      if (!(days > 0) || start - nowMs > days * 86_400_000) continue;
+
+      const names = input.unconfirmedNames.get(game.id) ?? [];
+      if (names.length === 0) continue;
+
+      const shown = names.slice(0, 3).join(", ");
+      const more = names.length > 3 ? ` and ${names.length - 3} more` : "";
+      const list = result.get(game.id) ?? [];
+      list.push({ kind: "unconfirmed", text: `Not confirmed yet: ${shown}${more}` });
+      result.set(game.id, list);
     }
   }
 

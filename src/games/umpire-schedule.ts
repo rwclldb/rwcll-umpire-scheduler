@@ -18,7 +18,17 @@ import type { GamesContext } from "./types";
 // at themselves.
 export function renderScheduleView(
   container: HTMLElement,
-  options: { umpireName: string; items: UmpireGame[]; emptyText: string }
+  options: {
+    umpireName: string;
+    items: UmpireGame[];
+    emptyText: string;
+    // When given (an umpire looking at their own games), games still waiting
+    // for an answer get Confirm and Decline buttons. It returns an error
+    // message, or null when it worked.
+    onAnswer?: (gameId: string, action: "confirm" | "decline", reason: string) => Promise<string | null>;
+    // Called after a successful answer, so the screen can be drawn again.
+    onAnswered?: (message: string) => void;
+  }
 ): void {
   const { umpireName, items } = options;
   const today = localDateKey(new Date().toISOString());
@@ -40,7 +50,9 @@ export function renderScheduleView(
       </div>
 
       <p id="sv-summary" class="game-summary" role="status" aria-live="polite"></p>
+      <p id="sv-message" class="message" role="status" aria-live="polite"></p>
       <div id="sv-list"></div>
+      <div id="sv-decline"></div>
 
       <div class="account-actions">
         <button id="sv-print" class="primary-button" type="button">Print this schedule</button>
@@ -74,6 +86,81 @@ export function renderScheduleView(
       : "All dates";
   };
 
+  // Whether this umpire can still answer for the game (it has not started and is not canceled).
+  const canAnswer = (game: UmpireGame) =>
+    Boolean(options.onAnswer) && game.status !== "canceled" && Date.parse(game.startsAt) > Date.now();
+
+  const statusCell = (game: UmpireGame): string => {
+    if (game.status === "canceled") return "&mdash;";
+    if (game.myStatus === "confirmed") return `<span class="sv-status sv-status-confirmed">Confirmed</span>`;
+
+    if (canAnswer(game)) {
+      return `<span class="sv-status sv-status-pending">Needs your answer</span>
+        <div class="sv-actions">
+          <button type="button" class="primary-button" data-sv-confirm="${escapeHtml(game.id)}">Confirm</button>
+          <button type="button" class="secondary-button" data-sv-decline="${escapeHtml(game.id)}">Decline</button>
+        </div>`;
+    }
+
+    return `<span class="sv-status sv-status-assigned">Assigned</span>`;
+  };
+
+  const say = (text: string, kind: "error" | "success" = "error") => {
+    const element = get<HTMLElement>("sv-message");
+    element.textContent = text;
+    element.className = text ? `message ${kind}` : "message";
+  };
+
+  // Sends the answer; true when it worked.
+  const answer = async (gameId: string, action: "confirm" | "decline", reason: string): Promise<boolean> => {
+    say("");
+    const problem = await options.onAnswer!(gameId, action, reason);
+
+    if (problem) {
+      say(problem);
+      return false;
+    }
+
+    options.onAnswered?.(
+      action === "confirm"
+        ? "Thank you. You have confirmed this game."
+        : "You have declined this game, and the administrators have been told."
+    );
+    return true;
+  };
+
+  const askToDecline = (game: UmpireGame) => {
+    const holder = get<HTMLElement>("sv-decline");
+    holder.innerHTML = `
+      <section class="importer sv-decline-panel">
+        <h3>Decline this game?</h3>
+        <p class="directory-description">
+          ${escapeHtml(game.home)} vs ${escapeHtml(game.away)}<br>
+          ${escapeHtml(formatDate(game.startsAt))}, ${escapeHtml(game.time)} (${escapeHtml(game.position)}, ${escapeHtml(game.field)})
+        </p>
+        <label for="sv-reason">Reason (optional)</label>
+        <textarea id="sv-reason" rows="3" maxlength="500"></textarea>
+        <div class="account-actions">
+          <button id="sv-decline-go" class="primary-button" type="button">Decline this game</button>
+          <button id="sv-decline-keep" class="secondary-button" type="button">Keep it</button>
+        </div>
+      </section>
+    `;
+
+    holder.querySelector("#sv-decline-keep")?.addEventListener("click", () => {
+      holder.innerHTML = "";
+    });
+
+    holder.querySelector<HTMLButtonElement>("#sv-decline-go")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget as HTMLButtonElement;
+      button.disabled = true;
+      const reason = holder.querySelector<HTMLTextAreaElement>("#sv-reason")!.value;
+      if (!(await answer(game.id, "decline", reason))) button.disabled = false;
+    });
+
+    holder.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+
   const render = () => {
     const list = shown();
     const summary = get<HTMLElement>("sv-summary");
@@ -96,7 +183,7 @@ export function renderScheduleView(
       <div class="table-scroll">
         <table class="umpire-table imp-table" aria-label="Schedule">
           <thead>
-            <tr><th>Date</th><th>Time</th><th>Position</th><th>Field</th><th>Game</th><th>Division</th></tr>
+            <tr><th>Date</th><th>Time</th><th>Position</th><th>Field</th><th>Game</th><th>Division</th><th>Status</th></tr>
           </thead>
           <tbody>
             ${list.map((game) => `
@@ -107,6 +194,7 @@ export function renderScheduleView(
                 <td data-label="Field" class="sv-field">${escapeHtml(game.field)}${game.address ? `<br><span class="game-where">${escapeHtml(game.address)}</span>` : ""}</td>
                 <td data-label="Game" class="sv-game">${escapeHtml(game.home)} vs ${escapeHtml(game.away)}${game.status === "canceled" ? " (canceled)" : ""}</td>
                 <td data-label="Division" class="sv-division">${escapeHtml(game.division)}</td>
+                <td data-label="Status" class="sv-status-cell">${statusCell(game)}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -114,6 +202,25 @@ export function renderScheduleView(
       </div>
     `;
   };
+
+  get<HTMLElement>("sv-list").addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+
+    const confirm = target.closest<HTMLButtonElement>("[data-sv-confirm]");
+    if (confirm) {
+      confirm.disabled = true;
+      void answer(confirm.dataset.svConfirm!, "confirm", "").then((ok) => {
+        if (!ok) confirm.disabled = false;
+      });
+      return;
+    }
+
+    const decline = target.closest<HTMLButtonElement>("[data-sv-decline]");
+    if (decline) {
+      const game = items.find((item) => item.id === decline.dataset.svDecline);
+      if (game) askToDecline(game);
+    }
+  });
 
   for (const id of ["sv-from", "sv-to", "sv-canceled"]) {
     get<HTMLElement>(id).addEventListener("change", render);

@@ -67,6 +67,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 34. [Printing and exporting schedules](#34-printing-and-exporting-schedules)
 35. [Colors and appearance](#35-colors-and-appearance)
 36. [Assigning umpires, and how many a game needs](#36-assigning-umpires-and-how-many-a-game-needs)
+37. [Confirming, declining and reminders](#37-confirming-declining-and-reminders)
 
 ---
 
@@ -188,6 +189,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
+| `assignment_confirmation_check.sql` | Confirming, declining, the history, the queued messages and the "still unconfirmed" warning work (an umpire can answer only for themselves; a decline frees the place and tells the administrators; the warning is queued once per assignment and respects the league's number of days; nobody can edit the history) | `Failures: 0` |
 | `umpire_assignments_check.sql` | The umpires-per-game settings, the places (plate to third base) and the assignment rules work (0 to 4 umpires; tournament numbers; active umpires only; nobody on a canceled game; the youth age rule; swaps work; a refused change saves nothing; only scheduling admins can assign) | `Failures: 0` |
 | `import_season_check.sql` | Creating a season from a file works and is all-or-nothing (a refused import saves nothing; only scheduling admins can run it) | `Failures: 0` |
 | `import_games_check.sql` | The spreadsheet import works and is all-or-nothing (a failed import saves nothing; only scheduling admins can run it) | `Failures: 0` |
@@ -425,6 +427,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
+| `supabase\tests\assignment_confirmation_check.sql` | Tests confirming, declining, the history, the queued messages and the unconfirmed warning (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\umpire_assignments_check.sql` | Tests the umpires-per-game settings, the places, the youth age rule and the assignment rules (builds its own tiny league, umpires and age chart; your data is not used) | No (always rolls back) |
 | `supabase\tests\import_season_check.sql` | Tests the season import function (builds its own tiny leagues; your data is not used) | No (always rolls back) |
 | `supabase\tests\import_games_check.sql` | Tests the spreadsheet import function (builds its own tiny league; your data is not used) | No (always rolls back) |
@@ -523,7 +526,7 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts` (assigning umpires; with the ten below, seventeen files in all) | `src\games` |
@@ -890,6 +893,17 @@ On paper, an umpire spot that is still empty is boxed and marked **OPEN**, so it
 
 **Times** are shown in the time zone of the computer doing the printing.
 
+### Printing with phone numbers
+
+Under the filters there is a checkbox, **When printing, include phone numbers**. It is **off** each time you open the Games tab (it is never remembered, on purpose), and it affects the **printout only**; the spreadsheet download never includes phone numbers.
+
+- With it on, each umpire's number follows their name: *Plate: Ann Lee · 650-555-1234*.
+- A **youth umpire** shows both numbers: *Own 650-555-1111 · Parent 408-555-2222*. The parent's number is the **Emergency Contact Phone** on the umpire's record, so for a youth umpire, enter a parent or guardian there (the form says so).
+- Someone with a sign-in account shows the **account's** phone number; the phone on the umpire record is used only when there is no account number.
+- An umpire with no number anywhere shows *no phone on file*, so the gap is easy to spot before the schedule is handed out.
+- The page says *Includes private phone numbers: keep this page private*. Only scheduling administrators can print numbers; an umpire's own schedule never shows anyone else's.
+- The numbers are looked up when you press Print, only for the umpires on the printed games. If they cannot be looked up, **nothing is printed** and the reason is shown, so you never get a printout that quietly lacks numbers.
+
 ## 35. Colors and appearance
 
 The app uses the league colors: **forest green, black and white**, with neutral grays. The white button text and the green links all pass the standard contrast test (the textbook "forest green" `#228b22` does not, so a slightly deeper green is used).
@@ -963,6 +977,46 @@ Who made each assignment is recorded.
 
 **One umpire's own view.** An umpire sees only their own games on their **My schedule**, with their place (for example *First base*), and an administrator can look at any one umpire's schedule from the Games tab (section 34). Both show the games you assign here.
 
-**Not built yet:** umpires assigning themselves, umpires confirming an assignment, phone numbers on the printed schedule, and umpires entering when they are available.
+**Not built yet:** umpires assigning themselves, phone numbers on the printed schedule, and umpires entering when they are available. (Confirming and declining are described in section 37.)
 
 **Check script:** `umpire_assignments_check.sql` tests all of the above in the database (section 6).
+
+## 37. Confirming, declining and reminders
+
+**What the statuses mean.** Every assignment is **Assigned** (an administrator made it and the umpire has not answered yet) or **Confirmed**. The games list shows the status after each umpire's name. Assignments that existed before this feature all start as Assigned; an administrator can mark them confirmed, so expect one batch of reminders the first time (see below).
+
+**What an umpire does.** On their **Home** page, **My schedule** says how many games are waiting for their answer. Each such game has two buttons:
+
+- **Confirm:** the game shows Confirmed.
+- **Decline:** asks first, with an optional reason (up to 500 characters). Declining removes the umpire from the game, so the place is **open** again, and the administrators are told. An umpire can decline up to the moment the game starts; after that they must contact an administrator. They can decline even after confirming.
+
+An umpire can only answer for themselves, and only through these buttons. A game that has been played, or canceled, shows no buttons.
+
+**What an administrator sees**
+
+- The status beside each umpire on the Games list, and a count in the summary (*4 not confirmed yet*).
+- A note on the Games list when someone gave a place up: *Declined: Ann Lee (Plate, Tue, Oct 27)*. It stays while the game is still to come and the umpire is not back on it.
+- In the **Umpires** panel for a game, each umpire's status. **Mark as confirmed** records a confirmation that came another way (for example by phone). It is recorded in the history as an administrator's doing.
+- If you change other places on a game, an umpire who stays on it **keeps their confirmation**, even if they move to another place. Someone newly added starts as Assigned.
+
+**The warning about unconfirmed assignments**
+
+- A game coming up with umpires who have not confirmed shows *Not confirmed yet: Ann Lee, Bob Ray* (three names, then "and 2 more").
+- How many days ahead is a setting for each league, in **League Setup** (edit the league). It starts at **7**. **0 turns the warning off.**
+- Opening the **Games** tab also checks once for assignments that have newly come within the warning period, and queues **one message for each administrator** listing them. Each assignment is included only once, so the same warning is never queued twice. A message says so on the Games tab when it queues one.
+- The message goes out when an administrator opens the Games tab, because nothing runs on a timer yet. Sending reminders on a schedule comes with real email sending (see the roadmap).
+
+**Messages the system queues** (they wait in the Outbox, section 28; nothing is emailed yet)
+
+| When | To | Kind |
+|---|---|---|
+| An umpire is assigned to a game | That umpire ("You have been assigned...") | assignment |
+| An umpire is taken off a game | That umpire | schedule change |
+| An umpire declines | Every super admin, umpire chief and scheduler | schedule change |
+| Assignments are still unconfirmed shortly before the game | Every super admin, umpire chief and scheduler | reminder |
+
+An umpire's message goes to the email on their account, or to the email on their umpire record if they have no account. If an umpire has no usable email, nothing is queued and the assignment still works. Only super admins and umpire chiefs see the Outbox screen.
+
+**The history.** Every assignment, confirmation, decline and removal is recorded with who did it and when (and the reason, for a decline). Only scheduling administrators can read it, and nobody can change it by hand. A report from it is planned, and it will support payments later.
+
+**Check script:** `assignment_confirmation_check.sql` tests all of the above in the database (section 6).

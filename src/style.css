@@ -1594,3 +1594,99 @@ input[type="radio"] {
 .assign-clashes li {
   margin: 6px 0;
 }
+
+/* ---- Confirming and declining assignments ---- */
+
+/* Games list: whether each umpire has confirmed */
+.game-status {
+  font-size: 0.85em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.game-status-confirmed {
+  color: #1b6b3a;
+}
+
+.game-status-assigned {
+  color: #8a4b00;
+}
+
+/* Games list: someone gave a place up */
+.game-declined {
+  display: inline-block;
+  margin-top: 2px;
+  color: #9b2c25;
+  font-size: 0.85em;
+}
+
+/* Warning: umpires who have not confirmed shortly before the game */
+.game-warning-unconfirmed {
+  color: #8a4b00;
+  background: #fff1d6;
+}
+
+/* Assignment panel: each umpire's status */
+.assign-status {
+  margin: 4px 0 10px;
+  font-size: 0.9rem;
+}
+
+.assign-status-confirmed {
+  color: #1b6b3a;
+  font-weight: 600;
+}
+
+.assign-status-assigned {
+  color: #8a4b00;
+}
+
+.assign-confirm {
+  width: auto;
+  margin: 4px 0 0 8px;
+}
+
+/* An umpire's own schedule: what needs an answer */
+.my-pending {
+  margin: 8px 0 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #8a4b00;
+  background: #fff1d6;
+}
+
+.sv-status {
+  font-weight: 600;
+}
+
+.sv-status-confirmed {
+  color: #1b6b3a;
+}
+
+.sv-status-pending,
+.sv-status-assigned {
+  color: #8a4b00;
+}
+
+.sv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.sv-actions button {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+}
+
+.sv-decline-panel textarea {
+  width: 100%;
+}
+
+/* Phone numbers on the printed schedule */
+.print-phone {
+  font-size: 0.92em;
+  white-space: nowrap;
+}
