@@ -507,14 +507,27 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   };
 
   const queueReminders = async (): Promise<void> => {
-    const { data, error } = await supabase.rpc("queue_unconfirmed_warnings");
-    if (error) {
-      console.error("Reminder check failed:", error.message);
-      return;
+    // Two things are queued for the administrators when they open this tab
+    // (nothing runs on a timer yet): the reminder about assignments that are
+    // still unconfirmed, and the summary of games umpires took for
+    // themselves on days that have ended.
+    const [reminders, summary] = await Promise.all([
+      supabase.rpc("queue_unconfirmed_warnings"),
+      supabase.rpc("queue_self_assign_digest"),
+    ]);
+    if (reminders.error) console.error("Reminder check failed:", reminders.error.message);
+    if (summary.error) console.error("Self-assigned summary failed:", summary.error.message);
+
+    const parts: string[] = [];
+    const unconfirmed = reminders.data;
+    const taken = summary.data;
+    if (typeof unconfirmed === "number" && unconfirmed > 0) {
+      parts.push(`A reminder about ${unconfirmed} unconfirmed ${unconfirmed === 1 ? "assignment" : "assignments"} was queued for the administrators.`);
     }
-    if (typeof data === "number" && data > 0) {
-      say(`A reminder about ${data} unconfirmed ${data === 1 ? "assignment" : "assignments"} was queued for the administrators.`);
+    if (typeof taken === "number" && taken > 0) {
+      parts.push(`A summary of ${taken} ${taken === 1 ? "game" : "games"} umpires took for themselves was queued for the administrators.`);
     }
+    if (parts.length > 0) say(parts.join(" "));
   };
 
   // ------------------------------------------------------------- the form

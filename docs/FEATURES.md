@@ -84,6 +84,15 @@ test on the league's own database.
 - Who made each assignment is recorded
 - Super admins, umpire chiefs and schedulers can assign umpires
 
+**Further assignment rules** 🆕
+
+- An administrator can record which division a youth umpire plays in (on their record). That division is then off limits to them, however the assignment is made
+- With nothing recorded, a youth umpire is also kept off any division whose ages include theirs, worked out from their birth date and the season's age chart
+- An adult umpire is never affected
+- The assignment panel marks such an umpire "their own division" and says why
+- When an umpire takes a game for themselves, the administrators are told through the Outbox: straight away if the game starts within 48 hours, otherwise in one summary message for each day
+- The daily summaries are queued when an administrator opens the Games tab (nothing runs on a timer yet); each game is told about once
+
 **Availability** 🆕
 
 - Each umpire can enter the dates and times they **can** umpire (one date at a time, or all day, with an optional note), change or remove them, and see them listed soonest first
