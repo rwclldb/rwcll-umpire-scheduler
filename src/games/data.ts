@@ -1,4 +1,6 @@
 import { supabase } from "../supabase";
+import { combineContacts } from "./contacts";
+import type { ContactNumbers } from "./contacts";
 import type {
   Assignment,
   DivisionOption,
@@ -7,6 +9,7 @@ import type {
   LocationOption,
   SeasonOption,
   TeamOption,
+  Decline,
   UmpireOption,
 } from "./types";
 
@@ -48,7 +51,7 @@ export async function loadContext(): Promise<{
   context: GamesContext | null;
   error: string | null;
 }> {
-  const [seasons, divisions, teams, locations, umpires] = await Promise.all([
+  const [seasons, divisions, teams, locations, umpires, leagues] = await Promise.all([
     supabase.from("seasons").select("id, name, is_active, starts_on"),
     supabase.from("divisions").select("id, name, is_active, league_id, umpires_per_game, tournament_umpires").order("name"),
     fetchAll<TeamOption>((from, to) =>
@@ -66,6 +69,7 @@ export async function loadContext(): Promise<{
         .order("id")
         .range(from, to)
     ),
+    supabase.from("leagues").select("id, unconfirmed_warning_days"),
   ]);
 
   const failure =
@@ -73,7 +77,8 @@ export async function loadContext(): Promise<{
     divisions.error?.message ??
     teams.error ??
     locations.error?.message ??
-    umpires.error;
+    umpires.error ??
+    leagues.error?.message;
 
   if (failure) return { context: null, error: failure };
 
@@ -108,9 +113,32 @@ export async function loadContext(): Promise<{
               : "active",
         })
       ),
+      unconfirmedDays: new Map(
+        ((leagues.data ?? []) as { id: string; unconfirmed_warning_days: number | null }[]).map(
+          (row): [string, number] => [row.id, row.unconfirmed_warning_days ?? 7]
+        )
+      ),
     },
     error: null,
   };
+}
+
+const ASSIGNMENT_COLUMNS = "game_id, position, umpire_id, status, self_assigned, confirmed_at";
+
+// Places umpires have given up (newest first). Only administrators can read
+// this; if it cannot be read the answer is simply "none", because it only adds
+// a hint to the list.
+export async function loadDeclines(): Promise<Decline[]> {
+  const result = await fetchAll<Decline>((from, to) =>
+    supabase
+      .from("game_assignment_events")
+      .select("game_id, umpire_id, position, note, created_at")
+      .eq("event", "declined")
+      .order("created_at", { ascending: false })
+      .range(from, to)
+  );
+
+  return result.error ? [] : result.rows;
 }
 
 // All the games of one season, and the umpire assignments for them.
@@ -133,7 +161,7 @@ export async function loadSeasonGames(seasonId: string): Promise<{
   const assignments = await fetchAll<Assignment>((from, to) =>
     supabase
       .from("game_assignments")
-      .select("game_id, position, umpire_id")
+      .select(ASSIGNMENT_COLUMNS)
       .order("game_id")
       .order("position")
       .range(from, to)
@@ -152,6 +180,69 @@ export async function loadSeasonGames(seasonId: string): Promise<{
   };
 }
 
+// The phone numbers of these umpires, for a printed schedule: the account's
+// phone (else the one on the umpire record) and, for a youth umpire, the
+// emergency contact's. Only scheduling administrators can read these, and this
+// is called only when someone asks to print with phone numbers.
+export async function loadContactNumbers(umpireIds: string[]): Promise<{
+  contacts: Map<string, ContactNumbers>;
+  error: string | null;
+}> {
+  const ids = [...new Set(umpireIds)];
+  const contacts = new Map<string, ContactNumbers>();
+
+  // Asked for in groups of 100 so each request stays short.
+  for (let start = 0; start < ids.length; start += 100) {
+    const group = ids.slice(start, start + 100);
+
+    const umpires = await supabase
+      .from("umpires")
+      .select("id, profile_id, phone, classification")
+      .in("id", group);
+    if (umpires.error) return { contacts: new Map(), error: umpires.error.message };
+
+    const rows = (umpires.data ?? []) as {
+      id: string;
+      profile_id: string | null;
+      phone: string | null;
+      classification: string;
+    }[];
+
+    const profileIds = rows.map((row) => row.profile_id).filter((id): id is string => Boolean(id));
+    const youthIds = rows.filter((row) => row.classification === "youth").map((row) => row.id);
+
+    const accounts = profileIds.length
+      ? await supabase.from("account_contact").select("profile_id, phone").in("profile_id", profileIds)
+      : { data: [], error: null };
+    if (accounts.error) return { contacts: new Map(), error: accounts.error.message };
+
+    const parents = youthIds.length
+      ? await supabase
+          .from("umpire_private_details")
+          .select("umpire_id, emergency_contact_phone")
+          .in("umpire_id", youthIds)
+      : { data: [], error: null };
+    if (parents.error) return { contacts: new Map(), error: parents.error.message };
+
+    const accountPhones = new Map(
+      ((accounts.data ?? []) as { profile_id: string; phone: string | null }[]).map(
+        (row): [string, string | null] => [row.profile_id, row.phone]
+      )
+    );
+    const parentPhones = new Map(
+      ((parents.data ?? []) as { umpire_id: string; emergency_contact_phone: string | null }[]).map(
+        (row): [string, string | null] => [row.umpire_id, row.emergency_contact_phone]
+      )
+    );
+
+    for (const [id, value] of combineContacts(rows, accountPhones, parentPhones)) {
+      contacts.set(id, value);
+    }
+  }
+
+  return { contacts, error: null };
+}
+
 // Every game one umpire is assigned to, across all seasons. An umpire can read
 // only their own assignments, so this works for the umpire themselves and for
 // administrators.
@@ -163,7 +254,7 @@ export async function loadUmpireGames(umpireId: string): Promise<{
   const assignments = await fetchAll<Assignment>((from, to) =>
     supabase
       .from("game_assignments")
-      .select("game_id, position, umpire_id")
+      .select(ASSIGNMENT_COLUMNS)
       .eq("umpire_id", umpireId)
       .order("game_id")
       .range(from, to)

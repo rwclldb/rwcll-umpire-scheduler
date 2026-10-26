@@ -32,7 +32,7 @@ export async function renderLeagueSetup(
     teamsResult,
   ] = await Promise.all([
     supabase.from("leagues")
-      .select("id, name, is_active").order("name"),
+      .select("id, name, is_active, unconfirmed_warning_days").order("name"),
     supabase.from("seasons")
       .select("id, name, starts_on, ends_on, is_active, age_chart_id")
       .order("starts_on", { ascending: false }),

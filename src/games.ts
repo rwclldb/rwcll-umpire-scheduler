@@ -1,5 +1,7 @@
+import { supabase } from "./supabase";
 import { escapeHtml } from "./ui";
-import { loadContext, loadSeasonGames } from "./games/data";
+import { loadContactNumbers, loadContext, loadDeclines, loadSeasonGames } from "./games/data";
+import type { ContactNumbers } from "./games/contacts";
 import { renderAssignPanel } from "./games/assign";
 import { renderGameForm } from "./games/form";
 import { renderImporter } from "./games/importer";
@@ -11,12 +13,7 @@ import { renderUmpireSchedulePanel } from "./games/umpire-schedule";
 import { POSITIONS, POSITION_LABEL, assignmentsByGame, divisionNeed, slotStates, umpiresNeeded } from "./games/staffing";
 import { computeWarnings } from "./games/warnings";
 import type { Warning } from "./games/warnings";
-import type {
-  Assignment,
-  Game,
-  GameStatus,
-  SeasonOption,
-} from "./games/types";
+import type { Assignment, Game, GameStatus, SeasonOption, Decline } from "./games/types";
 
 type Filters = {
   seasonId: string;
@@ -50,6 +47,7 @@ const STATUS_LABELS: Record<GameStatus, string> = {
 const WARNING_LABELS: Record<Warning["kind"], string> = {
   no_umpire: "",
   short_staffed: "",
+  unconfirmed: "",
   field_conflict: "Field conflict: ",
   team_conflict: "Team conflict: ",
 };
@@ -122,6 +120,8 @@ export async function renderGames(container: HTMLElement): Promise<void> {
 
   let games: Game[] = [];
   let assignments: Assignment[] = [];
+  let declines: Decline[] = [];
+  let remindersChecked = false;
 
   const sideName = (game: Game, side: "home" | "away"): string =>
     side === "home"
@@ -198,6 +198,10 @@ export async function renderGames(container: HTMLElement): Promise<void> {
         <label class="season-checkbox-label game-filter-wide">
           <input id="print-page-per-day" type="checkbox" ${pagePerDay ? "checked" : ""} />
           When printing, start each day on a new page
+        </label>
+        <label class="season-checkbox-label game-filter-wide">
+          <input id="print-phones" type="checkbox" />
+          When printing, include phone numbers (private: give the printout only to people who should have it)
         </label>
       </div>
 
@@ -282,6 +286,23 @@ export async function renderGames(container: HTMLElement): Promise<void> {
     const neededOf = (game: Game) =>
       umpiresNeeded(game, (id, type) => divisionNeed(divisionById.get(id), type));
 
+    // who has not confirmed yet, game by game
+    const unconfirmedNames = new Map<string, string[]>();
+    for (const row of assignments) {
+      if ((row.status ?? "assigned") !== "assigned") continue;
+      const names = unconfirmedNames.get(row.game_id) ?? [];
+      names.push(context.umpireNames.get(row.umpire_id) ?? "Unknown umpire");
+      unconfirmedNames.set(row.game_id, names);
+    }
+
+    // places umpires gave up, newest first, one note per umpire and game
+    const declinedByGame = new Map<string, Decline[]>();
+    for (const row of declines) {
+      const list = declinedByGame.get(row.game_id) ?? [];
+      if (!list.some((item) => item.umpire_id === row.umpire_id)) list.push(row);
+      declinedByGame.set(row.game_id, list);
+    }
+
     // Warnings look at the whole season, so a conflict with a game outside
     // the current filter is still found.
     const warnings = computeWarnings({
@@ -293,6 +314,9 @@ export async function renderGames(container: HTMLElement): Promise<void> {
       sidesText,
       neededFor: neededOf,
       assignedPositions: byGame,
+      unconfirmedNames,
+      unconfirmedDaysFor: (game) =>
+        context.unconfirmedDays.get(divisionById.get(game.division_id)?.league_id ?? "") ?? 7,
     });
 
     const visible = games
@@ -311,12 +335,14 @@ export async function renderGames(container: HTMLElement): Promise<void> {
       visible.filter((game) => warnings.get(game.id)?.some((w) => w.kind === kind)).length;
     const noUmpire = count("no_umpire");
     const shortStaffed = count("short_staffed");
+    const unconfirmed = count("unconfirmed");
     const fieldConflicts = count("field_conflict");
     const teamConflicts = count("team_conflict");
 
     const parts = [
       noUmpire ? `<strong>${noUmpire}</strong> ${noUmpire === 1 ? "needs" : "need"} an umpire` : "",
       shortStaffed ? `<strong>${shortStaffed}</strong> partly staffed` : "",
+      unconfirmed ? `<strong>${unconfirmed}</strong> not confirmed yet` : "",
       fieldConflicts ? `<strong>${fieldConflicts}</strong> with a field conflict` : "",
       teamConflicts ? `<strong>${teamConflicts}</strong> with a team conflict` : "",
     ].filter(Boolean);
@@ -361,11 +387,28 @@ export async function renderGames(container: HTMLElement): Promise<void> {
               const slots = slotStates(placed, game.status === "canceled" ? 0 : neededOf(game));
               const umpireLines = POSITIONS.map((position) => {
                 const id = placed[position];
-                if (id) return `${POSITION_LABEL[position]}: ${escapeHtml(context.umpireNames.get(id) ?? "Unknown umpire")}`;
+                if (id) {
+                  const row = assignments.find((item) => item.game_id === game.id && item.position === position);
+                  const confirmed = row?.status === "confirmed";
+                  return `${POSITION_LABEL[position]}: ${escapeHtml(context.umpireNames.get(id) ?? "Unknown umpire")} ` +
+                    `<span class="game-status game-status-${confirmed ? "confirmed" : "assigned"}">&middot; ${confirmed ? (row?.self_assigned ? "Confirmed (self)" : "Confirmed") : "Assigned"}</span>`;
+                }
                 return slots[position] === "open"
                   ? `${POSITION_LABEL[position]}: <span class="game-open">OPEN</span>`
                   : "";
               }).filter(Boolean);
+
+              // Someone gave a place up and is no longer on the game: say so, while the game is still to come.
+              const onGame = new Set(Object.values(placed));
+              const declinedLines = game.status === "canceled" || Date.parse(game.starts_at) <= Date.now()
+                ? []
+                : (declinedByGame.get(game.id) ?? [])
+                    .filter((item) => !onGame.has(item.umpire_id))
+                    .slice(0, 2)
+                    .map((item) =>
+                      `<span class="game-declined">Declined: ${escapeHtml(context.umpireNames.get(item.umpire_id) ?? "An umpire")} ` +
+                      `(${POSITION_LABEL[item.position]}, ${escapeHtml(formatDate(item.created_at))})</span>`
+                    );
               return `
                 <tr class="${list.length ? "game-row-warn" : ""} ${game.status === "canceled" ? "game-row-canceled" : ""}">
                   <td class="game-when">
@@ -377,7 +420,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
                     ${game.game_type !== "regular" ? `<span class="game-type">${escapeHtml(game.game_type)}</span>` : ""}<br>
                     <span class="game-where">${escapeHtml(divisionNames.get(game.division_id) ?? "")} &middot; ${escapeHtml(fieldNames.get(game.location_id) ?? "")}</span>
                   </td>
-                  <td class="game-umpires" data-label="Umpires">${umpireLines.length ? umpireLines.join("<br>") : "&mdash;"}${
+                  <td class="game-umpires" data-label="Umpires">${[...(umpireLines.length ? umpireLines : ["&mdash;"]), ...declinedLines].join("<br>")}${
                     game.umpires_needed !== null && game.umpires_needed !== undefined && game.status !== "canceled"
                       ? `<br><span class="game-where">${game.umpires_needed === 0 ? "none needed" : `${game.umpires_needed} needed`} (set for this game)</span>`
                       : ""}</td>
@@ -412,11 +455,12 @@ export async function renderGames(container: HTMLElement): Promise<void> {
     get<HTMLElement>("game-list").innerHTML =
       `<p class="directory-description">Loading games&hellip;</p>`;
 
-    const result = await loadSeasonGames(filters.seasonId);
+    const [result, declined] = await Promise.all([loadSeasonGames(filters.seasonId), loadDeclines()]);
 
     if (result.error) {
       games = [];
       assignments = [];
+      declines = [];
       get<HTMLElement>("game-summary").textContent = "";
       get<HTMLElement>("game-list").innerHTML =
         `<p class="message error">Unable to load the games. Press Refresh to try again.</p>`;
@@ -426,7 +470,27 @@ export async function renderGames(container: HTMLElement): Promise<void> {
 
     games = result.games;
     assignments = result.assignments;
+    declines = declined;
     renderList();
+
+    // Once each time the page is opened: queue the reminder about assignments
+    // that are still unconfirmed shortly before their game (it does nothing
+    // when there is none, and never repeats itself).
+    if (!remindersChecked) {
+      remindersChecked = true;
+      void queueReminders();
+    }
+  };
+
+  const queueReminders = async (): Promise<void> => {
+    const { data, error } = await supabase.rpc("queue_unconfirmed_warnings");
+    if (error) {
+      console.error("Reminder check failed:", error.message);
+      return;
+    }
+    if (typeof data === "number" && data > 0) {
+      say(`A reminder about ${data} unconfirmed ${data === 1 ? "assignment" : "assignments"} was queued for the administrators.`);
+    }
   };
 
   // ------------------------------------------------------------- the form
@@ -558,18 +622,38 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   bind("print-page-per-day", "change", (t) => { pagePerDay = t.checked; });
 
   // ---- print and download exactly the games shown below
-  get<HTMLElement>("print-games").addEventListener("click", () => {
+  get<HTMLElement>("print-games").addEventListener("click", async () => {
     say("");
     if (shownGames.length === 0) {
       say("There are no games to print. Change the filters first.", "error");
       return;
     }
 
-    const rows = buildScheduleGames(shownGames, shownAssignments, lookupsFor(context));
+    // Phone numbers are looked up only when asked for, and only for the umpires on these games.
+    let contacts: Map<string, ContactNumbers> | undefined;
+    if (get<HTMLInputElement>("print-phones").checked) {
+      const button = get<HTMLButtonElement>("print-games");
+      button.disabled = true;
+      say("Looking up phone numbers\u2026");
+
+      const found = await loadContactNumbers(shownAssignments.map((row) => row.umpire_id));
+      button.disabled = false;
+
+      if (found.error) {
+        console.error("Phone lookup failed:", found.error);
+        say(`The phone numbers could not be looked up, so nothing was printed. ${found.error}`, "error");
+        return;
+      }
+
+      say("");
+      contacts = found.contacts;
+    }
+
+    const rows = buildScheduleGames(shownGames, shownAssignments, lookupsFor(context), contacts);
     printHtml(
       dayPrintHtml(groupByDay(rows), {
         title: "Umpire schedule",
-        lines: describeFilters(),
+        lines: [...describeFilters(), ...(contacts ? ["Includes private phone numbers: keep this page private"] : [])],
         printedAt: formatPrinted(new Date()),
         pagePerDay,
       })

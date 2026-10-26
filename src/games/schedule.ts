@@ -11,6 +11,8 @@ import {
   timeRange,
   weekdayName,
 } from "./format";
+import { contactText } from "./contacts";
+import type { ContactNumbers } from "./contacts";
 import { POSITIONS, POSITION_LABEL, POSITION_NAME, divisionNeed, slotStates, umpiresNeeded } from "./staffing";
 import type { SlotState } from "./staffing";
 import type { Assignment, Game, GameStatus, GameType, GamesContext, Position } from "./types";
@@ -58,6 +60,7 @@ export type ScheduleGame = {
   home: string;
   away: string;
   umpires: Record<Position, string | null>; // the umpire in each place (null: nobody)
+  contacts: Record<Position, string>; // phone numbers for each place, only when they were asked for
   needed: number; // how many umpires this game needs
   slots: Record<Position, SlotState>; // for each place: assigned, open (someone is needed) or not needed
   status: GameStatus;
@@ -81,15 +84,26 @@ const byTime = (a: { startsAt: string; field: string; home: string }, b: typeof 
 export function buildScheduleGames(
   games: Game[],
   assignments: Assignment[],
-  look: Lookups
+  look: Lookups,
+  // Phone numbers by umpire, only when the person asked to print them
+  contacts?: Map<string, ContactNumbers>
 ): ScheduleGame[] {
   const byGame = new Map<string, Partial<Record<Position, string>>>();
+  const idsByGame = new Map<string, Partial<Record<Position, string>>>();
   for (const row of assignments) {
     const entry = byGame.get(row.game_id) ?? {};
     entry[row.position] = look.umpireName(row.umpire_id);
     byGame.set(row.game_id, entry);
+
+    const ids = idsByGame.get(row.game_id) ?? {};
+    ids[row.position] = row.umpire_id;
+    idsByGame.set(row.game_id, ids);
   }
 
+  const contactFor = (gameId: string, position: Position): string => {
+    const umpireId = idsByGame.get(gameId)?.[position];
+    return umpireId ? contactText(contacts?.get(umpireId)) : "";
+  };
   return games
     .map((game): ScheduleGame => {
       const umpires = byGame.get(game.id);
@@ -115,6 +129,13 @@ export function buildScheduleGames(
           second_base: umpires?.second_base ?? null,
           third_base: umpires?.third_base ?? null,
           field: umpires?.field ?? null,
+        },
+        contacts: {
+          plate: contactFor(game.id, "plate"),
+          first_base: contactFor(game.id, "first_base"),
+          second_base: contactFor(game.id, "second_base"),
+          third_base: contactFor(game.id, "third_base"),
+          field: contactFor(game.id, "field"),
         },
         needed,
         slots,
@@ -166,7 +187,10 @@ export function dayCsvRows(list: ScheduleGame[]): string[][] {
 
 // -------------------------------------------------------------- by umpire
 
-export type UmpireGame = ScheduleGame & { position: string }; // "Plate", "First base", ...
+export type UmpireGame = ScheduleGame & {
+  position: string; // "Plate", "First base", ...
+  myStatus: "assigned" | "confirmed"; // has this umpire confirmed?
+};
 
 // The games of ONE umpire, from that umpire's assignments.
 export function buildUmpireSchedule(
@@ -175,10 +199,13 @@ export function buildUmpireSchedule(
   assignments: (Assignment)[],
   look: Lookups
 ): UmpireGame[] {
-  const mine = new Map<string, string>();
+  const mine = new Map<string, { position: string; status: "assigned" | "confirmed" }>();
   for (const row of assignments) {
     if (row.umpire_id === umpireId) {
-      mine.set(row.game_id, POSITION_NAME[row.position] ?? row.position);
+      mine.set(row.game_id, {
+        position: POSITION_NAME[row.position] ?? row.position,
+        status: row.status === "confirmed" ? "confirmed" : "assigned",
+      });
     }
   }
 
@@ -188,7 +215,11 @@ export function buildUmpireSchedule(
     look
   );
 
-  return shown.map((game) => ({ ...game, position: mine.get(game.id)! }));
+  return shown.map((game) => ({
+    ...game,
+    position: mine.get(game.id)!.position,
+    myStatus: mine.get(game.id)!.status,
+  }));
 }
 
 export const UMPIRE_CSV_HEADERS = [
@@ -235,7 +266,10 @@ function umpireCell(game: ScheduleGame): string {
 
   const lines = POSITIONS.map((position) => {
     const name = game.umpires[position];
-    if (name) return `<div>${POSITION_LABEL[position]}: ${escapeHtml(name)}</div>`;
+    if (name) {
+      const phone = game.contacts[position];
+      return `<div>${POSITION_LABEL[position]}: ${escapeHtml(name)}${phone ? ` <span class="print-phone">&middot; ${escapeHtml(phone)}</span>` : ""}</div>`;
+    }
     return game.slots[position] === "open"
       ? `<div>${POSITION_LABEL[position]}: <span class="print-open">OPEN</span></div>`
       : "";

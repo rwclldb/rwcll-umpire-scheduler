@@ -57,6 +57,9 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
     ? ""
     : String(game.umpires_needed);
 
+  // set when an administrator records a confirmation, so the list is refreshed when the panel closes
+  let statusChanged = false;
+
   // who the age rule does not allow on this game, and what could not be checked
   let eligibility = new Map<string, Eligibility>();
 
@@ -167,6 +170,23 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
       : "";
   };
 
+  // For an umpire who is already on the game (and not being changed): whether
+  // they have confirmed, with a way to record a confirmation that came another way.
+  const statusFor = (position: Position): string => {
+    const umpireId = selection[position];
+    if (!umpireId || umpireId !== originally[position]) return "";
+
+    const row = options.assignments.find((item) => item.game_id === game.id && item.umpire_id === umpireId);
+    if (!row) return "";
+
+    if (row.status === "confirmed") {
+      return `<p class="assign-status assign-status-confirmed">Confirmed${row.self_assigned ? " (they assigned themselves)" : ""}</p>`;
+    }
+
+    return `<p class="assign-status assign-status-assigned">Assigned, waiting for ${escapeHtml(nameOf(umpireId))} to confirm.
+      <button type="button" class="secondary-button assign-confirm" data-confirm-umpire="${escapeHtml(umpireId)}">Mark as confirmed</button></p>`;
+  };
+
   // The places shown: those the game needs, plus any that already has someone.
   const drawSlots = () => {
     const wanted = layoutFor(needed);
@@ -178,6 +198,7 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
       ? shown.map((position) => `
           <label for="assign-${position}">${POSITION_NAME[position]} umpire</label>
           <select id="assign-${position}" data-position="${position}">${optionsFor(position)}</select>
+          ${statusFor(position)}
         `).join("")
       : `<p class="directory-description">No umpire is needed for this game. Change the number above if one is.</p>`;
 
@@ -209,6 +230,37 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
     drawSlots();
   });
 
+  slots.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-confirm-umpire]");
+    if (!button) return;
+
+    const umpireId = button.dataset.confirmUmpire!;
+    button.disabled = true;
+
+    void (async () => {
+      const { error } = await supabase.rpc("admin_confirm_assignment", {
+        p_game_id: game.id,
+        p_umpire_id: umpireId,
+      });
+
+      if (error) {
+        button.disabled = false;
+        say(`Could not record the confirmation. ${error.message}`);
+        return;
+      }
+
+      const row = options.assignments.find((item) => item.game_id === game.id && item.umpire_id === umpireId);
+      if (row) {
+        row.status = "confirmed";
+        row.confirmed_at = new Date().toISOString();
+      }
+
+      statusChanged = true;
+      say(`Recorded: ${nameOf(umpireId)} has confirmed.`, "success");
+      drawSlots();
+    })();
+  });
+
   slots.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement) || !target.dataset.position) return;
@@ -231,7 +283,9 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
     void save();
   });
 
-  form.querySelector("#assign-cancel")?.addEventListener("click", () => options.onDone(null));
+  form.querySelector("#assign-cancel")?.addEventListener("click", () =>
+    options.onDone(statusChanged ? "Confirmation recorded." : null)
+  );
 
   async function save() {
     const saveButton = form.querySelector<HTMLButtonElement>("#assign-save")!;

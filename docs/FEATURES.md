@@ -50,6 +50,7 @@ test on the league's own database.
 - Messages the system would send (such as invitations) are queued in an Outbox
 - For each message an administrator can show it, copy it, mark it as sent, or skip it
 - The Outbox updates by itself when a message is queued
+- The system queues messages here by itself: to an umpire when they are assigned to a game or taken off one, to the administrators when an umpire declines, and to the administrators when assignments are still unconfirmed shortly before a game 🆕
 
 ## 5. League setup
 
@@ -83,9 +84,20 @@ test on the league's own database.
 - Who made each assignment is recorded
 - Super admins, umpire chiefs and schedulers can assign umpires
 
+**Confirming and declining** 🆕
+
+- Each assignment is **Assigned** until the umpire answers, then **Confirmed**; the games list shows the status beside each umpire
+- On their own schedule, an umpire sees which games are waiting for their answer and can **Confirm** or **Decline** each one. Declining asks for an optional reason, frees the place, and tells the administrators
+- A place that was given up is shown on the games list ("Declined: Ann Lee") while the game is still to come
+- An administrator can **Mark as confirmed** for an umpire who answered another way, from the Umpires panel
+- An umpire who stays on a game keeps their confirmation when other places are changed or they move to another place
+- Games coming up with umpires who have not confirmed get a warning ("Not confirmed yet: Ann Lee"), counted in the summary. Each league sets how many days ahead (7 to begin with; 0 turns it off), in League Setup
+- A history records who was assigned, confirmed, declined or removed, and when
+
 ## 8. Printing and downloading schedules
 
 - **Print the schedule** for the games on screen, day by day, with the field's address under its name. An option starts each day on a new page. Open places are boxed as OPEN, places that need no umpire are left out, and canceled games are struck through
+- **Print with phone numbers** (an option, off each time): each umpire's number follows their name, a youth umpire shows both their own number and a parent's (their emergency contact), an umpire with an account shows the account's number, and an umpire with no number is flagged. If the numbers cannot be looked up, nothing is printed 🆕
 - **Download the schedule as a spreadsheet file (CSV)** with the date, times, division, field, address, teams, the umpire in every place, how many umpires are needed, status, type, master ID and notes. An empty cell means nobody is there, so it can be filtered. Cells are protected against spreadsheet formula tricks
 - **One umpire's schedule:** an administrator picks an umpire and sees all their games, with date filters, and can print or download it
 - **My schedule:** each umpire sees only their own games and their place in each, with date filters, and can print or download them. They never see another umpire's name

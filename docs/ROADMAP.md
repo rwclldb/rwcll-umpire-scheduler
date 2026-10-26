@@ -24,12 +24,16 @@ whenever the league's needs change.
 
 - Phases 0 to 4 are finished: the foundations, accounts and security, league
   setup, umpire registration, and games and schedules.
-- Phase 5 is half done. Stage **5a** (how many umpires a game needs, the places
-  they work, the assignment screen, and the first youth umpire rule) is built
-  and tested. Its newest database changes are waiting for their first run on
+- Phase 5 is most of the way done. Stage **5a** (how many umpires a game needs,
+  the places they work, the assignment screen, and the youth age rule) is built,
+  tested, and in use.
+- Stage **5b-1** (assignments being Assigned or Confirmed, umpires confirming or
+  declining, queued messages, and the warning for assignments still unconfirmed)
+  is built and tested here. Its database change is waiting for its first run on
   your own test database.
-- Stage **5b** is next: umpires assigning themselves, assignments being
-  Assigned or Confirmed, and phone numbers on the printed schedule.
+- Stage **5b-2a** (phone numbers on the printed schedule, with a youth umpire's own
+  and parent's numbers) is built and tested here; it needs no database change.
+- Stage **5b-2b** is next: umpires assigning themselves.
 
 ---
 
@@ -86,18 +90,35 @@ whenever the league's needs change.
 - The first youth umpire rule: no umpiring a division at or above their own age
 - Warnings for games with no umpire or too few, and OPEN places on printouts
 
-**5b. Self-assigning and confirming** ⏳ *next*
+**5b-1. Confirming and declining** ✅ *(built and tested; the database change has not yet had its first run on your database)*
 
-- Umpires assign themselves to open places
-- Each assignment is **Assigned** (an administrator did it, the umpire still has to
-  confirm) or **Confirmed** (the umpire confirmed it, or assigned themselves)
-- Self-assigned places are marked as such
-- Umpires confirm their assignments when they sign in
-- Phone numbers of the assigned umpires on the printed schedule
+- Each assignment is **Assigned** (an administrator made it, the umpire has not
+  answered) or **Confirmed**; the games list shows which
+- Umpires confirm or decline from their own schedule; declining takes an optional
+  reason, frees the place, and tells the administrators
+- An administrator can record a confirmation that came another way (such as a phone call)
+- Messages are queued in the Outbox when an umpire is assigned or taken off a game,
+  when an umpire declines, and when assignments are still unconfirmed
+- A warning for games coming up with unconfirmed umpires, with the number of days
+  set for each league (7 to begin with, 0 turns it off)
+- A history of who was assigned, confirmed, declined or removed
+
+**5b-2a. Phone numbers on printouts** ✅ *(built and tested; no database change)*
+
+- A "print with phone numbers" option on the printed schedule (off each time you open
+  the Games tab): each umpire's number, and for a youth umpire both their own and a
+  parent's, taken from the emergency contact on their record
+- Nothing is printed if the numbers cannot be looked up
+
+**5b-2b. Self-assigning** ⏳ *next*
+
+- Umpires assign themselves to open places, in the divisions that allow it; such
+  assignments are Confirmed and marked as self-assigned
 
 **5c. Further assignment rules** ⬜
 
 - A youth umpire cannot umpire the division they play in
+- More rules for self-assigning
 - More rules for self-assigning
 - Warnings for assignments that are still unconfirmed close to game time
 
@@ -110,6 +131,8 @@ whenever the league's needs change.
 
 - Choose and set up the email service (Google Workspace or a similar service)
 - Send invitations, assignments and reminders for real, instead of queuing them
+- Send the reminder about unconfirmed assignments on a schedule, not only when an
+  administrator opens the Games page
 - Text-message reminders, for people who have agreed to them
 
 ### Phase 8: Hosting and mobile ⬜
@@ -135,7 +158,7 @@ whenever the league's needs change.
 ### Phase 12: Payments ⬜ *(late; needs research first)*
 
 The league pays its **youth umpires**; adult umpires are generally not paid, but
-the system should allow it. This phase depends on confirmed assignments (5b),
+the system should allow it. This phase depends on confirmed assignments (5b-1),
 check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 
 **12-0. Find out how it is done today** ⏳ *(before any building)*
@@ -174,9 +197,9 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 
 ## Questions waiting for an answer
 
-- **Phone numbers for youth umpires:** on the printed schedule, should a youth umpire's
-  own number, a parent's number, or both be shown?
-- **Declining:** should an umpire be able to decline an assignment, as well as confirm it?
+- **Self-assigning (5b-2b):** which divisions should allow it to begin with, and should an
+  umpire be stopped from taking a game that overlaps another of their games? (Proposed: off
+  in every division until an administrator turns it on, and yes, overlapping games are refused.)
 - **Paying umpires (Phase 12):** how are youth umpires paid today, and how much? Does the
   league take W-9s or issue any tax forms? What do the league's accountant, insurer and
   Little League district say about paying minors (including work-permit rules) and about
@@ -190,6 +213,13 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
   only after the research in Phase 12-0.
 - **Number of umpires:** a division has a default, tournaments can have their own default,
   and any single game can be changed. A game needs 0 to 4 umpires.
+- **Declining:** umpires can decline as well as confirm. A decline frees the place and
+  tells the administrators.
+- **Unconfirmed assignments:** administrators are warned about games coming up with
+  unconfirmed umpires. The number of days is set per league and starts at 7.
+- **Phone numbers on printouts:** an option, for administrators; for a youth umpire,
+  both their own and a parent's number (the emergency contact on their record, until
+  parents have accounts of their own).
 - **Warnings do not block:** a clash or a missing umpire is shown, but never stops the
   person from saving. The youth age rule is different: it is a rule, so the database enforces it.
 - **The master calendar** is kept elsewhere; this system keeps a copy, and administrators

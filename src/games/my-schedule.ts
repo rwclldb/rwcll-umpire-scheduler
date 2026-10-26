@@ -7,7 +7,7 @@ import { buildUmpireSchedule, lookupsFor } from "./schedule";
 // An umpire's own schedule, on their Home page. An umpire can read only their
 // own assignments, so this can only ever show their own games (and their own
 // position in each, never another umpire's name).
-export async function renderMySchedule(container: HTMLElement): Promise<void> {
+export async function renderMySchedule(container: HTMLElement, notice = ""): Promise<void> {
   container.innerHTML = `
     <section class="my-schedule">
       <h2>My schedule</h2>
@@ -55,9 +55,20 @@ export async function renderMySchedule(container: HTMLElement): Promise<void> {
     return fail("Your schedule could not be loaded. Refresh and try again.");
   }
 
+  const items = buildUmpireSchedule(me.id as string, games.games, games.assignments, lookupsFor(context));
+
+  // games that are still to come and are waiting for this umpire's answer
+  const waiting = items.filter(
+    (game) => game.myStatus === "assigned" && game.status !== "canceled" && Date.parse(game.startsAt) > Date.now()
+  ).length;
+
   container.innerHTML = `
     <section class="my-schedule">
       <h2>My schedule</h2>
+      ${notice ? `<p class="message success" role="status">${escapeHtml(notice)}</p>` : ""}
+      ${waiting
+        ? `<p class="my-pending" role="status">You have <strong>${waiting}</strong> ${waiting === 1 ? "game" : "games"} waiting for your answer. Please confirm or decline ${waiting === 1 ? "it" : "them"} below.</p>`
+        : ""}
       <p class="directory-description">
         Your assigned games. Times are shown in your computer's time zone.
       </p>
@@ -67,7 +78,18 @@ export async function renderMySchedule(container: HTMLElement): Promise<void> {
 
   renderScheduleView(container.querySelector<HTMLElement>("#my-schedule-view")!, {
     umpireName: (me.display_name as string) || "Me",
-    items: buildUmpireSchedule(me.id as string, games.games, games.assignments, lookupsFor(context)),
+    items,
     emptyText: "You have not been assigned any games yet. They will appear here as soon as the scheduler assigns you.",
+    onAnswer: async (gameId, action, reason) => {
+      const { error: answerError } =
+        action === "confirm"
+          ? await supabase.rpc("confirm_assignment", { p_game_id: gameId })
+          : await supabase.rpc("decline_assignment", { p_game_id: gameId, p_reason: reason });
+
+      return answerError ? `That did not work. ${answerError.message}` : null;
+    },
+    onAnswered: (message) => {
+      void renderMySchedule(container, message);
+    },
   });
 }
