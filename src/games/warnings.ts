@@ -4,7 +4,7 @@ import { openPlaces } from "./staffing";
 import type { Position } from "./staffing";
 
 export type Warning = {
-  kind: "no_umpire" | "short_staffed" | "unconfirmed" | "field_conflict" | "team_conflict";
+  kind: "no_umpire" | "short_staffed" | "unconfirmed" | "unavailable" | "field_conflict" | "team_conflict";
   text: string;
 };
 
@@ -27,6 +27,9 @@ export type WarningInput = {
   // (0 or missing: never).
   unconfirmedNames?: Map<string, string[]>;
   unconfirmedDaysFor?: (game: Game) => number;
+  // For the "not available" warning: the names of umpires on each game who
+  // entered availability that does not cover it.
+  unavailableNames?: Map<string, string[]>;
 };
 
 // A game with its start and end as plain numbers, worked out once.
@@ -48,6 +51,9 @@ type Found = { count: number; lines: string[] };
 //  - no umpire: a game that needs umpires, still to be played (today or
 //    later), with nobody assigned
 //  - short staffed: some umpires are assigned, but fewer than the game needs
+//  - unavailable: a game still to come with an umpire who has entered
+//    availability that does not cover the game (never for an umpire who has
+//    entered none)
 //  - unconfirmed: a game coming up within its league's warning period still has
 //    umpires who have not confirmed (any other warning stays too)
 //  - field conflict: another game at the same field at an overlapping time
@@ -114,6 +120,24 @@ export function computeWarnings(input: WarningInput): Map<string, Warning[]> {
       const more = names.length > 3 ? ` and ${names.length - 3} more` : "";
       const list = result.get(game.id) ?? [];
       list.push({ kind: "unconfirmed", text: `Not confirmed yet: ${shown}${more}` });
+      result.set(game.id, list);
+    }
+  }
+
+  // ---- umpires on the game who have said they can umpire, but not then
+  if (input.unavailableNames) {
+    const nowMs = input.now.getTime();
+
+    for (const { game, start } of timed) {
+      if (!needsAttention(game) || start <= nowMs) continue;
+
+      const names = input.unavailableNames.get(game.id) ?? [];
+      if (names.length === 0) continue;
+
+      const shown = names.slice(0, 3).join(", ");
+      const more = names.length > 3 ? ` and ${names.length - 3} more` : "";
+      const list = result.get(game.id) ?? [];
+      list.push({ kind: "unavailable", text: `Not available: ${shown}${more}` });
       result.set(game.id, list);
     }
   }

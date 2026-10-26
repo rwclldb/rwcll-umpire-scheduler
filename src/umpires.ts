@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { queueEmail } from "./email";
+import { renderAvailabilityEditor } from "./games/availability-editor";
 
 type UmpireClassification = "youth" | "adult";
 type EligibilityStatus = "active" | "inactive" | "suspended";
@@ -883,7 +884,19 @@ async function showEditForm(umpireId: string) {
         <button type="button" class="secondary-button" data-cancel-editor>Cancel</button>
       </div>
     </form>
+
+    <div id="edit-availability" class="availability-admin"></div>
   `);
+
+  // When this umpire can umpire (an administrator can enter it for them).
+  const availabilityHolder = document.querySelector<HTMLElement>("#edit-availability");
+  if (availabilityHolder) {
+    void renderAvailabilityEditor(availabilityHolder, {
+      umpireId,
+      own: false,
+      name: umpire.display_name,
+    });
+  }
 
   const updateAgeHint = () => {
     const hint = document.querySelector<HTMLElement>("#edit-age-hint");

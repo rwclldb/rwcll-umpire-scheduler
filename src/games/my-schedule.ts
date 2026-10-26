@@ -1,6 +1,7 @@
 import { supabase } from "../supabase";
 import { escapeHtml } from "../ui";
 import { loadContext, loadUmpireGames } from "./data";
+import { renderAvailabilityEditor } from "./availability-editor";
 import { renderOpenGames } from "./open-games";
 import { renderScheduleView } from "./umpire-schedule";
 import { buildUmpireSchedule, lookupsFor } from "./schedule";
@@ -75,6 +76,7 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
       </p>
       <div id="my-schedule-view"></div>
     </section>
+    <div id="my-availability"></div>
     <div id="my-open-games"></div>
   `;
 
@@ -93,6 +95,12 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
     onAnswered: (message) => {
       void renderMySchedule(container, message);
     },
+  });
+
+  // When this umpire can umpire.
+  void renderAvailabilityEditor(container.querySelector<HTMLElement>("#my-availability")!, {
+    umpireId: me.id as string,
+    own: true,
   });
 
   // Open places this umpire is allowed to take for themselves (nothing is shown when there are none).

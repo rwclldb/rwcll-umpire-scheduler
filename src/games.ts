@@ -1,6 +1,8 @@
 import { supabase } from "./supabase";
 import { escapeHtml } from "./ui";
-import { loadContactNumbers, loadContext, loadDeclines, loadSeasonGames } from "./games/data";
+import { availabilityFor } from "./games/availability";
+import type { Window } from "./games/availability";
+import { loadAvailability, loadContactNumbers, loadContext, loadDeclines, loadSeasonGames } from "./games/data";
 import type { ContactNumbers } from "./games/contacts";
 import { renderAssignPanel } from "./games/assign";
 import { renderGameForm } from "./games/form";
@@ -48,6 +50,7 @@ const WARNING_LABELS: Record<Warning["kind"], string> = {
   no_umpire: "",
   short_staffed: "",
   unconfirmed: "",
+  unavailable: "",
   field_conflict: "Field conflict: ",
   team_conflict: "Team conflict: ",
 };
@@ -121,6 +124,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   let games: Game[] = [];
   let assignments: Assignment[] = [];
   let declines: Decline[] = [];
+  let availability: Map<string, Window[]> | null = null;
   let remindersChecked = false;
 
   const sideName = (game: Game, side: "home" | "away"): string =>
@@ -295,6 +299,22 @@ export async function renderGames(container: HTMLElement): Promise<void> {
       unconfirmedNames.set(row.game_id, names);
     }
 
+    // umpires on a game who have said they can umpire, but not at that time
+    // (an umpire who has entered nothing is never listed)
+    const unavailableNames = new Map<string, string[]>();
+    if (availability) {
+      const gameById = new Map(games.map((item) => [item.id, item]));
+      for (const row of assignments) {
+        const item = gameById.get(row.game_id);
+        if (!item) continue;
+        if (availabilityFor(item, availability.get(row.umpire_id) ?? []) !== "unavailable") continue;
+
+        const names = unavailableNames.get(row.game_id) ?? [];
+        names.push(context.umpireNames.get(row.umpire_id) ?? "Unknown umpire");
+        unavailableNames.set(row.game_id, names);
+      }
+    }
+
     // places umpires gave up, newest first, one note per umpire and game
     const declinedByGame = new Map<string, Decline[]>();
     for (const row of declines) {
@@ -315,6 +335,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
       neededFor: neededOf,
       assignedPositions: byGame,
       unconfirmedNames,
+      unavailableNames,
       unconfirmedDaysFor: (game) =>
         context.unconfirmedDays.get(divisionById.get(game.division_id)?.league_id ?? "") ?? 7,
     });
@@ -336,6 +357,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
     const noUmpire = count("no_umpire");
     const shortStaffed = count("short_staffed");
     const unconfirmed = count("unconfirmed");
+    const unavailable = count("unavailable");
     const fieldConflicts = count("field_conflict");
     const teamConflicts = count("team_conflict");
 
@@ -343,6 +365,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
       noUmpire ? `<strong>${noUmpire}</strong> ${noUmpire === 1 ? "needs" : "need"} an umpire` : "",
       shortStaffed ? `<strong>${shortStaffed}</strong> partly staffed` : "",
       unconfirmed ? `<strong>${unconfirmed}</strong> not confirmed yet` : "",
+      unavailable ? `<strong>${unavailable}</strong> with an unavailable umpire` : "",
       fieldConflicts ? `<strong>${fieldConflicts}</strong> with a field conflict` : "",
       teamConflicts ? `<strong>${teamConflicts}</strong> with a team conflict` : "",
     ].filter(Boolean);
@@ -455,7 +478,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
     get<HTMLElement>("game-list").innerHTML =
       `<p class="directory-description">Loading games&hellip;</p>`;
 
-    const [result, declined] = await Promise.all([loadSeasonGames(filters.seasonId), loadDeclines()]);
+    const [result, declined, entered] = await Promise.all([loadSeasonGames(filters.seasonId), loadDeclines(), loadAvailability()]);
 
     if (result.error) {
       games = [];
@@ -471,6 +494,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
     games = result.games;
     assignments = result.assignments;
     declines = declined;
+    availability = entered;
     renderList();
 
     // Once each time the page is opened: queue the reminder about assignments
