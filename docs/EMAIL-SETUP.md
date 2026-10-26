@@ -4,7 +4,7 @@ This switches on the emails that **Supabase** sends: "confirm your email" and "r
 Until it is done, only people on your Supabase team can register on the **live** project.
 
 It does **not** switch on the app's own messages (invitations, assignments). Those wait in the
-Outbox until a sender is built (FAQ section 27).
+Outbox until a sender is built (FAQ section 28).
 
 **Do the test project first, then live.** Nothing here changes any data.
 
@@ -115,4 +115,4 @@ Tell Claude which one, and Claude will give you the exact steps and the DNS reco
 
 Invitations and (later) assignment messages are queued in the **Outbox**. They are not Supabase emails and need
 their own sender. The same mailbox can be used for it, and the same decision (Google or a mail service) applies.
-See FAQ section 27.
+See FAQ section 28.

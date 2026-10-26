@@ -50,7 +50,7 @@ export async function loadContext(): Promise<{
 }> {
   const [seasons, divisions, teams, locations, umpires] = await Promise.all([
     supabase.from("seasons").select("id, name, is_active, starts_on"),
-    supabase.from("divisions").select("id, name, is_active, league_id, umpires_per_game").order("name"),
+    supabase.from("divisions").select("id, name, is_active, league_id, umpires_per_game, tournament_umpires").order("name"),
     fetchAll<TeamOption>((from, to) =>
       supabase
         .from("teams")
@@ -83,6 +83,7 @@ export async function loadContext(): Promise<{
       divisions: ((divisions.data ?? []) as DivisionOption[]).map((division) => ({
         ...division,
         umpires_per_game: division.umpires_per_game ?? 2,
+        tournament_umpires: division.tournament_umpires ?? null,
       })),
       teams: teams.rows,
       locations: (locations.data ?? []) as LocationOption[],

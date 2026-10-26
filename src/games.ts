@@ -8,7 +8,7 @@ import { formatDate, formatPrinted, formatTime, localDateKey } from "./games/for
 import { printHtml } from "./games/print";
 import { DAY_CSV_HEADERS, buildScheduleGames, dayCsvRows, dayPrintHtml, groupByDay, lookupsFor } from "./games/schedule";
 import { renderUmpireSchedulePanel } from "./games/umpire-schedule";
-import { POSITIONS, POSITION_LABEL, assignmentsByGame, slotStates, umpiresNeeded } from "./games/staffing";
+import { POSITIONS, POSITION_LABEL, assignmentsByGame, divisionNeed, slotStates, umpiresNeeded } from "./games/staffing";
 import { computeWarnings } from "./games/warnings";
 import type { Warning } from "./games/warnings";
 import type {
@@ -118,7 +118,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   const teamNames = new Map(context.teams.map((team) => [team.id, team.name]));
   const fieldNames = new Map(context.locations.map((field) => [field.id, field.name]));
   const divisionNames = new Map(context.divisions.map((division) => [division.id, division.name]));
-  const divisionDefaults = new Map(context.divisions.map((division) => [division.id, division.umpires_per_game ?? 2]));
+  const divisionById = new Map(context.divisions.map((division) => [division.id, division]));
 
   let games: Game[] = [];
   let assignments: Assignment[] = [];
@@ -279,7 +279,8 @@ export async function renderGames(container: HTMLElement): Promise<void> {
 
     // who is in each place of each game, and how many umpires each game needs
     const byGame = assignmentsByGame(assignments);
-    const neededOf = (game: Game) => umpiresNeeded(game, (id) => divisionDefaults.get(id) ?? 2);
+    const neededOf = (game: Game) =>
+      umpiresNeeded(game, (id, type) => divisionNeed(divisionById.get(id), type));
 
     // Warnings look at the whole season, so a conflict with a game outside
     // the current filter is still found.

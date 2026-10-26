@@ -5,6 +5,7 @@ import { renderSeasonImport } from "./setup/season-import";
 import { renderSeasonForm, renderSeasons, wireSeasonForm } from "./setup/seasons";
 import { registerReloader, state } from "./setup/state";
 import { supabase } from "./supabase";
+import { escapeHtml } from "./ui";
 import { openTeamEditor, renderTeamForm, renderTeamsPanel, wireTeamForm } from "./setup/teams";
 import type { AgeChartRecord, DivisionRecord, LocationRecord, SeasonRecord, SetupRecord, TeamRecord } from "./setup/types";
 
@@ -36,7 +37,7 @@ export async function renderLeagueSetup(
       .select("id, name, starts_on, ends_on, is_active, age_chart_id")
       .order("starts_on", { ascending: false }),
     supabase.from("divisions")
-      .select("id, name, age_group, league_id, description, youngest_ll_age, oldest_ll_age, umpires_per_game, is_active")
+      .select("id, name, age_group, league_id, description, youngest_ll_age, oldest_ll_age, umpires_per_game, tournament_umpires, is_active")
       .order("name"),
     supabase.from("locations")
       .select("id, name, address, notes, is_active").order("name"),
@@ -58,12 +59,23 @@ export async function renderLeagueSetup(
     teamsResult.error;
 
   if (firstError) {
+    // A "column does not exist" answer almost always means a database change
+    // (a migration) has not been applied to the database this app is using.
+    const looksLikeMissingChange =
+      firstError.code === "42703" || /column .* does not exist|schema cache/i.test(firstError.message);
+
     container.innerHTML = `
       <section class="directory-section">
         <h2>League Setup</h2>
         <p class="message error">
           Unable to load setup records. Refresh and try again.
         </p>
+        <p class="season-dates">Details from the database: ${escapeHtml(firstError.message)}</p>
+        ${looksLikeMissingChange
+          ? `<p class="season-dates">This usually means a database change has not been applied to the
+              database this app is connected to. Apply the newest migration to it (see the FAQ,
+              "Apply a database change to the test project"), then refresh.</p>`
+          : ""}
       </section>
     `;
     console.error("League setup load failed:", firstError.message);

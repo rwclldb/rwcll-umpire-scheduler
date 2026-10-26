@@ -37,34 +37,34 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 4. [Take a fresh backup](#4-take-a-fresh-backup)
 5. [Roll a database change out to live](#5-roll-a-database-change-out-to-live)
 6. [Run a check script in the SQL Editor ("run the security check")](#6-run-a-check-script-in-the-sql-editor)
-7. [Find an ordinary account's id](#7-find-an-ordinary-accounts-id)
-8. [Run the app (normal and test mode)](#8-run-the-app)
-9. [Run the build check](#9-run-the-build-check)
-10. [Commit and push to GitHub ("push changes to the repo")](#10-commit-and-push-to-github)
-11. [Work on a branch and merge it back](#11-work-on-a-branch-and-merge-it-back)
-12. [Undo or go back](#12-undo-or-go-back)
-13. [Compare test and live ("run the fingerprint")](#13-compare-test-and-live)
-14. [Practice a restore](#14-practice-a-restore)
-15. [Check or repair the migration history](#15-check-or-repair-the-migration-history)
-16. [Supabase dashboard tasks](#16-supabase-dashboard-tasks)
-17. [What each script is](#17-what-each-script-is)
-18. [Typical sequences](#18-typical-sequences)
-19. [Troubleshooting](#19-troubleshooting)
-20. [Glossary](#20-glossary)
-21. [Where things live](#21-where-things-live)
-22. [Put files from Claude into the project](#22-put-files-from-claude-into-the-project)
-23. [Clean up leftover test records](#23-clean-up-leftover-test-records)
-24. [Where personal data is stored and who can see it](#24-where-personal-data-is-stored-and-who-can-see-it)
-25. [How umpire registration and invitations work](#25-how-umpire-registration-and-invitations-work)
-26. [Email: why sign-up fails on live, and the plan](#26-email-why-sign-up-fails-on-live-and-the-plan)
-27. [The Outbox: email stubs, and how to switch on real sending](#27-the-outbox-email-stubs-and-how-to-switch-on-real-sending)
-28. [Rules about teams and games](#28-rules-about-teams-and-games)
-29. [Menus and pages: who sees what](#29-menus-and-pages-who-sees-what)
-30. [The Games tab](#30-the-games-tab)
-31. [Importing games from the master calendar](#31-importing-games-from-the-master-calendar)
-32. [Creating a season from the registration files](#32-creating-a-season-from-the-registration-files)
-33. [Printing and exporting schedules](#33-printing-and-exporting-schedules)
-34. [Running all the checks at once](#34-running-all-the-checks-at-once)
+7. [Running all the checks at once](#7-running-all-the-checks-at-once)
+8. [Find an ordinary account's id](#8-find-an-ordinary-accounts-id)
+9. [Run the app (normal and test mode)](#9-run-the-app)
+10. [Run the build check](#10-run-the-build-check)
+11. [Commit and push to GitHub ("push changes to the repo")](#11-commit-and-push-to-github)
+12. [Work on a branch and merge it back](#12-work-on-a-branch-and-merge-it-back)
+13. [Undo or go back](#13-undo-or-go-back)
+14. [Compare test and live ("run the fingerprint")](#14-compare-test-and-live)
+15. [Practice a restore](#15-practice-a-restore)
+16. [Check or repair the migration history](#16-check-or-repair-the-migration-history)
+17. [Supabase dashboard tasks](#17-supabase-dashboard-tasks)
+18. [What each script is](#18-what-each-script-is)
+19. [Typical sequences](#19-typical-sequences)
+20. [Troubleshooting](#20-troubleshooting)
+21. [Glossary](#21-glossary)
+22. [Where things live](#22-where-things-live)
+23. [Put files from Claude into the project](#23-put-files-from-claude-into-the-project)
+24. [Clean up leftover test records](#24-clean-up-leftover-test-records)
+25. [Where personal data is stored and who can see it](#25-where-personal-data-is-stored-and-who-can-see-it)
+26. [How umpire registration and invitations work](#26-how-umpire-registration-and-invitations-work)
+27. [Email: why sign-up fails on live, and the plan](#27-email-why-sign-up-fails-on-live-and-the-plan)
+28. [The Outbox: email stubs, and how to switch on real sending](#28-the-outbox-email-stubs-and-how-to-switch-on-real-sending)
+29. [Rules about teams and games](#29-rules-about-teams-and-games)
+30. [Menus and pages: who sees what](#30-menus-and-pages-who-sees-what)
+31. [The Games tab](#31-the-games-tab)
+32. [Importing games from the master calendar](#32-importing-games-from-the-master-calendar)
+33. [Creating a season from the registration files](#33-creating-a-season-from-the-registration-files)
+34. [Printing and exporting schedules](#34-printing-and-exporting-schedules)
 35. [Colors and appearance](#35-colors-and-appearance)
 36. [Assigning umpires, and how many a game needs](#36-assigning-umpires-and-how-many-a-game-needs)
 
@@ -177,7 +177,7 @@ Also called "run the security check", "run the rules check", and so on.
 1. Open the Supabase dashboard and pick the project you mean. **Check the project name at the top left.**
 2. Open **SQL Editor** and start a new query.
 3. Open the script file from `supabase\tests`, copy **all** of it, and paste it in.
-4. `rls_check_ordinary_user.sql` has a line `test_user uuid := '00000000-...'`. **Leave it as it is**: the script then picks an approved ordinary account by itself (preferring one linked to an umpire record) and says which kind it used. Only replace the zeros if you want it to test as one particular account (section 7). Do not hard-code an id into the saved file: the test and live projects have different ids.
+4. `rls_check_ordinary_user.sql` has a line `test_user uuid := '00000000-...'`. **Leave it as it is**: the script then picks an approved ordinary account by itself (preferring one linked to an umpire record) and says which kind it used. Only replace the zeros if you want it to test as one particular account (section 8). Do not hard-code an id into the saved file: the test and live projects have different ids.
 5. Click **Run**.
 6. **The run ends with a red error. That is expected.** The report is inside the error message, and raising an error guarantees nothing is saved. The editor may also warn about "destructive operations" because the text contains delete statements; that is expected too.
 7. Read the report lines (`PASS`, `FAIL`, `CHECK`, `SKIP`, `INFO`).
@@ -188,7 +188,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
-| `umpire_assignments_check.sql` | The umpires-per-game settings and the assignment rules work (only 0 to 2; active umpires only; nobody on a canceled game; swaps work; a refused change saves nothing; only scheduling admins can assign) | `Failures: 0` |
+| `umpire_assignments_check.sql` | The umpires-per-game settings, the places (plate to third base) and the assignment rules work (0 to 4 umpires; tournament numbers; active umpires only; nobody on a canceled game; the youth age rule; swaps work; a refused change saves nothing; only scheduling admins can assign) | `Failures: 0` |
 | `import_season_check.sql` | Creating a season from a file works and is all-or-nothing (a refused import saves nothing; only scheduling admins can run it) | `Failures: 0` |
 | `import_games_check.sql` | The spreadsheet import works and is all-or-nothing (a failed import saves nothing; only scheduling admins can run it) | `Failures: 0` |
 | `games_master_id_check.sql` | The master calendar Game ID rules work (optional, unique within a season, no stray spaces) | `Failures: 0` |
@@ -202,7 +202,52 @@ so "edit games" cannot be tried). An `INFO` line is just something worth knowing
 Run the relevant scripts after any change to permissions: on test first, then on live
 after rolling it out.
 
-## 7. Find an ordinary account's id
+## 7. Running all the checks at once
+
+There are about ten check scripts. Instead of pasting each into the SQL Editor, one command runs all of them and says which ones have problems.
+
+**Run it** from the project folder:
+
+```
+powershell -ExecutionPolicy Bypass -File .\scripts\run-all-checks.ps1
+```
+
+It asks for the **Session pooler host** and the database **password** (typed hidden, never saved), the same as `restore-to-test.ps1`. It defaults to the **test** project. For live:
+
+```
+powershell -ExecutionPolicy Bypass -File .\scripts\run-all-checks.ps1 -Target live
+```
+
+It asks you to type `LIVE` first. To run only some checks, add `-Only` and part of a file name, for example `-Only games`.
+
+**What you see**
+
+```
+  [ PASS ]  account_details_check.sql    16 tests passed
+  [ FAIL ]  games_rules_check.sql        1 problem in 18 tests
+            FAIL  G3  a team from a different division was accepted
+  [ STOP ]  import_games_check.sql       could not finish: ERROR: relation ... does not exist
+
+RESULT: 2 OF 10 CHECKS NEED ATTENTION on TEST
+```
+
+| Mark | Meaning |
+|---|---|
+| **PASS** | The check ran to the end and found no problems |
+| **FAIL** | The check ran, and one or more tests failed (the failing lines are shown) |
+| **STOP** | The check could not finish (for example a missing table, or a typing slip in the script). **This is never counted as a pass.** |
+
+The last line is the answer: **ALL ... CHECKS PASSED**, or how many need attention and which. A full log of every check's output is saved in `D:\sandbox\RWCLL-backups\check-results` (named with the project and time), which is handy to send to Claude if something fails.
+
+**It is safe on live.** Every check runs inside a transaction that is **always rolled back**, even if a check script had a mistake, so nothing is ever saved.
+
+**New checks are included automatically.** Any file in `supabase\tests` with `check` in its name is run (`schema_fingerprint.sql` is not a check, so it is skipped).
+
+**Where it looks for the check scripts.** It finds the project itself (from where `run-all-checks.ps1` lives), so it does not matter which folder you run it from. It looks in `supabase\tests` first, then in the other likely places (`supabase`, `scripts`, `docs`, `tests`, `sql`, and the project folder), and says if it had to use a different folder. If it finds **no** check scripts, it lists where it looked and tells you to create `supabase\tests` and copy the `*_check.sql` files into it. If it sees them in your **Downloads** folder, it gives the exact commands to move them.
+
+**If it will not start:** "psql was not found" means passing the real location with `-PsqlPath`; "Could not connect" shows the reason from the database (a wrong host or password are the usual causes).
+
+## 8. Find an ordinary account's id
 
 For `rls_check_ordinary_user.sql` you need the id of an **approved account with no admin
 role** (for example a youth umpire). In the SQL Editor of the project you are testing:
@@ -219,7 +264,7 @@ order by p.display_name;
 Copy the `id` of a suitable row into the script. Ids differ between projects only
 for accounts created after the test project was restored from a live backup.
 
-## 8. Run the app
+## 9. Run the app
 
 **Normal (this uses the LIVE project, so changes you make are real):**
 
@@ -233,13 +278,13 @@ npm run dev
 npm run dev -- --mode test
 ```
 
-Test mode needs a file named `.env.test` (section 16). To be sure which project you are on:
+Test mode needs a file named `.env.test` (section 17). To be sure which project you are on:
 press **F12**, open the **Network** tab, type `supabase` in the filter, and reload.
 The requests should go to `mucsujj...` for test, or `tayveud...` for live.
 
 Open http://localhost:5173/ in the browser. Stop the app with **Ctrl+C** in the terminal.
 
-## 9. Run the build check
+## 10. Run the build check
 
 ```powershell
 npm run build
@@ -248,7 +293,7 @@ npm run build
 A good result ends with a line like `built in 150ms` and no errors. If it prints errors,
 copy them exactly and send them to Claude.
 
-## 10. Commit and push to GitHub
+## 11. Commit and push to GitHub
 
 Also called "push changes to the repo". A **commit** saves a snapshot on your computer;
 a **push** copies your commits to GitHub.
@@ -267,7 +312,7 @@ git push
 - If `git push` is rejected, ask Claude before doing anything else.
 - To see recent commits: `git log --oneline -5`.
 
-## 11. Work on a branch and merge it back
+## 12. Work on a branch and merge it back
 
 A branch is a safe side copy for risky changes. If it goes wrong, you can walk away from it.
 
@@ -276,7 +321,7 @@ git status
 git checkout -b name-of-the-change
 ```
 
-...make changes, test, and commit (section 10)...
+...make changes, test, and commit (section 11)...
 
 When it works, bring it into `main`:
 
@@ -295,7 +340,7 @@ git checkout main
 
 To see which branch you are on: `git branch --show-current`.
 
-## 12. Undo or go back
+## 13. Undo or go back
 
 | I want to... | Command | Careful |
 |---|---|---|
@@ -305,7 +350,7 @@ To see which branch you are on: `git branch --show-current`.
 | Undo my last commit but keep the changes | `git reset --soft HEAD~1` | Only if it is **not pushed** yet |
 | Anything else | Ask Claude first | |
 
-## 13. Compare test and live
+## 14. Compare test and live
 
 Also called "run the fingerprint". It proves two databases have the same structure.
 
@@ -321,7 +366,7 @@ Also called "run the fingerprint". It proves two databases have the same structu
 
 The result has about 10 rows (one per category), so the editor's 100-row limit cannot hide anything.
 
-## 14. Practice a restore
+## 15. Practice a restore
 
 Proves a backup can really rebuild the data. It loads a backup into the **test** project and only
 works if the test project is **empty**. Details are in `docs\RECOVERY.md`.
@@ -337,7 +382,7 @@ works if the test project is **empty**. Details are in `docs\RECOVERY.md`.
 
 If the restore fails, it rolls back and loads nothing.
 
-## 15. Check or repair the migration history
+## 16. Check or repair the migration history
 
 **See it:**
 
@@ -356,7 +401,7 @@ npx supabase migration repair --status applied 20261023183500 --linked
 
 The version number is the 14-digit prefix of the file name. Check that you copied every digit.
 
-## 16. Supabase dashboard tasks
+## 17. Supabase dashboard tasks
 
 - **Find a project's publishable key:** Project Settings, then API Keys. It is designed to be public, but still do not paste it into chat.
 - **Create `.env.test`** in the project folder (it is already ignored by Git) with two lines:
@@ -368,19 +413,19 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 - **Reset a database password:** Project Settings, then Database, then Reset database password.
 - **Approve an account:** sign in to the app as super admin; pending accounts appear at the top. Then use the Roles section to give it roles.
 
-## 17. What each script is
+## 18. What each script is
 
 | File | What it does | Changes data? |
 |---|---|---|
 | `scripts\backup-live.ps1` | Saves a backup of the LIVE project to `D:\sandbox\RWCLL-backups` | No (reads only) |
 | `scripts\restore-to-test.ps1` | Loads a backup into an empty TEST project | Test only |
-| `scripts\run-all-checks.ps1` (and `scripts\run-checks.mjs`) | Runs **every** check script below against TEST or LIVE and reports which ones have problems (section 34) | No (every check is rolled back) |
+| `scripts\run-all-checks.ps1` (and `scripts\run-checks.mjs`) | Runs **every** check script below against TEST or LIVE and reports which ones have problems (section 7) | No (every check is rolled back) |
 | `supabase\tests\rls_check_ordinary_user.sql` | Tries forbidden actions as an ordinary account (picks one by itself) | No (always rolls back) |
 | `supabase\tests\rls_check_admin_access.sql` | Confirms a super admin can read everything | No (always rolls back) |
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
-| `supabase\tests\umpire_assignments_check.sql` | Tests the umpires-per-game settings and the assignment rules (builds its own tiny league and umpires; your data is not used) | No (always rolls back) |
+| `supabase\tests\umpire_assignments_check.sql` | Tests the umpires-per-game settings, the places, the youth age rule and the assignment rules (builds its own tiny league, umpires and age chart; your data is not used) | No (always rolls back) |
 | `supabase\tests\import_season_check.sql` | Tests the season import function (builds its own tiny leagues; your data is not used) | No (always rolls back) |
 | `supabase\tests\import_games_check.sql` | Tests the spreadsheet import function (builds its own tiny league; your data is not used) | No (always rolls back) |
 | `supabase\tests\games_master_id_check.sql` | Tests the master calendar Game ID rules (builds its own tiny league; your data is not used) | No (always rolls back) |
@@ -390,26 +435,26 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\migrations\*.sql` | The database changes, applied in file-name order | Yes, when pushed |
 | `.github\workflows\keep-alive.yml` | Calls the database daily so the free plan does not pause it | No |
 
-## 18. Typical sequences
+## 19. Typical sequences
 
 **A new database change**
 
 1. Save the migration file into `supabase\migrations`.
 2. Check TEST is linked, dry run, push (section 3).
 3. Run the check scripts on test (section 6).
-4. Try the app in test mode (section 8).
+4. Try the app in test mode (section 9).
 5. Take a fresh backup (section 4).
 6. Roll out to live and run the checks there (section 5).
-7. Link back to test (section 2), then commit and push (section 10).
+7. Link back to test (section 2), then commit and push (section 11).
 
 **A new screen or code change**
 
 1. Copy the new files into `src`.
-2. `npm run build` (section 9).
-3. `npm run dev -- --mode test` and try it (section 8).
-4. Commit and push (section 10).
+2. `npm run build` (section 10).
+3. `npm run dev -- --mode test` and try it (section 9).
+4. Commit and push (section 11).
 
-## 19. Troubleshooting
+## 20. Troubleshooting
 
 | What you see | What it means | What to do |
 |---|---|---|
@@ -422,7 +467,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | The SQL Editor shows a red error ending in a report | That is how check scripts deliver results | Read the `PASS`/`FAIL` lines. Not a problem. |
 | `malformed array literal` in a check script | You are running an old copy of the script | Use the newest version of the file |
 | The password reset email never arrives | The built-in email sender only reaches your own team's addresses, and sends 2 per hour | Test with your own admin email; a real email provider is needed for everyone else |
-| The reset link opens a page that doesn't sign you in | The Redirect URL is missing | Section 16, "Allow the app's address" |
+| The reset link opens a page that doesn't sign you in | The Redirect URL is missing | Section 17, "Allow the app's address" |
 | `Supabase configuration is missing` | The `.env` file is missing or misnamed | Check `.env` (or `.env.test` in test mode) |
 | App opens on port 5174 instead of 5173 | Another copy is still running | Close the other terminal (Ctrl+C), or add the new port to Redirect URLs |
 | `running scripts is disabled` | PowerShell blocks `.ps1` files by default | Run them exactly as written here, with `-ExecutionPolicy Bypass -File` |
@@ -430,13 +475,15 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `git push` is rejected | GitHub has changes you do not | Ask Claude before doing anything else |
 | The Outbox looks empty after inviting someone | Older versions only reloaded when opened. The current version updates by itself and has a **Refresh** button. | Press **Refresh**. If it is still empty, run this in the SQL Editor to see what really exists: `select created_at, kind, to_email, subject, status from public.email_outbox order by created_at desc limit 10;` |
 | VS Code shows a red underline (for example "Cannot find module") but `npm run build` is fine | VS Code's TypeScript checker is out of date. It often misses files that were just added, moved or replaced. | Press `Ctrl+Shift+P`, type **TypeScript: Restart TS Server**, and press Enter. The real compiler (`npm run build`) is the one to trust. |
-| `Cannot find module "../supabase"` (or `"../ui"`, `"./types"`) in a file inside a folder | The file is in the wrong folder, or VS Code rewrote its `import` lines when the file was dragged. `./` means the same folder, `../` means one folder up. | Check the file's folder against the layout in section 22. When VS Code asks "Update imports for moved file?", answer **No**, or re-copy the file. |
+| `Cannot find module "../supabase"` (or `"../ui"`, `"./types"`) in a file inside a folder | The file is in the wrong folder, or VS Code rewrote its `import` lines when the file was dragged. `./` means the same folder, `../` means one folder up. | Check the file's folder against the layout in section 23. When VS Code asks "Update imports for moved file?", answer **No**, or re-copy the file. |
+| `Property 'X' does not exist on type ...` (for example `umpires_needed` on `Game`) after copying files | An old copy of a file is still in place, most often one of the **two `types.ts` files** (`src\games` and `src\setup`). Check them with the `Select-String` commands in section 23, then unzip the update zip over the project again |
+| League Setup (or another screen) says `Unable to load setup records` | The app asked the database for something it does not have yet, almost always because the newest migration has not been applied to the database in use. The page now shows the database's own message underneath: *column ... does not exist* means exactly this. Check which database you are on (sections 1 and 9: test mode shows `mucsujj` in the browser's Network tab), then apply the migration (section 3) and run the checks (section 7). You can also see the message in the browser console (F12), on the line starting `League setup load failed` |
 | The season import says "A season called ... already exists" | You chose **Create a new season** but one with that name is already there | In the **Season** list, choose **Add to: that season** (to add teams to it), or give the new season a different name. |
-| Signing up on **live** says the email "cannot be used as it is not authorized" | Supabase's built-in email sender only reaches your own team's addresses (error code `email_address_not_authorized`). Sign-up needs a confirmation email, so everyone else is refused. | A real email provider has to be connected (see section 26). Until then only team members can register on live. |
+| Signing up on **live** says the email "cannot be used as it is not authorized" | Supabase's built-in email sender only reaches your own team's addresses (error code `email_address_not_authorized`). Sign-up needs a confirmation email, so everyone else is refused. | A real email provider has to be connected (see section 27). Until then only team members can register on live. |
 | Someone signed up as an umpire but is not in **Umpire registrations** | They must confirm their email and then sign in once; the record is created at that sign-in | Ask them to confirm the email and sign in. People who never confirm never appear (this keeps spam out). |
 | An invited person registered but was not approved automatically | The email must match the invitation exactly, be **confirmed**, and the invitation must be open (not expired or revoked) and the record not already linked. They must also **sign in once** after confirming. | Open Edit on their umpire record: the Invitation panel shows the status. Renew it if it expired. |
 
-## 20. Glossary
+## 21. Glossary
 
 - **Live:** the real project, with real data.
 - **Test:** a practice copy with the same structure, for trying changes safely.
@@ -452,7 +499,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 - **Session pooler:** the connection type used by `restore-to-test.ps1`.
 - **Fingerprint:** a one-page summary of a database's structure, used to compare two projects.
 
-## 21. Where things live
+## 22. Where things live
 
 ```
 rwcll-umpire-scheduler\
@@ -468,7 +515,7 @@ rwcll-umpire-scheduler\
 D:\sandbox\RWCLL-backups\  backups              (outside the project, never committed)
 ```
 
-## 22. Put files from Claude into the project
+## 23. Put files from Claude into the project
 
 When Claude says "copy the file into `src`" or "save the migration", this is where each kind of file goes.
 If the same file already exists, **overwrite it**.
@@ -484,9 +531,18 @@ If the same file already exists, **overwrite it**.
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
 | `style.css` | `src` (it replaces `src\style.css`) |
-| `FAQ.md`, `RECOVERY.md`, `EMAIL-SETUP.md` | `docs` |
+| `FAQ.md`, `RECOVERY.md`, `EMAIL-SETUP.md`, `ROADMAP.md`, `FEATURES.md` | `docs` |
 | `keep-alive.yml` | `.github\workflows` |
-| A `.zip` | Unzip into the project folder (see below) |
+| A `.zip` | Unzip into the project folder (see below). **This is the safest way**: the folders inside the zip put every file in its right place |
+
+**Two files are both called `types.ts`.** One belongs in `src\games` and a different one belongs in `src\setup`. In a list of downloads they look identical, so they are easy to mix up or to skip. If a file lands in the wrong folder, or an old copy stays behind, the build shows errors such as *Property 'umpires_needed' does not exist on type 'Game'*. To check, run these from the project folder; each should print one or more matching lines:
+
+```powershell
+Select-String -Path src\games\types.ts -Pattern "umpires_needed","tournament_umpires"
+Select-String -Path src\setup\types.ts -Pattern "tournament_umpires"
+```
+
+If either prints nothing, copy that file again from the zip. Using a zip avoids the problem, because it keeps the two files in their own folders.
 
 To unzip a download so its folders land in the right places (replace the path with where you saved it):
 
@@ -500,7 +556,7 @@ Afterwards:
 - Run `git status`. You should see the files you copied listed as modified or new, and nothing else. Anything unexpected: ask Claude.
 - Warnings about `LF` and `CRLF` line endings are harmless.
 
-## 23. Clean up leftover test records
+## 24. Clean up leftover test records
 
 **Leagues, seasons, divisions, teams, locations:** open the League Setup screen, press **Edit** on the
 record, and use its **Delete** button. A record that something else uses cannot be deleted (you will get a message
@@ -529,7 +585,7 @@ where c.name = 'EXACT CHART NAME HERE'
 If a season does use the chart, first edit that season in the app and point it at the chart you want to keep.
 On **live**, take a fresh backup before deleting (section 4).
 
-## 24. Where personal data is stored and who can see it
+## 25. Where personal data is stored and who can see it
 
 "Scheduling admins" means the **super admin, umpire chief, and scheduler** roles.
 This is enforced by the database itself, not just by the screens.
@@ -554,7 +610,7 @@ Things worth knowing:
 - **Text messages are not available yet.** The "My details" box only records a preference, with the time it was chosen.
 - **Birth dates** are for administrators only. They are used to tell youth from adult and to find umpires under 13.
 
-## 25. How umpire registration and invitations work
+## 26. How umpire registration and invitations work
 
 There are two ways an umpire gets into the system. Both end the same way: a linked account
 with the youth or adult umpire role and an active umpire record.
@@ -604,7 +660,7 @@ The database refuses an approval that breaks the age rules: no birth date for a 
 3. Sign out. Choose **Create account**, register with `invitee.one@example.test` (choose adult umpire), and sign in.
 4. You should land on **Account approved**. Sign back in as super admin: the directory should show **Linked**, and the Roles list should show the new account with the **Adult umpire** role.
 
-## 26. Email: why sign-up fails on live, and the plan
+## 27. Email: why sign-up fails on live, and the plan
 
 **What happens today.** Supabase includes a built-in email sender for testing. It only delivers to
 addresses on your Supabase project team, and only a few messages per hour. Everyone else gets the
@@ -641,7 +697,7 @@ provides the **"From" identity** of the system's messages.
 
 **Keep in mind:** invitations rely on the email being confirmed, so "Confirm email" must stay **on** for live.
 
-## 27. The Outbox: email stubs, and how to switch on real sending
+## 28. The Outbox: email stubs, and how to switch on real sending
 
 Real email sending is **not switched on yet**. So that it can be added later without changing any screen,
 everything that wants to send an email adds the message to an **Outbox** instead.
@@ -655,12 +711,12 @@ history. Inviting an umpire now also adds the invitation message to the Outbox.
 
 | Kind | Examples | Sent by | Switched on by |
 |---|---|---|---|
-| **Sign-in emails** | Confirm your email, reset your password | Supabase Auth | Entering SMTP details in the Supabase dashboard (section 26) |
+| **Sign-in emails** | Confirm your email, reset your password | Supabase Auth | Entering SMTP details in the Supabase dashboard (section 27) |
 | **App messages** | Invitations, game assignments, schedule changes, reminders | The Outbox | A sender that reads the Outbox (to be built when you are ready) |
 
 **How real sending will be switched on later** (nothing here needs to be done now):
 
-1. Choose the route in section 26 and get its SMTP details.
+1. Choose the route in section 27 and get its SMTP details.
 2. A small scheduled server function reads **waiting** Outbox messages, sends each one through that service, and records the result (`sent` by `smtp`, or `failed` with the reason so it can be retried).
 3. The screens keep working unchanged. The Outbox then becomes a record of what was sent, and "Mark as sent" is only needed if something fails.
 
@@ -668,7 +724,7 @@ history. Inviting an umpire now also adds the invitation message to the Outbox.
 which calls the database function `queue_email`. Automatic emails triggered inside the database (for example "an assignment
 changed") use the internal function `enqueue_email`, which cannot be called from the app.
 
-## 28. Rules about teams and games
+## 29. Rules about teams and games
 
 These are enforced by the database itself, so they hold no matter which screen is used.
 
@@ -692,7 +748,7 @@ These are enforced by the database itself, so they hold no matter which screen i
 
 **Games with umpires** (the plate and field umpires, availability, and conflicts) come with the assignment screens.
 
-## 29. Menus and pages: who sees what
+## 30. Menus and pages: who sees what
 
 After signing in, an approved person sees a **top bar** (their name, their **roles** in small italics beneath it, and **Sign out**) and, if they have more than one page, a **menu** of tabs under it. Which pages they get depends on their roles. People with several roles get the pages of each.
 
@@ -712,7 +768,7 @@ Combinations: chief and scheduler get *Umpire Management*, *Games* and *League S
 
 **Availability and assignments will each be a new tab** in this menu.
 
-## 30. The Games tab
+## 31. The Games tab
 
 **Who:** super admins, umpire chiefs and schedulers. Find it in the menu as **Games**.
 
@@ -725,7 +781,7 @@ Combinations: chief and scheduler get *Umpire Management*, *Games* and *League S
 | Warning | When it appears |
 |---|---|
 | **No umpire assigned** | A draft or scheduled game that needs umpires, today or later, with nobody assigned. (Games in the past, canceled games and completed games are never flagged, and neither is a game that needs no umpire.) |
-| **Needs a plate / field umpire** | Some umpires are assigned, but fewer than the game needs. It names the place that is still open. |
+| **Needs a field umpire** (or plate, first base, ...) | Some umpires are assigned, but fewer than the game needs. It names the place that is still open, or says *Needs 2 more umpires* when several are. |
 | **Field conflict** | Another game is at the same field at an overlapping time. A game that starts exactly when the previous one ends is **not** a conflict. |
 | **Team conflict** | A team is in another game at an overlapping time, even at a different field. |
 
@@ -737,15 +793,15 @@ Canceled games never cause or receive conflicts. A game with many conflicts show
 
 **Delete a game** only if it should never have existed. A game that is on the master calendar is better set to **Canceled**, because importing again would otherwise add it back. Deleting a game also removes its umpire assignments, and the confirmation tells you how many.
 
-**Assigning umpires** is described in section 36, and **printing and downloading the schedule** in section 33.
+**Assigning umpires** is described in section 36, and **printing and downloading the schedule** in section 34.
 
 **What comes next on this tab**
 
 1. Umpires entering their availability.
 
-**Importing from the master calendar spreadsheet** is built: see section 31.
+**Importing from the master calendar spreadsheet** is built: see section 32.
 
-## 31. Importing games from the master calendar
+## 32. Importing games from the master calendar
 
 **Where:** Games tab, **Import from spreadsheet**. **Who:** super admins, umpire chiefs and schedulers.
 
@@ -772,7 +828,7 @@ Canceled games never cause or receive conflicts. A game with many conflicts show
 
 **Times.** The file's times are read in **your computer's time zone**, which the import screen states. Import from a computer set to the league's time zone.
 
-**Do the season first.** Create the season, divisions and teams from the registration files (section 32), then import the calendar. The calendar then finds every team and division by itself, so only the fields need creating.
+**Do the season first.** Create the season, divisions and teams from the registration files (section 33), then import the calendar. The calendar then finds every team and division by itself, so only the fields need creating.
 
 **Tips**
 
@@ -781,11 +837,11 @@ Canceled games never cause or receive conflicts. A game with many conflicts show
 - A file whose headings are different (for example *Game ID* instead of *Match ID*) is usually recognised. If not, the **Columns in the file** panel opens and you choose which column holds what.
 - Limits: files up to 5 MB and 5,000 games at a time.
 
-## 32. Creating a season from the registration files
+## 33. Creating a season from the registration files
 
 **Where:** League Setup, **Create a season from a file**. **Who:** super admins, umpire chiefs and schedulers.
 
-**What it does.** It reads the registration system's exports and creates, in one step, a **season**, its **divisions** and its **teams**, so you do not have to type them in. You do this once per season, before importing the calendar (section 31).
+**What it does.** It reads the registration system's exports and creates, in one step, a **season**, its **divisions** and its **teams**, so you do not have to type them in. You do this once per season, before importing the calendar (section 32).
 
 **The two files** (save each as **CSV** first)
 
@@ -806,11 +862,11 @@ Canceled games never cause or receive conflicts. A game with many conflicts show
 
 **Running it again is safe.** The season is found by name, nothing is created twice, and the button says "Nothing new to add". If the registration system later gets **another team**, import the new Team Detail file: only that team is added. A team the registration has moved to another division is **not** moved here (you are warned), and teams here that are not in the file are listed but never touched.
 
-**After it has run:** open **Seasons** to choose an age chart, and **Divisions** to set each division's age range if you use them. Then import the calendar (section 31): its teams, divisions and games line up automatically. The **Teams** list in League Setup can be filtered by season **and by division** (each division shows how many teams it has).
+**After it has run:** open **Seasons** to choose an age chart, and **Divisions** to set each division's age range if you use them. Then import the calendar (section 32): its teams, divisions and games line up automatically. The **Teams** list in League Setup can be filtered by season **and by division** (each division shows how many teams it has).
 
 **Limits:** files up to 2 MB, 200 divisions and 2,000 teams at a time.
 
-## 33. Printing and exporting schedules
+## 34. Printing and exporting schedules
 
 **Where:** the **Games** tab (super admins, umpire chiefs and schedulers). Umpires print their own from their **Home** page.
 
@@ -834,51 +890,6 @@ On paper, an umpire spot that is still empty is boxed and marked **OPEN**, so it
 
 **Times** are shown in the time zone of the computer doing the printing.
 
-## 34. Running all the checks at once
-
-There are about ten check scripts. Instead of pasting each into the SQL Editor, one command runs all of them and says which ones have problems.
-
-**Run it** from the project folder:
-
-```
-powershell -ExecutionPolicy Bypass -File .\scripts\run-all-checks.ps1
-```
-
-It asks for the **Session pooler host** and the database **password** (typed hidden, never saved), the same as `restore-to-test.ps1`. It defaults to the **test** project. For live:
-
-```
-powershell -ExecutionPolicy Bypass -File .\scripts\run-all-checks.ps1 -Target live
-```
-
-It asks you to type `LIVE` first. To run only some checks, add `-Only` and part of a file name, for example `-Only games`.
-
-**What you see**
-
-```
-  [ PASS ]  account_details_check.sql    16 tests passed
-  [ FAIL ]  games_rules_check.sql        1 problem in 18 tests
-            FAIL  G3  a team from a different division was accepted
-  [ STOP ]  import_games_check.sql       could not finish: ERROR: relation ... does not exist
-
-RESULT: 2 OF 10 CHECKS NEED ATTENTION on TEST
-```
-
-| Mark | Meaning |
-|---|---|
-| **PASS** | The check ran to the end and found no problems |
-| **FAIL** | The check ran, and one or more tests failed (the failing lines are shown) |
-| **STOP** | The check could not finish (for example a missing table, or a typing slip in the script). **This is never counted as a pass.** |
-
-The last line is the answer: **ALL ... CHECKS PASSED**, or how many need attention and which. A full log of every check's output is saved in `D:\sandbox\RWCLL-backups\check-results` (named with the project and time), which is handy to send to Claude if something fails.
-
-**It is safe on live.** Every check runs inside a transaction that is **always rolled back**, even if a check script had a mistake, so nothing is ever saved.
-
-**New checks are included automatically.** Any file in `supabase\tests` with `check` in its name is run (`schema_fingerprint.sql` is not a check, so it is skipped).
-
-**Where it looks for the check scripts.** It finds the project itself (from where `run-all-checks.ps1` lives), so it does not matter which folder you run it from. It looks in `supabase\tests` first, then in the other likely places (`supabase`, `scripts`, `docs`, `tests`, `sql`, and the project folder), and says if it had to use a different folder. If it finds **no** check scripts, it lists where it looked and tells you to create `supabase\tests` and copy the `*_check.sql` files into it. If it sees them in your **Downloads** folder, it gives the exact commands to move them.
-
-**If it will not start:** "psql was not found" means passing the real location with `-PsqlPath`; "Could not connect" shows the reason from the database (a wrong host or password are the usual causes).
-
 ## 35. Colors and appearance
 
 The app uses the league colors: **forest green, black and white**, with neutral grays. The white button text and the green links all pass the standard contrast test (the textbook "forest green" `#228b22` does not, so a slightly deeper green is used).
@@ -901,20 +912,38 @@ Red and amber are kept for **errors** and **warnings** only, so they keep their 
 
 **How many umpires a game needs**
 
-- Each **division** has a default: **1 or 2 umpires per game** (starting at 2). Change it in **League Setup**, under the division, at **Umpires needed per game**. For example, a division whose games use only one umpire can be set to 1.
-- Any single **game** can use its own number: **None**, **1**, or **2**. Set it in the game's **Edit** form (**Umpires needed for this game**) or in the **Umpires** panel. Leave it on **Use the division's default** to follow the division. A tournament game, or a game where one umpire is fine, is set here.
+- Each **division** has a default, from **No umpire** to **4 umpires**. Change it in **League Setup**, under the division, at **Umpires needed per game**. A division that uses no umpires at all (Wiffle, Tee Ball, A Ball) is set to **No umpire**: its games then show no OPEN places and no warnings.
+- A division can also have its own number for **tournament games** (**Umpires needed for tournament games**). Leave it on **Same as regular games** unless tournaments differ.
+- Any single **game** can use its own number, **No umpire needed** to **4 umpires**. Set it in the game's **Edit** form (**Umpires needed for this game**) or in the **Umpires** panel. Leave it on **Use the division's default** to follow the division (the choice tells you what that number is, and for a tournament game it uses the tournament number).
 - Importing the master calendar never changes this setting, so your choices survive a re-import.
 
-**A game is fully staffed when it has at least as many umpires as it needs.** It is counted by number, not by name: if you change a two-umpire game to **1 umpire** and the umpire who is there is listed as the *field* umpire, the game is still fully staffed.
+**The places.** The number decides which places are used:
 
-**What the list shows.** In the **Umpires** column: each umpire's name, **OPEN** (in red) for a place that still needs someone, nothing for a place the game does not need, and a note such as *1 needed (set for this game)* when the game has its own number. Warnings: **No umpire assigned** (nobody yet) and **Needs a field umpire** / **Needs a plate umpire** (some, but not all). The summary line counts them (*2 need an umpire*, *1 partly staffed*).
+| Umpires | Places |
+|---|---|
+| 1 | Plate |
+| 2 | Plate, Field |
+| 3 | Plate, First base (1B), Third base (3B) |
+| 4 | Plate, First base, Second base, Third base |
+
+**A game is fully staffed when it has at least as many umpires as it needs.** It is counted by number, not by place: if you change a two-umpire game to **1 umpire** and the umpire who is there is listed as the *field* umpire, the game is still fully staffed. Lowering a game's number never removes anyone: everyone already assigned stays on the game.
+
+**What the list shows.** In the **Umpires** column: each umpire's place and name, **OPEN** (in red) for a place that still needs someone, nothing for a place the game does not need, and a note such as *3 needed (set for this game)* when the game has its own number. Warnings: **No umpire assigned** (nobody yet) and **Needs a field umpire** / **Needs 2 more umpires** (some, but not all). The summary line counts them (*2 need an umpire*, *1 partly staffed*).
 
 **The Umpires panel**
 
-1. Press **Umpires** on the game. The panel shows the game and a **Umpires needed for this game** choice.
-2. Choose the **Plate** and, if the game needs two, the **Field** umpire. Each list shows the **active** umpires, in name order, with how many games they already have this season. Youth umpires are marked *(youth)*.
-3. Choosing someone who is already in the other place **swaps** the two.
+1. Press **Umpires** on the game. The panel shows the game and **Umpires needed for this game**.
+2. Choose an umpire for each place shown. Each list shows the **active** umpires, in name order, with how many games they already have this season. Youth umpires are marked *(youth)*.
+3. Choosing someone who is already in another place **swaps** the two.
 4. **Save umpires.** The umpires are saved together, all or nothing. **Cancel** saves nothing.
+
+**The youth umpire age rule.** A **youth umpire cannot umpire a division whose players start at the umpire's own Little League age, or older.** For example a 13-year-old cannot umpire Seniors (players start at 13), and a 12-year-old cannot umpire Juniors (players start at 12), but a 13-year-old can umpire Juniors.
+
+- The umpire's **Little League age** comes from their birth month and year and the **season's age chart**, so each season needs its age chart set up (see League Setup) for the rule to work.
+- Such an umpire is still listed in the panel, marked **age rule**, but cannot be chosen, and the panel says who is not available. The database refuses it as well, with the reason.
+- **The rule never guesses.** If a youth umpire has no birth date on file, or the season's chart does not cover their birth month, they are **not** blocked. The panel shows a note ("the youth age rule could not be checked") and you decide. If a division has no age range set, no one is blocked from it.
+- Adult umpires are not affected.
+- **Not enforced yet:** that a youth umpire cannot umpire the division they themselves play in. This is a planned addition.
 
 **Clash warnings.** An umpire who already has a game that overlaps this one is marked **busy at this time** in the list, and a note under the choices says which game. This is a **warning only**: you can still save, because real leagues sometimes need an exception. Canceled games never count as a clash, and a game that starts exactly when another ends is not a clash.
 
@@ -923,16 +952,17 @@ Red and amber are kept for **errors** and **warnings** only, so they keep their 
 | Refused | Why |
 |---|---|
 | An umpire who is **inactive or suspended** | Only active umpires can be put on a game. An umpire who became inactive *after* being assigned can stay on that game. |
+| A **youth umpire** the age rule does not allow | See above. |
 | Any umpire on a **canceled game** | Canceled games need no umpires. You can still clear the umpires of a game that was canceled later. |
-| The **same umpire as both plate and field** | One person cannot hold two places. |
+| The **same umpire in two places** | One person cannot hold two places in a game. |
 | Anyone who is **not a scheduling administrator** | Umpires and other accounts cannot assign umpires. |
 
 Who made each assignment is recorded.
 
-**Printing and CSV.** The printed schedule shows **OPEN** only where someone is still needed, and a dash where no umpire is needed. The CSV has a new column, **Umpires needed**, after **Field umpire**.
+**Printing and CSV.** The printed schedule has one **Umpires** column with a line for each place: *Plate: Ann Lee*, or *1B:* **OPEN**. A game that needs no umpire shows a dash. The CSV has a column for every place (**Plate umpire**, **Field umpire**, **1B umpire**, **2B umpire**, **3B umpire**) and **Umpires needed**, and an empty cell means nobody is there.
 
-**One umpire's own view.** An umpire sees only their own games on their **My schedule**, and an administrator can look at any one umpire's schedule from the Games tab (section 33). Both now show the games you assign here.
+**One umpire's own view.** An umpire sees only their own games on their **My schedule**, with their place (for example *First base*), and an administrator can look at any one umpire's schedule from the Games tab (section 34). Both show the games you assign here.
 
-**Not built yet:** umpires entering when they are available (so the panel could warn about it), and sending umpires their assignments.
+**Not built yet:** umpires assigning themselves, umpires confirming an assignment, phone numbers on the printed schedule, and umpires entering when they are available.
 
 **Check script:** `umpire_assignments_check.sql` tests all of the above in the database (section 6).

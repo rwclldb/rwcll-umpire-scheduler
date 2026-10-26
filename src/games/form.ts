@@ -1,5 +1,6 @@
 import { supabase } from "../supabase";
 import { escapeHtml } from "../ui";
+import { divisionNeed } from "./staffing";
 import type { Game, GamesContext, GameStatus, GameType } from "./types";
 import {
   addMinutes,
@@ -130,8 +131,10 @@ export function renderGameForm(
       <select id="game-umpires">
         <option value="">Use the division's default</option>
         <option value="0">No umpire needed</option>
-        <option value="1">1 umpire</option>
-        <option value="2">2 umpires</option>
+        <option value="1">1 umpire (plate)</option>
+        <option value="2">2 umpires (plate, field)</option>
+        <option value="3">3 umpires (plate, first base, third base)</option>
+        <option value="4">4 umpires (plate, first, second, third base)</option>
       </select>
 
       <label for="game-status">Status</label>
@@ -251,9 +254,9 @@ export function renderGameForm(
   // see what "use the default" means for the division chosen.
   const showDivisionDefault = () => {
     const division = context.divisions.find((item) => item.id === divisionSelect.value);
-    const count = division?.umpires_per_game ?? 2;
+    const count = divisionNeed(division, get<HTMLSelectElement>("game-type").value);
     umpiresSelect.options[0].textContent =
-      `Use the division's default (${count} ${count === 1 ? "umpire" : "umpires"})`;
+      `Use the division's default (${count === 0 ? "no umpire" : `${count} ${count === 1 ? "umpire" : "umpires"}`})`;
   };
 
   fillDivisions(game?.division_id ?? options.defaultDivisionId);
@@ -284,6 +287,9 @@ export function renderGameForm(
     refillTeams();
     showDivisionDefault();
   });
+
+  // A tournament game can have its own default number of umpires.
+  get<HTMLSelectElement>("game-type").addEventListener("change", showDivisionDefault);
 
   for (const [select, label] of [[homeSelect, homeLabel], [awaySelect, awayLabel]] as const) {
     select.addEventListener("change", () => {
