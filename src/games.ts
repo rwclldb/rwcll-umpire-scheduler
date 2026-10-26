@@ -1,5 +1,6 @@
 import { escapeHtml } from "./ui";
 import { loadContext, loadSeasonGames } from "./games/data";
+import { renderAssignPanel } from "./games/assign";
 import { renderGameForm } from "./games/form";
 import { renderImporter } from "./games/importer";
 import { downloadText, safeFileName, toCsv } from "./games/csv-out";
@@ -7,6 +8,7 @@ import { formatDate, formatPrinted, formatTime, localDateKey } from "./games/for
 import { printHtml } from "./games/print";
 import { DAY_CSV_HEADERS, buildScheduleGames, dayCsvRows, dayPrintHtml, groupByDay, lookupsFor } from "./games/schedule";
 import { renderUmpireSchedulePanel } from "./games/umpire-schedule";
+import { POSITIONS, POSITION_LABEL, assignmentsByGame, slotStates, umpiresNeeded } from "./games/staffing";
 import { computeWarnings } from "./games/warnings";
 import type { Warning } from "./games/warnings";
 import type {
@@ -47,6 +49,7 @@ const STATUS_LABELS: Record<GameStatus, string> = {
 
 const WARNING_LABELS: Record<Warning["kind"], string> = {
   no_umpire: "",
+  short_staffed: "",
   field_conflict: "Field conflict: ",
   team_conflict: "Team conflict: ",
 };
@@ -115,6 +118,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   const teamNames = new Map(context.teams.map((team) => [team.id, team.name]));
   const fieldNames = new Map(context.locations.map((field) => [field.id, field.name]));
   const divisionNames = new Map(context.divisions.map((division) => [division.id, division.name]));
+  const divisionDefaults = new Map(context.divisions.map((division) => [division.id, division.umpires_per_game ?? 2]));
 
   let games: Game[] = [];
   let assignments: Assignment[] = [];
@@ -269,14 +273,13 @@ export async function renderGames(container: HTMLElement): Promise<void> {
 
   const renderList = () => {
     const assignedCount = new Map<string, number>();
-    const umpiresByGame = new Map<string, { plate?: string; field?: string }>();
-
     for (const row of assignments) {
       assignedCount.set(row.game_id, (assignedCount.get(row.game_id) ?? 0) + 1);
-      const entry = umpiresByGame.get(row.game_id) ?? {};
-      entry[row.position] = context.umpireNames.get(row.umpire_id) ?? "Unknown umpire";
-      umpiresByGame.set(row.game_id, entry);
     }
+
+    // who is in each place of each game, and how many umpires each game needs
+    const byGame = assignmentsByGame(assignments);
+    const neededOf = (game: Game) => umpiresNeeded(game, (id) => divisionDefaults.get(id) ?? 2);
 
     // Warnings look at the whole season, so a conflict with a game outside
     // the current filter is still found.
@@ -287,6 +290,8 @@ export async function renderGames(container: HTMLElement): Promise<void> {
       teamName: (id) => teamNames.get(id) ?? "A team",
       fieldName: (id) => fieldNames.get(id) ?? "The field",
       sidesText,
+      neededFor: neededOf,
+      assignedPositions: byGame,
     });
 
     const visible = games
@@ -304,11 +309,13 @@ export async function renderGames(container: HTMLElement): Promise<void> {
     const count = (kind: Warning["kind"]) =>
       visible.filter((game) => warnings.get(game.id)?.some((w) => w.kind === kind)).length;
     const noUmpire = count("no_umpire");
+    const shortStaffed = count("short_staffed");
     const fieldConflicts = count("field_conflict");
     const teamConflicts = count("team_conflict");
 
     const parts = [
       noUmpire ? `<strong>${noUmpire}</strong> ${noUmpire === 1 ? "needs" : "need"} an umpire` : "",
+      shortStaffed ? `<strong>${shortStaffed}</strong> partly staffed` : "",
       fieldConflicts ? `<strong>${fieldConflicts}</strong> with a field conflict` : "",
       teamConflicts ? `<strong>${teamConflicts}</strong> with a team conflict` : "",
     ].filter(Boolean);
@@ -349,7 +356,15 @@ export async function renderGames(container: HTMLElement): Promise<void> {
           <tbody>
             ${visible.map((game) => {
               const list = warnings.get(game.id) ?? [];
-              const umpires = umpiresByGame.get(game.id);
+              const placed = byGame.get(game.id) ?? {};
+              const slots = slotStates(placed, game.status === "canceled" ? 0 : neededOf(game));
+              const umpireLines = POSITIONS.map((position) => {
+                const id = placed[position];
+                if (id) return `${POSITION_LABEL[position]}: ${escapeHtml(context.umpireNames.get(id) ?? "Unknown umpire")}`;
+                return slots[position] === "open"
+                  ? `${POSITION_LABEL[position]}: <span class="game-open">OPEN</span>`
+                  : "";
+              }).filter(Boolean);
               return `
                 <tr class="${list.length ? "game-row-warn" : ""} ${game.status === "canceled" ? "game-row-canceled" : ""}">
                   <td class="game-when">
@@ -361,12 +376,10 @@ export async function renderGames(container: HTMLElement): Promise<void> {
                     ${game.game_type !== "regular" ? `<span class="game-type">${escapeHtml(game.game_type)}</span>` : ""}<br>
                     <span class="game-where">${escapeHtml(divisionNames.get(game.division_id) ?? "")} &middot; ${escapeHtml(fieldNames.get(game.location_id) ?? "")}</span>
                   </td>
-                  <td class="game-umpires" data-label="Umpires">${umpires
-                    ? [
-                        umpires.plate ? `Plate: ${escapeHtml(umpires.plate)}` : "",
-                        umpires.field ? `Field: ${escapeHtml(umpires.field)}` : "",
-                      ].filter(Boolean).join("<br>")
-                    : "&mdash;"}</td>
+                  <td class="game-umpires" data-label="Umpires">${umpireLines.length ? umpireLines.join("<br>") : "&mdash;"}${
+                    game.umpires_needed !== null && game.umpires_needed !== undefined && game.status !== "canceled"
+                      ? `<br><span class="game-where">${game.umpires_needed === 0 ? "none needed" : `${game.umpires_needed} needed`} (set for this game)</span>`
+                      : ""}</td>
                   <td class="game-status" data-label="Status">
                     <span class="game-status-text">${escapeHtml(STATUS_LABELS[game.status])}</span>
                     ${game.external_game_id
@@ -378,8 +391,12 @@ export async function renderGames(container: HTMLElement): Promise<void> {
                         <li class="game-warning game-warning-${warning.kind}">${escapeHtml(WARNING_LABELS[warning.kind] + warning.text)}</li>
                       `).join("")}</ul>`
                     : ""}</td>
-                  <td><button type="button" class="secondary-button"
-                    data-edit-game="${escapeHtml(game.id)}">Edit</button></td>
+                  <td class="game-actions-cell"><div class="game-actions">
+                    <button type="button" class="secondary-button"
+                      data-assign-game="${escapeHtml(game.id)}">Umpires</button>
+                    <button type="button" class="secondary-button"
+                      data-edit-game="${escapeHtml(game.id)}">Edit</button>
+                  </div></td>
                 </tr>
               `;
             }).join("")}
@@ -443,6 +460,33 @@ export async function renderGames(container: HTMLElement): Promise<void> {
 
   const closeForm = () => {
     get<HTMLElement>("game-form-container").innerHTML = "";
+  };
+
+  // The panel for choosing a game's umpires.
+  const openAssign = (game: Game) => {
+    get<HTMLElement>("importer-container").innerHTML = "";
+    get<HTMLElement>("umpire-schedule-container").innerHTML = "";
+
+    const formContainer = get<HTMLElement>("game-form-container");
+    renderAssignPanel(formContainer, {
+      context,
+      game,
+      games,
+      assignments,
+      title: sidesText(game),
+      detail: `${formatDate(game.starts_at)} \u00b7 ${formatTime(game.starts_at)} \u2013 ${formatTime(game.ends_at)} \u00b7 ${divisionNames.get(game.division_id) ?? ""}, ${fieldNames.get(game.location_id) ?? ""}`,
+      sideText: sidesText,
+      fieldName: (id) => fieldNames.get(id) ?? "",
+      onDone: (text) => {
+        closeForm();
+        if (text) {
+          say(text);
+          void reload();
+        }
+      },
+    });
+
+    formContainer.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const openForm = (game: Game | null) => {
@@ -564,6 +608,13 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   get<HTMLElement>("game-list").addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const assign = target.closest<HTMLButtonElement>("[data-assign-game]");
+    if (assign) {
+      const game = games.find((item) => item.id === assign.dataset.assignGame);
+      if (game) { say(""); openAssign(game); }
+      return;
+    }
 
     const button = target.closest<HTMLButtonElement>("[data-edit-game]");
     if (!button) return;

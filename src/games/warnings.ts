@@ -1,8 +1,10 @@
 import type { Game } from "./types";
 import { formatTime, startOfToday } from "./format";
+import { POSITIONS, POSITION_LABEL, slotStates } from "./staffing";
+import type { Position } from "./staffing";
 
 export type Warning = {
-  kind: "no_umpire" | "field_conflict" | "team_conflict";
+  kind: "no_umpire" | "short_staffed" | "field_conflict" | "team_conflict";
   text: string;
 };
 
@@ -15,6 +17,11 @@ export type WarningInput = {
   fieldName: (locationId: string) => string;
   // short description of a game's two sides, for example "Eagles vs Hawks"
   sidesText: (game: Game) => string;
+  // How many umpires each game needs. Without it every game is taken to need
+  // one, so only a game with nobody at all is flagged.
+  neededFor?: (game: Game) => number;
+  // Which positions are filled, so a short-staffed game can say which is missing.
+  assignedPositions?: Map<string, Partial<Record<Position, string>>>;
 };
 
 // A game with its start and end as plain numbers, worked out once.
@@ -33,7 +40,9 @@ function needsAttention(game: Game): boolean {
 type Found = { count: number; lines: string[] };
 
 // Warnings for each game, by game id. These are WARNINGS, never blocks:
-//  - no umpire: a game still to be played (today or later) with nobody assigned
+//  - no umpire: a game that needs umpires, still to be played (today or
+//    later), with nobody assigned
+//  - short staffed: some umpires are assigned, but fewer than the game needs
 //  - field conflict: another game at the same field at an overlapping time
 //  - team conflict: a team is in another game at an overlapping time
 // Two games overlap when each starts before the other ends, so a game that
@@ -50,14 +59,24 @@ export function computeWarnings(input: WarningInput): Map<string, Warning[]> {
     end: Date.parse(game.ends_at),
   }));
 
-  // ---- no umpire assigned
+  // ---- no umpire assigned, or not enough
   for (const { game, start } of timed) {
-    if (
-      needsAttention(game) &&
-      start >= todayStart &&
-      (input.assignedCount.get(game.id) ?? 0) === 0
-    ) {
+    if (!needsAttention(game) || start < todayStart) continue;
+
+    const needed = input.neededFor ? input.neededFor(game) : 1;
+    const count = input.assignedCount.get(game.id) ?? 0;
+
+    if (needed >= 1 && count === 0) {
       result.set(game.id, [{ kind: "no_umpire", text: "No umpire assigned" }]);
+    } else if (count > 0 && count < needed) {
+      const positions = input.assignedPositions?.get(game.id);
+      const open = positions
+        ? POSITIONS.find((position) => slotStates(positions, needed)[position] === "open")
+        : undefined;
+      result.set(game.id, [{
+        kind: "short_staffed",
+        text: open ? `Needs a ${POSITION_LABEL[open].toLowerCase()} umpire` : "Needs another umpire",
+      }]);
     }
   }
 

@@ -11,6 +11,8 @@ import {
   timeRange,
   weekdayName,
 } from "./format";
+import { slotStates, umpiresNeeded } from "./staffing";
+import type { SlotState } from "./staffing";
 import type { Assignment, Game, GameStatus, GameType, GamesContext } from "./types";
 
 // How names are looked up. Anything not found has a safe fallback.
@@ -20,12 +22,15 @@ export type Lookups = {
   fieldAddress: (locationId: string) => string;
   divisionName: (divisionId: string) => string;
   umpireName: (umpireId: string) => string;
+  // how many umpires this game needs (its own setting, or its division's)
+  umpiresNeeded: (game: Game) => number;
 };
 
 export function lookupsFor(context: GamesContext): Lookups {
   const teams = new Map(context.teams.map((team) => [team.id, team.name]));
   const fields = new Map(context.locations.map((field) => [field.id, field]));
   const divisions = new Map(context.divisions.map((division) => [division.id, division.name]));
+  const defaults = new Map(context.divisions.map((division) => [division.id, division.umpires_per_game ?? 2]));
 
   return {
     teamName: (id) => teams.get(id) ?? "A team",
@@ -33,6 +38,7 @@ export function lookupsFor(context: GamesContext): Lookups {
     fieldAddress: (id) => fields.get(id)?.address ?? "",
     divisionName: (id) => divisions.get(id) ?? "",
     umpireName: (id) => context.umpireNames.get(id) ?? "Unknown umpire",
+    umpiresNeeded: (game) => umpiresNeeded(game, (divisionId) => defaults.get(divisionId) ?? 2),
   };
 }
 
@@ -52,6 +58,9 @@ export type ScheduleGame = {
   away: string;
   plate: string | null; // null: nobody assigned
   fieldUmpire: string | null;
+  needed: number; // how many umpires this game needs
+  plateSlot: SlotState; // assigned, open (someone is needed) or not needed
+  fieldSlot: SlotState;
   status: GameStatus;
   type: GameType;
   masterId: string;
@@ -85,6 +94,8 @@ export function buildScheduleGames(
   return games
     .map((game): ScheduleGame => {
       const umpires = byGame.get(game.id);
+      const needed = look.umpiresNeeded(game);
+      const slots = slotStates({ plate: umpires?.plate, field: umpires?.field }, needed);
       return {
         id: game.id,
         day: localDateKey(game.starts_at),
@@ -101,6 +112,9 @@ export function buildScheduleGames(
         away: sideText(game, "away", look),
         plate: umpires?.plate ?? null,
         fieldUmpire: umpires?.field ?? null,
+        needed,
+        plateSlot: slots.plate,
+        fieldSlot: slots.field,
         status: game.status,
         type: game.game_type,
         masterId: game.external_game_id ?? "",
@@ -131,7 +145,7 @@ export function groupByDay(list: ScheduleGame[]): DayGroup[] {
 
 export const DAY_CSV_HEADERS = [
   "Date", "Day", "Start", "End", "Division", "Field", "Address",
-  "Home", "Away", "Plate umpire", "Field umpire", "Status", "Type",
+  "Home", "Away", "Plate umpire", "Field umpire", "Umpires needed", "Status", "Type",
   "Master Game ID", "Notes",
 ];
 
@@ -140,7 +154,7 @@ export function dayCsvRows(list: ScheduleGame[]): string[][] {
   return [...list].sort(byTime).map((game) => [
     game.day, game.weekday, game.start, game.end, game.division, game.field,
     game.address, game.home, game.away, game.plate ?? "", game.fieldUmpire ?? "",
-    game.status, game.type, game.masterId, game.notes,
+    String(game.needed), game.status, game.type, game.masterId, game.notes,
   ]);
 }
 
@@ -207,9 +221,12 @@ function fieldCell(game: ScheduleGame): string {
   return `${escapeHtml(game.field)}${game.address ? `<br><small>${escapeHtml(game.address)}</small>` : ""}`;
 }
 
-function umpireCell(name: string | null, game: ScheduleGame): string {
-  if (game.status === "canceled") return "&mdash;";
-  return name ? escapeHtml(name) : `<span class="print-open">OPEN</span>`;
+// An assigned umpire's name; OPEN where a person is still needed; a dash where
+// no umpire is needed (or the game is canceled).
+function umpireCell(name: string | null, slot: SlotState, game: ScheduleGame): string {
+  if (name) return escapeHtml(name);
+  if (game.status === "canceled" || slot === "not_needed") return "&mdash;";
+  return `<span class="print-open">OPEN</span>`;
 }
 
 // The whole schedule, one section per day.
@@ -248,8 +265,8 @@ export function dayPrintHtml(groups: DayGroup[], meta: PrintMeta): string {
                   <td>${escapeHtml(game.division)}</td>
                   <td>${fieldCell(game)}</td>
                   <td>${gameCell(game)}</td>
-                  <td>${umpireCell(game.plate, game)}</td>
-                  <td>${umpireCell(game.fieldUmpire, game)}</td>
+                  <td>${umpireCell(game.plate, game.plateSlot, game)}</td>
+                  <td>${umpireCell(game.fieldUmpire, game.fieldSlot, game)}</td>
                 </tr>
               `).join("")}
             </tbody>
