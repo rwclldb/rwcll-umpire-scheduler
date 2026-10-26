@@ -13,12 +13,27 @@ import type { AgeChartRecord, DivisionRecord, LocationRecord, SeasonRecord, Setu
 // example "Created the season ...").
 let flashMessage: string | null = null;
 
+// What the screen shows: everything (for a scheduler's League Setup page),
+// only the leagues, seasons, divisions and teams, or only the locations (the
+// two parts of the Administration area). Once a screen has been drawn it keeps
+// showing the same part when it is redrawn after a save.
+export type SetupPart = "all" | "setup" | "locations";
+
+const partOfScreen = new WeakMap<HTMLElement, SetupPart>();
+
 export async function renderLeagueSetup(
   container: HTMLElement,
+  part?: SetupPart,
 ): Promise<void> {
+  const mode: SetupPart = part ?? partOfScreen.get(container) ?? "all";
+  partOfScreen.set(container, mode);
+  const showSetup = mode !== "locations";
+  const showLocations = mode !== "setup";
+  const title = mode === "locations" ? "Locations" : "League Setup";
+
   container.innerHTML = `
     <section class="directory-section">
-      <h2>League Setup</h2>
+      <h2>${title}</h2>
       <p class="directory-description">Loading setup records…</p>
     </section>
   `;
@@ -66,7 +81,7 @@ export async function renderLeagueSetup(
 
     container.innerHTML = `
       <section class="directory-section">
-        <h2>League Setup</h2>
+        <h2>${title}</h2>
         <p class="message error">
           Unable to load setup records. Refresh and try again.
         </p>
@@ -118,14 +133,18 @@ export async function renderLeagueSetup(
     <section class="directory-section">
       <div class="directory-header">
         <div>
-          <h2>League Setup</h2>
+          <h2>${title}</h2>
           <p class="directory-description">
-            Configure leagues, seasons, divisions, and game locations.
+            ${mode === "locations"
+              ? "The fields where games are played."
+              : mode === "setup"
+                ? "Configure leagues, seasons, divisions and teams."
+                : "Configure leagues, seasons, divisions, and game locations."}
           </p>
         </div>
         <div class="header-actions">
-          <button id="import-season-button"
-            class="secondary-button" type="button">Create a season from a file</button>
+          ${showSetup ? `<button id="import-season-button"
+            class="secondary-button" type="button">Create a season from a file</button>` : ""}
           <button id="refresh-league-setup"
             class="secondary-button" type="button">Refresh</button>
         </div>
@@ -134,36 +153,42 @@ export async function renderLeagueSetup(
       <p id="league-setup-message" class="message"
         role="status" aria-live="polite"></p>
 
-      <div id="season-import-editor"></div>
+      ${showSetup ? `
+        <div id="season-import-editor"></div>
 
-      <div id="league-editor">
-        ${leagueEditor ? renderLeagueForm(leagueEditor) : ""}
-      </div>
+        <div id="league-editor">
+          ${leagueEditor ? renderLeagueForm(leagueEditor) : ""}
+        </div>
 
-      <div id="season-editor">
-        ${editor ? renderSeasonForm(editor) : ""}
-      </div>
+        <div id="season-editor">
+          ${editor ? renderSeasonForm(editor) : ""}
+        </div>
 
-      <div id="division-editor">
-        ${divisionEditor ? renderDivisionForm(divisionEditor, leagues) : ""}
-      </div>
+        <div id="division-editor">
+          ${divisionEditor ? renderDivisionForm(divisionEditor, leagues) : ""}
+        </div>
 
-      <div id="team-editor">
-        ${teamEditor ? renderTeamForm(teamEditor) : ""}
-      </div>
+        <div id="team-editor">
+          ${teamEditor ? renderTeamForm(teamEditor) : ""}
+        </div>
+      ` : ""}
 
-      <div id="location-editor">
-        ${locationEditor ? renderLocationForm(locationEditor) : ""}
-      </div>
+      ${showLocations ? `
+        <div id="location-editor">
+          ${locationEditor ? renderLocationForm(locationEditor) : ""}
+        </div>
+      ` : ""}
 
       <div class="setup-grid">
-        ${renderLeagues(leagues)}
-        ${renderSeasons(seasons)}
-        ${renderDivisions(divisions, leagues)}
-        <section id="teams-panel" class="setup-panel">
-          ${renderTeamsPanel()}
-        </section>
-        ${renderLocations(locations)}
+        ${showSetup ? `
+          ${renderLeagues(leagues)}
+          ${renderSeasons(seasons)}
+          ${renderDivisions(divisions, leagues)}
+          <section id="teams-panel" class="setup-panel">
+            ${renderTeamsPanel()}
+          </section>
+        ` : ""}
+        ${showLocations ? renderLocations(locations) : ""}
       </div>
     </section>
   `;

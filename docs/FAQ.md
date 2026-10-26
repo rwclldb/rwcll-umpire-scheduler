@@ -415,7 +415,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
   ```
 - **Allow the app's address for email links** (password reset): Authentication, then URL Configuration, then Redirect URLs. Add `http://localhost:5173/**`. Do this on **both** projects. A website address is added here later too.
 - **Reset a database password:** Project Settings, then Database, then Reset database password.
-- **Approve an account:** sign in to the app as super admin; pending accounts appear at the top. Then use the Roles section to give it roles.
+- **Approve an account:** sign in to the app as super admin, open **Administration**, then **Approvals**; pending accounts and umpire registrations are there. Then use **Roles** to give it roles.
 
 ## 18. What each script is
 
@@ -564,7 +564,7 @@ Afterwards:
 
 ## 24. Clean up leftover test records
 
-**Leagues, seasons, divisions, teams, locations:** open the League Setup screen, press **Edit** on the
+**Leagues, seasons, divisions, teams:** open **Administration**, then **League Setup** (a scheduler has a **League Setup** tab). **Locations** are in **Administration**, then **Locations**. Press **Edit** on the
 record, and use its **Delete** button. A record that something else uses cannot be deleted (you will get a message
 saying what uses it). Remove the things that use it first, or mark it inactive instead.
 
@@ -708,8 +708,7 @@ provides the **"From" identity** of the system's messages.
 Real email sending is **not switched on yet**. So that it can be added later without changing any screen,
 everything that wants to send an email adds the message to an **Outbox** instead.
 
-**What you can do today** (super admin or umpire chief). Open **Outbox (messages waiting to be sent)** on your
-dashboard. It lists waiting messages. For each one: open it, press **Copy message**, send it yourself from your
+**What you can do today** (super admin or umpire chief). A super admin opens **Administration**, then **Outbox**; an umpire chief opens **Outbox (messages waiting to be sent)** on the Umpire Management page. It lists waiting messages. For each one: open it, press **Copy message**, send it yourself from your
 own email, then press **Mark as sent**. **Skip** sets a message aside without sending it. "Everything" shows the
 history. Inviting an umpire now also adds the invitation message to the Outbox.
 
@@ -760,13 +759,27 @@ After signing in, an approved person sees a **top bar** (their name, their **rol
 
 | Role | Pages |
 |---|---|
-| Super admin | **Administration** (accounts, registrations, roles, league setup, umpire directory, Outbox, My details) and **Games** |
+| Super admin | **Administration** (a page of buttons for Approvals, Roles, League Setup, Locations, Umpire Directory, Outbox and My details; see below) and **Games** |
 | Umpire chief | **Umpire Management** (registrations, umpire directory, Outbox, My details) and **Games** |
 | Scheduler | **Umpires** (directory and Outbox), **Games**, **League Setup**, **My details** |
 | Youth or adult umpire | **Home** (with their own printable schedule), **My details** |
 | Treasurer, feedback reviewer, read-only admin, parent | The plain account page for now (their pages come with their features) |
 
 Combinations: chief and scheduler get *Umpire Management*, *Games* and *League Setup*. A scheduler who is also an umpire gets *Umpires*, *Games*, *League Setup*, *As an umpire*, and *My details*.
+
+**The Administration tab** (super admin) opens a page of buttons, one for each part, with a small italic line under each saying what it is for. Press a button to open that part. Inside a part, a row of tabs across the top (**Overview**, then every part) lets you jump to another part without going back, and the browser's Back and Forward buttons work too. Each part has its own address, so you can bookmark it (for example `#/admin/roles`).
+
+| Part | What it is for |
+|---|---|
+| **Approvals** | New accounts and umpire registrations waiting for approval, and the other pending accounts |
+| **Roles** | Giving people their roles, and what each role allows |
+| **League Setup** | Leagues, seasons, divisions and teams, and creating a season from the registration files |
+| **Locations** | The fields where games are played, with their addresses |
+| **Umpire Directory** | Everyone who umpires: records, contact details, invitations, linking to accounts |
+| **Outbox** | Messages waiting to be sent (invitations, assignments, reminders) |
+| **My details** | Your own phone number and text-message preference |
+
+Other roles are unchanged: an **umpire chief** still has one **Umpire Management** page (with a collapsible Outbox), and a **scheduler** still has a **League Setup** tab that shows everything, locations included.
 
 **Your roles** are listed under your name in the top bar (most important first, for example *Super admin, Scheduler, Adult umpire*), and again on **My details**. Hover over them to see the full list on a small screen.
 

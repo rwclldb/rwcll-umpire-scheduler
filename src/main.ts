@@ -2,6 +2,7 @@
 import "./style.css";
 import { supabase } from "./supabase";
 import type { Session } from "@supabase/supabase-js";
+import { adminLandingHtml, adminSectionFor, adminSubnavHtml } from "./admin-sections";
 import { renderUmpireDirectory } from "./umpires";
 import { renderLeagueSetup } from "./league_setup";
 import { renderRoleManager } from "./roles";
@@ -483,58 +484,130 @@ type PendingProfile = {
   email: string | null;
 };
 
-function renderAdminPage(container: HTMLElement) {
+// The Administration tab: a page of buttons (each with a line saying what it
+// is for), and a page for each part. The part is kept in the address, for
+// example "#/admin/roles", so Back, Forward and bookmarks work.
+function renderAdminPage(
+  container: HTMLElement,
+  navigate: (address: string) => void,
+  sub?: string
+) {
+  const section = adminSectionFor(sub);
+
+  // ---- the Administration tab itself
+  if (!section) {
+    container.innerHTML = adminLandingHtml();
+
+    container.querySelector(".admin-menu")?.addEventListener("click", (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-admin-section]");
+      if (button?.dataset.adminSection) navigate(`admin/${button.dataset.adminSection}`);
+    });
+
+    return;
+  }
+
+  // ---- one part
   container.innerHTML = `
     <main class="page">
       <section class="auth-card admin-card">
         <p class="eyebrow">RWCLL · ADMINISTRATION</p>
-        <h1>Account Management</h1>
-        <p class="intro">Review new account requests.</p>
-
-        <details class="role-legend">
-          <summary>My details (phone and text messages)</summary>
-          <div id="my-details-admin"></div>
-        </details>
-
-        <details class="role-legend" id="outbox-details">
-          <summary>Outbox (messages waiting to be sent)</summary>
-          <div id="outbox-container"></div>
-        </details>
-
-        <p id="admin-message" class="message"
-          role="status" aria-live="polite"></p>
-
-        <div id="registrations-container"></div>
-
-        <hr class="directory-divider" />
-
-        <h2>Other pending accounts</h2>
-        <div id="pending-accounts">
-          <p>Loading pending accounts…</p>
-        </div>
-
-        <button id="refresh-accounts" class="secondary-button"
-          type="button">Refresh list</button>
-
-        <hr class="directory-divider" />
-
-        <div id="role-manager-container"></div>
-
-        <hr class="directory-divider" />
-
-        <div id="league-setup-container"></div>
-
-        <div id="umpire-directory-container"></div>
+        ${adminSubnavHtml(section.id)}
+        <div id="admin-section"></div>
       </section>
     </main>
   `;
 
-  document.querySelector("#refresh-accounts")?.addEventListener(
+  container.querySelector(".admin-subnav")?.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-admin-section]");
+    if (!button) return;
+
+    const id = button.dataset.adminSection;
+    navigate(id ? `admin/${id}` : "admin");
+  });
+
+  const holder = container.querySelector<HTMLElement>("#admin-section")!;
+
+  switch (section.id) {
+    case "approvals":
+      renderApprovals(holder);
+      break;
+
+    case "roles":
+      holder.innerHTML = `<div id="role-manager-container"></div>`;
+      void renderRoleManager(holder.querySelector<HTMLElement>("#role-manager-container")!);
+      break;
+
+    case "setup":
+      holder.innerHTML = `<div id="league-setup-container"></div>`;
+      void renderLeagueSetup(holder.querySelector<HTMLElement>("#league-setup-container")!, "setup");
+      break;
+
+    case "locations":
+      holder.innerHTML = `<div id="league-setup-container"></div>`;
+      void renderLeagueSetup(holder.querySelector<HTMLElement>("#league-setup-container")!, "locations");
+      break;
+
+    case "umpires":
+      holder.innerHTML = `<div id="umpire-directory-container"></div>`;
+      renderUmpireDirectory(holder.querySelector<HTMLElement>("#umpire-directory-container")!);
+      break;
+
+    case "outbox": {
+      holder.innerHTML = `
+        <h2>Outbox</h2>
+        <p class="directory-description">Messages waiting to be sent.</p>
+        <div id="outbox-container"></div>
+      `;
+      const outbox = holder.querySelector<HTMLElement>("#outbox-container")!;
+      void renderOutbox(outbox);
+
+      // Only one listener at a time, even if this page is drawn again.
+      if (outboxChangedListener) {
+        document.removeEventListener("outbox:changed", outboxChangedListener);
+      }
+      outboxChangedListener = () => {
+        if (outbox.isConnected) void renderOutbox(outbox);
+      };
+      document.addEventListener("outbox:changed", outboxChangedListener);
+      break;
+    }
+
+    case "details":
+      void renderMyDetails(holder);
+      break;
+  }
+}
+
+// New umpire registrations and the other accounts waiting for approval.
+function renderApprovals(holder: HTMLElement) {
+  holder.innerHTML = `
+    <h2>Approvals</h2>
+    <p class="directory-description">
+      New accounts and umpire registrations that are waiting for approval.
+    </p>
+
+    <p id="admin-message" class="message"
+      role="status" aria-live="polite"></p>
+
+    <div id="registrations-container"></div>
+
+    <hr class="directory-divider" />
+
+    <h2>Other pending accounts</h2>
+    <div id="pending-accounts">
+      <p>Loading pending accounts…</p>
+    </div>
+
+    <button id="refresh-accounts" class="secondary-button"
+      type="button">Refresh list</button>
+  `;
+
+  holder.querySelector("#refresh-accounts")?.addEventListener(
     "click",
     () => void loadPendingAccounts()
   );
 
-  document.querySelector("#pending-accounts")?.addEventListener(
+  holder.querySelector("#pending-accounts")?.addEventListener(
     "click",
     (event) => {
       const target = event.target;
@@ -555,43 +628,7 @@ function renderAdminPage(container: HTMLElement) {
   );
 
   void loadPendingAccounts();
-
-  const directoryContainer =
-  document.querySelector<HTMLElement>("#umpire-directory-container");
-
-  if (directoryContainer) {
-    renderUmpireDirectory(directoryContainer);
-  }
-
-  const leagueSetupContainer =
-    document.querySelector<HTMLElement>("#league-setup-container");
-
-  if (leagueSetupContainer) {
-    void renderLeagueSetup(leagueSetupContainer);
-  }
-
-  const roleManagerContainer =
-    document.querySelector<HTMLElement>("#role-manager-container");
-
-  if (roleManagerContainer) {
-    void renderRoleManager(roleManagerContainer);
-  }
-
-  const myDetailsAdmin =
-    document.querySelector<HTMLElement>("#my-details-admin");
-
-  if (myDetailsAdmin) {
-    void renderMyDetails(myDetailsAdmin, { heading: false });
-  }
-
-  const registrationsContainer =
-    document.querySelector<HTMLElement>("#registrations-container");
-
-  if (registrationsContainer) {
-    void renderUmpireRegistrations(registrationsContainer);
-  }
-
-  wireOutbox();
+  void renderUmpireRegistrations(holder.querySelector<HTMLElement>("#registrations-container")!);
 }
 
 // A smaller page for the umpire chief: review new umpire registrations and
@@ -787,7 +824,7 @@ function pagesFor(
     pages.push({
       id: "admin",
       label: "Administration",
-      render: (container) => renderAdminPage(container),
+      render: (container, navigate, sub) => renderAdminPage(container, navigate, sub),
     });
   } else {
     if (flags.isUmpireChief) {

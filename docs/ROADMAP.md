@@ -61,6 +61,7 @@ whenever the league's needs change.
 - Protection for personal data (phone numbers, birth dates, outside IDs, emergency contacts)
 - Account details that people manage themselves
 - A menu that shows each person only their own pages, a top bar with their name and roles
+- An Administration area for super admins, split into parts (approvals, roles, league setup, locations, umpire directory, outbox, my details), each with its own page
 
 ### Phase 2: League structure ✅
 

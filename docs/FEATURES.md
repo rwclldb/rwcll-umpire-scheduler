@@ -26,7 +26,7 @@ test on the league's own database.
 
 - Nine roles: super admin, umpire chief, scheduler, treasurer, feedback reviewer, read-only admin, adult umpire, youth umpire, parent or guardian
 - Each person sees a menu of only their own pages:
-  - **Super admin:** Administration and Games
+  - **Super admin:** Administration and Games. Administration opens a page of buttons (each with a short italic description) for Approvals, Roles, League Setup, Locations, Umpire Directory, Outbox and My details, and each part has its own page, address and row of tabs 🆕
   - **Umpire chief:** Umpire Management and Games
   - **Scheduler:** Umpires, Games, League Setup and My details
   - **Umpires:** a Home page with their own schedule, and My details
