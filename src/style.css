@@ -1825,3 +1825,188 @@ input[type="radio"] {
   color: #8a4b00;
   background: #fff1d6;
 }
+
+/* ---- Availability: repeating times and the month calendar ---- */
+.av-sub {
+  margin: 18px 0 2px;
+  font-size: 1rem;
+}
+
+.av-days {
+  margin: 8px 0 12px;
+  padding: 8px 12px 12px;
+  border: 1px solid #d6ddd8;
+  border-radius: 8px;
+}
+
+.av-days legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+
+.av-day-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.av-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.av-day input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+}
+
+.av-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.av-shortcuts button {
+  width: auto;
+  min-height: 38px;
+  margin: 0;
+  padding: 6px 14px;
+}
+
+.cal {
+  max-width: 440px;
+  margin: 20px 0 8px;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cal-nav {
+  width: auto;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 14px;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.cal-title {
+  font-size: 1.05rem;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cal-dow {
+  text-align: center;
+  color: #4a4f52;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cal-day {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 40px;
+  margin: 0;
+  padding: 0;
+  color: #14171a;
+  background: #ffffff;
+  border: 1px solid #c4ccc7;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cal-day:hover {
+  border-color: #1b6b3a;
+}
+
+.cal-all {
+  color: #ffffff;
+  background: #1b6b3a;
+  border-color: #14532d;
+}
+
+.cal-some {
+  color: #14532d;
+  background: #cfe8d6;
+  border-color: #1b6b3a;
+}
+
+/* Marked unavailable: red AND striped, so it never depends on color alone */
+.cal-cannot {
+  color: #7a1717;
+  background: #f6d4d4 repeating-linear-gradient(45deg, transparent 0 5px, rgba(161, 38, 38, 0.28) 5px 7px);
+  border-color: #a12626;
+}
+
+/* Available part of the day, and part of it marked unavailable */
+.cal-partial::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 9px;
+  height: 9px;
+  background: #a12626;
+  border: 1px solid #ffffff;
+  border-radius: 50%;
+}
+
+.cal-past {
+  font-weight: 400;
+  border-style: dashed;
+}
+
+.cal-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 0.85rem;
+  list-style: none;
+}
+
+.cal-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  vertical-align: -2px;
+  background: #ffffff;
+  border: 1px solid #c4ccc7;
+  border-radius: 4px;
+}
+
+/* the key's swatches show the same colors as the days (placed after the plain swatch rule) */
+.cal-swatch.cal-all {
+  background: #1b6b3a;
+  border-color: #14532d;
+}
+
+.cal-swatch.cal-some {
+  background: #cfe8d6;
+  border-color: #1b6b3a;
+}
+
+.cal-swatch.cal-cannot {
+  background: #f6d4d4 repeating-linear-gradient(45deg, transparent 0 4px, rgba(161, 38, 38, 0.35) 4px 6px);
+  border-color: #a12626;
+}

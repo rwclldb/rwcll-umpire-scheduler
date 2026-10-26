@@ -71,6 +71,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 38. [Umpires assigning themselves](#38-umpires-assigning-themselves)
 39. [Availability: when umpires can umpire](#39-availability-when-umpires-can-umpire)
 40. [Further assignment rules: the division they play in, and messages about games umpires take](#40-further-assignment-rules-the-division-they-play-in-and-messages-about-games-umpires-take)
+41. [Availability: repeating times, dates you can't umpire, and the calendar](#41-availability-repeating-times-dates-you-cant-umpire-and-the-calendar)
 
 ---
 
@@ -193,6 +194,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `availability_patterns_check.sql` | Repeating availability and "I can't" entries work (an umpire manages only their own; days of the week, times, notes and the season are checked; a repeating time needs a season with an end date; a signed-out visitor sees nothing) | `Failures: 0` |
 | `availability_check.sql` | Availability works (an umpire manages only their own entries and sees nobody else's; an administrator manages anyone's; an entry cannot end before it starts, last more than 90 days, or carry a note over 200 characters; a signed-out visitor sees nothing) | `Failures: 0` |
 | `self_assignment_check.sql` | Umpires assigning themselves works (only where a division allows it and the umpire is allowed; overlapping games, taken places, played and canceled games, the limit on upcoming games and the youth age rule are all refused; the places offered are right; a signed-out visitor cannot) | `Failures: 0` |
 | `assignment_confirmation_check.sql` | Confirming, declining, the history, the queued messages and the "still unconfirmed" warning work (an umpire can answer only for themselves; a decline frees the place and tells the administrators; the warning is queued once per assignment and respects the league's number of days; nobody can edit the history) | `Failures: 0` |
@@ -434,6 +436,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\availability_patterns_check.sql` | Tests repeating availability and the "I can't" entries (builds its own sign-in accounts, umpires and seasons; your data is not changed) | No (always rolls back) |
 | `supabase\tests\availability_check.sql` | Tests the availability rules (builds its own sign-in accounts and umpires; your data is not changed) | No (always rolls back) |
 | `supabase\tests\self_assignment_check.sql` | Tests umpires assigning themselves (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\assignment_confirmation_check.sql` | Tests confirming, declining, the history, the queued messages and the unconfirmed warning (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
@@ -535,10 +538,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `further_rules_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -612,7 +615,8 @@ This is enforced by the database itself, not just by the screens.
 | Roles | `user_roles` | You see your own; super admins see all | Super admins only |
 | Umpire invitations | `umpire_invitations` | Scheduling admins | Only through the invite, renew and revoke functions |
 | Queued emails (the Outbox) | `email_outbox` | Scheduling admins only | Only through the queue, mark-sent and skip functions |
-| Availability (times an umpire can umpire) | `umpire_availability` | Scheduling admins; an umpire sees only their own | The umpire, and scheduling admins |
+| Availability: single times, and dates an umpire cannot umpire | `umpire_availability` | Scheduling admins; an umpire sees only their own | The umpire, and scheduling admins |
+| Availability: repeating times | `umpire_availability_patterns` | Scheduling admins; an umpire sees only their own | The umpire, and scheduling admins |
 | Game assignments | `game_assignments` | Scheduling admins; an umpire sees only their own | Scheduling admins |
 
 Things worth knowing:
@@ -808,7 +812,7 @@ Other roles are unchanged: an **umpire chief** still has one **Umpire Management
 |---|---|
 | **No umpire assigned** | A draft or scheduled game that needs umpires, today or later, with nobody assigned. (Games in the past, canceled games and completed games are never flagged, and neither is a game that needs no umpire.) |
 | **Needs a field umpire** (or plate, first base, ...) | Some umpires are assigned, but fewer than the game needs. It names the place that is still open, or says *Needs 2 more umpires* when several are. |
-| **Not available: Ann Lee** | An umpire on a game still to come has entered availability that does **not** cover the game. Never shown for an umpire who has entered none. See section 39. |
+| **Not available: Ann Lee** | An umpire on a game still to come has entered availability that does **not** cover the game, or has marked the time as one they **can't** umpire (this works even if they entered nothing else). Never shown for an umpire who entered nothing at all. See sections 39 and 41. |
 | **Field conflict** | Another game is at the same field at an overlapping time. A game that starts exactly when the previous one ends is **not** a conflict. |
 | **Team conflict** | A team is in another game at an overlapping time, even at a different field. |
 
@@ -1105,7 +1109,7 @@ If nothing is offered, the section is not shown at all. If a place was taken by 
 
 **Privacy.** An umpire sees only their own entries. Administrators can see everyone's.
 
-**Not built yet:** repeating weekly patterns (for example "weekdays after 5 PM"). Today each entry is a single date.
+**Repeating times** (for example "every weekday after 5 PM"), **dates an umpire can't umpire**, and a **month calendar** are in section 41.
 
 **Check script:** `availability_check.sql` tests the database rules (section 6).
 
@@ -1146,3 +1150,60 @@ When an umpire takes a game for themselves (section 38), the administrators (sup
 **Decided against:** a limit for each umpire (the league's limit applies to everyone).
 
 **Check script:** `further_rules_check.sql` tests all of this in the database (section 6).
+
+## 41. Availability: repeating times, dates you can't umpire, and the calendar
+
+This adds to section 39. The **My availability** screen (and the **Availability** part of an umpire's record, for administrators) now has a choice at the top of the form: **What do you want to add?**
+
+| Choice | What it is |
+|---|---|
+| **A time I can umpire (one date)** | A single date and times, or **All day**, as before |
+| **A repeating time I can umpire** | Days of the week plus times, **ending automatically when its season ends** |
+| **A date or time I can't umpire** | A single date and times, or **All day**, that **overrides everything else** |
+
+### Repeating times
+
+1. Choose **A repeating time I can umpire**.
+2. Tick the **days of the week** (the **Mon-Fri** and **Sat, Sun** buttons tick several at once; **Clear** unticks them).
+3. Choose the **From** and **To** times, or tick **All day**.
+4. **Starting** is the first day it applies. Leave it blank for today.
+5. Choose the **season**. The page says *It ends automatically on Dec 6, the end of Fall 2026.*
+6. **Add.**
+
+It then appears under **Repeating times** in words, for example *Every Mon-Fri, 5:00 PM - 9:00 PM, until Dec 6 (end of Fall 2026)*. **Change** and **Remove** work as for single times.
+
+- **It ends with its season.** Nobody has to remember to remove it. If an administrator changes the season's end date, the repeating time follows. Once the season has ended it disappears from the list.
+- **It needs a season with an end date.** Only seasons with an end date that has not passed are offered. If there is none, the page says so: an administrator can set the end date in **League Setup** (edit the season).
+- **Times are the league's local clock times**, like everything else. A repeating time is worked out from today to the end of the season (never more than a year ahead).
+- A repeating time and single times simply **add together**: the umpire can umpire whenever any of them says so.
+
+### Dates and times you can't umpire
+
+Choose **A date or time I can't umpire**. These **always win**: if an umpire marked a Saturday as one they can't umpire, they are **not available** for any game that overlaps it, even if a repeating time or a single time says they can.
+
+- It works **even if they entered nothing else**: an umpire who only entered "I can't on Nov 7" is shown as unavailable for games that overlap Nov 7, but there is still no warning for other days (they have not said when they *can* umpire).
+- A game that only **touches** the unavailable time at its edge (it ends as the unavailable time starts) is not affected.
+
+### How administrators see it
+
+Wherever section 39 said *not available*, an umpire who marked the time as one they can't umpire is shown in the same way, with their own wording:
+
+- In the **Umpires** panel: *marked unavailable* beside the name, and a note *Ann Lee has marked themselves unavailable at this time*. (An umpire whose repeating or single times simply miss the game is *not available then*, as before.) It is still only a warning: you can save.
+- On the **Games** list: *Not available: Ann Lee*, counted in the summary.
+- **Games you can take** (section 38) still ignore availability.
+
+### The calendar
+
+Under the lists is a **month calendar**, with arrows to move between months. It shows what the umpire has entered, with the *can't* times already taken out:
+
+| What you see | Meaning |
+|---|---|
+| **Solid green** | Available all day |
+| **Light green** | Available for part of the day (hover or tap a day for the hours). A small red dot means part of the day is also marked unavailable |
+| **Red with stripes** | Marked unavailable (the stripes are there so it does not depend on color) |
+| **White** | Nothing entered |
+| **Dashed border** | A day that has already passed |
+
+**Press a day** to put that date into the form below (the **Starting** date for a repeating time, or the **Date** for a single time).
+
+**Check script:** `availability_patterns_check.sql` tests the database rules (section 6).
