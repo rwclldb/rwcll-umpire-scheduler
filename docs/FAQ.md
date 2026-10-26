@@ -68,6 +68,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 35. [Colors and appearance](#35-colors-and-appearance)
 36. [Assigning umpires, and how many a game needs](#36-assigning-umpires-and-how-many-a-game-needs)
 37. [Confirming, declining and reminders](#37-confirming-declining-and-reminders)
+38. [Umpires assigning themselves](#38-umpires-assigning-themselves)
 
 ---
 
@@ -189,6 +190,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `rls_check_admin_access.sql` | A super admin can still read everything | `Failures: 0` |
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
+| `self_assignment_check.sql` | Umpires assigning themselves works (only where a division allows it and the umpire is allowed; overlapping games, taken places, played and canceled games, the limit on upcoming games and the youth age rule are all refused; the places offered are right; a signed-out visitor cannot) | `Failures: 0` |
 | `assignment_confirmation_check.sql` | Confirming, declining, the history, the queued messages and the "still unconfirmed" warning work (an umpire can answer only for themselves; a decline frees the place and tells the administrators; the warning is queued once per assignment and respects the league's number of days; nobody can edit the history) | `Failures: 0` |
 | `umpire_assignments_check.sql` | The umpires-per-game settings, the places (plate to third base) and the assignment rules work (0 to 4 umpires; tournament numbers; active umpires only; nobody on a canceled game; the youth age rule; swaps work; a refused change saves nothing; only scheduling admins can assign) | `Failures: 0` |
 | `import_season_check.sql` | Creating a season from a file works and is all-or-nothing (a refused import saves nothing; only scheduling admins can run it) | `Failures: 0` |
@@ -427,6 +429,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\role_rules_check.sql` | Tests the role safeguards | No (always rolls back) |
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
+| `supabase\tests\self_assignment_check.sql` | Tests umpires assigning themselves (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\assignment_confirmation_check.sql` | Tests confirming, declining, the history, the queued messages and the unconfirmed warning (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\umpire_assignments_check.sql` | Tests the umpires-per-game settings, the places, the youth age rule and the assignment rules (builds its own tiny league, umpires and age chart; your data is not used) | No (always rolls back) |
 | `supabase\tests\import_season_check.sql` | Tests the season import function (builds its own tiny leagues; your data is not used) | No (always rolls back) |
@@ -526,7 +529,7 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts` (assigning umpires; with the ten below, seventeen files in all) | `src\games` |
@@ -977,7 +980,7 @@ Who made each assignment is recorded.
 
 **One umpire's own view.** An umpire sees only their own games on their **My schedule**, with their place (for example *First base*), and an administrator can look at any one umpire's schedule from the Games tab (section 34). Both show the games you assign here.
 
-**Not built yet:** umpires assigning themselves, phone numbers on the printed schedule, and umpires entering when they are available. (Confirming and declining are described in section 37.)
+**Not built yet:** umpires entering when they are available. (Confirming and declining are in section 37, umpires assigning themselves in section 38, and phone numbers on the printed schedule in section 34.)
 
 **Check script:** `umpire_assignments_check.sql` tests all of the above in the database (section 6).
 
@@ -1020,3 +1023,35 @@ An umpire's message goes to the email on their account, or to the email on their
 **The history.** Every assignment, confirmation, decline and removal is recorded with who did it and when (and the reason, for a decline). Only scheduling administrators can read it, and nobody can change it by hand. A report from it is planned, and it will support payments later.
 
 **Check script:** `assignment_confirmation_check.sql` tests all of the above in the database (section 6).
+
+## 38. Umpires assigning themselves
+
+**The three switches.** Nothing happens until an administrator turns it on.
+
+| Switch | Where | To begin with |
+|---|---|---|
+| **Umpires can assign themselves to games in this division** | League Setup, edit the division | **Off** for every division |
+| **Allowed to assign themselves to games** | The umpire's record (edit the umpire) | **On** for every umpire. Turn it off for one umpire to stop them |
+| **Most upcoming games an umpire can take for themselves** | League Setup, edit the league | **Blank: no limit** |
+
+**What an umpire sees and does.** On their **Home** page, under **My schedule**, a section **Games you can take** lists open places in games they are allowed to take, for the next 30 days (change **From** and **To** to look further). Each game has a button for each open place (*Take Plate*, *Take Field*, ...). Taking one:
+
+- puts the game on their schedule **Confirmed straight away**, marked as taken by themselves;
+- can be undone: they can **Decline** it from their schedule like any other game, and the place becomes open again.
+
+If nothing is offered, the section is not shown at all. If a place was taken by someone else a moment earlier, the umpire is told and the list is refreshed.
+
+**The rules.** The database decides what is offered and checks again when an umpire takes a game, so nothing in the app can get around them. An umpire can take a game only when:
+
+- their account is approved and linked to an **active** umpire record, and the switch on their record is on;
+- the game's division allows it, and the game has **not started** and is **not canceled**;
+- the place is **open** (games are staffed by number, as everywhere else);
+- they are **not already on that game**, and **no other game of theirs overlaps it** (a game that starts as another ends is fine);
+- they are **under the limit**, if the league has one; and
+- the **youth age rule** allows it (section 36).
+
+**About the limit.** It counts the umpire's own games that are still to come, **whoever assigned them**; games already played and canceled games do **not** count. It applies **only to games an umpire takes for themselves**: an administrator can always assign more. When an umpire is at the limit they are offered nothing, until a game is played or they decline one.
+
+**What an administrator sees.** The Games list shows **Confirmed (self)** after such an umpire's name; the Umpires panel says *they assigned themselves*; and the history records it. Administrators are not sent a message each time an umpire takes a game (this can be added if you want it). Reminders about unconfirmed assignments (section 37) never involve these, because they are confirmed from the start.
+
+**Check script:** `self_assignment_check.sql` tests all of the above in the database (section 6).

@@ -83,7 +83,7 @@ export function renderDivisions(
               ? `<span class="setup-status">${escapeHtml(division.age_group)}</span>`
               : ""}
             <p class="season-dates">${escapeHtml(range)}</p>
-            <p class="season-dates">${umpiresText(division.umpires_per_game ?? 2)}${
+            <p class="season-dates">${division.allow_self_assign ? "Umpires can assign themselves. " : ""}${umpiresText(division.umpires_per_game ?? 2)}${
               division.tournament_umpires !== null && division.tournament_umpires !== undefined
                 ? `; tournaments: ${umpiresText(division.tournament_umpires, false)}`
                 : ""}</p>
@@ -197,6 +197,16 @@ export function renderDivisionForm(
         chief can change the number for an individual game.
       </p>
 
+      <label class="season-checkbox-label">
+        <input name="allow_self_assign" type="checkbox" ${division?.allow_self_assign ? "checked" : ""} />
+        Umpires can assign themselves to games in this division
+      </label>
+      <p class="season-dates">
+        Off to begin with. When on, umpires see this division's open places on their
+        Home page and can take them. The youth age rule, overlapping games and the
+        league's limit on games still apply.
+      </p>
+
       <label for="division-description">Description (optional)</label>
       <textarea id="division-description" name="description"
         rows="3" maxlength="500">${escapeHtml(description)}</textarea>
@@ -306,6 +316,7 @@ export function wireDivisionForm(container: HTMLElement): void {
       oldest_ll_age: ages.oldest,
       umpires_per_game: umpireNumber(data.get("umpires_per_game"), 2),
       tournament_umpires: data.get("tournament_umpires") === "" ? null : umpireNumber(data.get("tournament_umpires"), 2),
+      allow_self_assign: data.get("allow_self_assign") === "on",
       description: description || null,
       is_active: isActive,
     };

@@ -1,0 +1,472 @@
+RWCLL database checks on TEST
+Started 2026-10-26T18:08:40.116Z
+Connected as postgres to postgres
+
+===== account_details_check.sql  ->  PASS: 15 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/account_details_check.sql:295: ERROR:  
+
+ACCOUNT DETAILS CHECK (nothing was saved)
+
+PASS  A1  an admin can fix another account's phone number
+PASS  A2  an admin cannot turn text messages on for someone else
+PASS  A3  an admin can save an account's outside ID
+PASS  A4  one outside ID cannot belong to two accounts
+PASS  A5  an admin can save an umpire's birth date and outside ID
+PASS  A6  one outside ID cannot belong to two umpires
+PASS  B1  the account holder can save a phone and turn text messages on (time recorded)
+PASS  B2  turning text messages off clears the consent time
+PASS  B3  text messages cannot be on without a phone number
+PASS  B4  a phone number with letters is refused
+PASS  B5  an ordinary account cannot change another account's contact details
+PASS  B6  an ordinary account cannot read other people's contact details
+PASS  B7  an ordinary account cannot read outside IDs (not even its own)
+PASS  B8  an ordinary account cannot set outside IDs
+PASS  C1  emails must be unique even when the letter case differs
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 278 at RAISE
+
+===== assignment_confirmation_check.sql  ->  PASS: 38 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/assignment_confirmation_check.sql:554: ERROR:  
+
+ASSIGNMENT CONFIRMATION CHECK (nothing was saved; your real data was not changed)
+
+PASS  L1  a league warns about unconfirmed assignments 7 days ahead by default
+PASS  L2  more than 60 days is refused
+PASS  L3  a negative number of days is refused
+PASS  L4  0 (off) and 60 are both accepted
+PASS  C1  newly assigned umpires start as Assigned, not confirmed
+PASS  C2  the history records both assignments and who made them
+PASS  C3  each assigned umpire has a message queued at their account email, naming their place
+PASS  C4  an umpire with only an email on their record is messaged there, and one with no email at all is still assigned (no message, no error)
+PASS  C5  an umpire can confirm their own assignment (time and history recorded)
+PASS  C6  confirming twice is harmless and is recorded once
+PASS  C7  an umpire cannot confirm a game they are not assigned to
+PASS  C8  an account with no umpire record cannot confirm
+PASS  C9  an account with no umpire record cannot decline
+PASS  C10  a canceled game cannot be confirmed
+PASS  C11  an umpire cannot confirm or remove an assignment by editing it directly (only through the confirm and decline steps)
+PASS  C12  adding someone keeps the existing umpires' status (A stays confirmed), and the newcomer starts as Assigned
+PASS  C13  moving umpires between places keeps each one's status, and an umpire taken off the game is removed
+PASS  C14  an umpire taken off a game is recorded and told
+PASS  C15  an administrator can record a confirmation that came another way (marked as such in the history)
+PASS  C16  an ordinary account cannot confirm on an umpire's behalf
+PASS  W1  an unconfirmed assignment 2 days away is warned about; one 20 days away, and a confirmed one, are not
+PASS  W2  the administrators get a queued reminder naming the umpire and the game
+PASS  W3  asking again does not queue the same warning twice
+PASS  W5  with the setting at 0 days, nothing is warned about
+PASS  W7  raising the setting to 30 days brings the game 20 days away into the warning
+PASS  W8  a canceled game and a game in the past are never warned about
+PASS  W9  an ordinary account cannot queue the warnings
+PASS  W10  a signed-out visitor cannot queue the warnings
+PASS  D1  an umpire can decline: the place becomes open and the reason (tidied up) is recorded
+PASS  D2  the administrators get a queued message with the umpire, the place, the game and the reason
+PASS  D3  an umpire who already confirmed can still decline, and no reason is needed
+PASS  D4  an umpire cannot decline a game that has already started
+PASS  D5  a canceled game cannot be declined
+PASS  D6  declining a game you are no longer on is refused
+PASS  D7  a signed-out visitor cannot decline
+PASS  E1  an administrator can read the history
+PASS  E2  an ordinary account sees none of the history
+PASS  E3  nobody can write the history directly, not even an administrator
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 535 at RAISE
+
+===== email_outbox_check.sql  ->  PASS: 18 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/email_outbox_check.sql:310: ERROR:  
+
+EMAIL OUTBOX CHECK (nothing was saved, nothing was emailed)
+
+PASS  B1  an admin can queue a message (address cleaned up, status queued, creator recorded)
+PASS  B2  an invalid address is refused
+PASS  B3  an empty subject is refused
+PASS  B4  an empty body is refused
+PASS  B5  an unknown message type is refused
+PASS  B6  marking a message sent records how, when, and the attempt
+PASS  B7  a message cannot be marked sent twice
+PASS  B8  a queued message can be set aside (skipped)
+PASS  B9  a message that is not waiting cannot be skipped
+PASS  B10  the outbox cannot be written directly, only through the functions
+PASS  B11  the outbox cannot be edited directly
+PASS  B12  an admin can read the outbox
+PASS  B13  the internal enqueue function cannot be called from the app
+PASS  C1  an ordinary account cannot queue email
+PASS  C2  an ordinary account cannot change the outbox
+PASS  C3  an ordinary account cannot read anyone's queued email
+PASS  D1  the internal enqueue path works with nobody signed in (for future automatic emails)
+PASS  D2  an automatic message records which signed-in person triggered it
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 294 at RAISE
+
+===== games_master_id_check.sql  ->  PASS: 8 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/games_master_id_check.sql:150: ERROR:  
+
+MASTER GAME ID CHECK (nothing was saved; your real data was not used)
+
+PASS  M1  a game can carry a master ID, and any number of games can have none
+PASS  M2  the same master ID is allowed in a different season
+PASS  M3  a duplicate master ID in the same season is refused
+PASS  M4  a game cannot be changed to an ID another game already uses
+PASS  M5  an ID with leading or trailing spaces is refused
+PASS  M6  an empty ID is refused
+PASS  M7  an ID longer than 100 characters is refused
+PASS  M8  clearing an ID frees it for another game
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 135 at RAISE
+
+===== games_rules_check.sql  ->  PASS: 18 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/games_rules_check.sql:293: ERROR:  
+
+GAME RULES CHECK (nothing was saved; your real data was not used)
+
+PASS  R1  teams in their own league's divisions (and a team with no division) are accepted
+PASS  R2  a new team cannot use another league's division
+PASS  R3  an existing team cannot be moved into another league's division
+PASS  R4  a team can still move between divisions of its own league, or have none
+PASS  R5  a division that has teams cannot be moved to another league
+PASS  G1  a normal game (two teams in the game's season and division) is accepted
+PASS  G2  a team from a different season is refused
+PASS  G3  a team from a different division is refused
+PASS  G4  a team with no division cannot play in a division game
+PASS  G5  a team cannot play itself
+PASS  G6  tournament games with undecided bracket slots (labels, or a team against a label) are accepted
+PASS  G7  a side cannot be both a team and a label
+PASS  G8  every side must be a team or a label
+PASS  G9  every game must have a division
+PASS  G10  an unknown game type is refused
+PASS  G11  a game must end after it starts (the older rule still holds)
+PASS  G12  a team that has games cannot be deleted
+PASS  G13  the database keeps the "last changed" time up to date by itself
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 276 at RAISE
+
+===== import_games_check.sql  ->  PASS: 17 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/import_games_check.sql:419: ERROR:  
+
+IMPORT GAMES CHECK (nothing was saved; your real data was not used)
+
+PASS  I1  a full import adds the new teams, the new field and the games, and reports the counts
+PASS  I2  new games are stored as scheduled; new teams get the right season, division and league
+PASS  I3  an update changes teams, field and times, and keeps the status and master ID
+PASS  I4  an update can set the status, and can swap a team for a label
+PASS  I5  a duplicate master ID is refused, the message names the game, and the good game in the same import was NOT saved
+PASS  I6  a team from the wrong division is refused, and the new team created earlier in the same import was NOT saved
+PASS  I7  a team from another season is refused
+PASS  I8  updating a game that is not in this season is refused
+PASS  I9  a new team with an existing name is refused, naming the team
+PASS  I10  a new field with an existing name is refused
+PASS  I11  a new team in a missing division is refused
+PASS  I12  an unknown season is refused
+PASS  I13  an unknown operation is refused
+PASS  I14  a malformed payload is refused
+PASS  I15  an import of more than 5,000 games is refused
+PASS  I16  an ordinary account cannot import games
+PASS  I17  a signed-out visitor cannot run an import at all
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 402 at RAISE
+
+===== import_season_check.sql  ->  PASS: 17 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/import_season_check.sql:387: ERROR:  
+
+IMPORT SEASON CHECK (nothing was saved; your real data was not used)
+
+PASS  S1  a new season, 2 new divisions and 3 teams are created, and the counts are reported
+PASS  S2  the season (name trimmed, dates kept, active), its teams and its divisions are stored in the right league
+PASS  S3  teams are added to an existing season, whose name and dates are left alone, and no season is created
+PASS  S4  a season name that already exists is refused, naming the season
+PASS  S5  a division name that already exists is refused, and the new season from the same import was NOT saved
+PASS  S6  a team name that already exists in the season is refused, naming the team, and nothing else was saved
+PASS  S7  a team cannot be put in another league's division
+PASS  S8  a season that ends before it starts is refused
+PASS  S9  a season with no name is refused
+PASS  S10  a division with no name is refused
+PASS  S11  a team with no name is refused
+PASS  S12  an unknown league is refused
+PASS  S13  an unknown season is refused
+PASS  S14  a malformed payload is refused
+PASS  S15  an import of more than 2,000 teams is refused
+PASS  S16  an ordinary account cannot import a season
+PASS  S17  a signed-out visitor cannot run an import at all
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 369 at RAISE
+
+===== registration_check.sql  ->  PASS: 33 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/registration_check.sql:572: ERROR:  
+
+REGISTRATION CHECK (nothing was saved)
+
+PASS  A1  a made-up sign-up type (super_admin) is ignored and grants nothing
+PASS  A2  the youth sign-up choice is recorded as a request
+PASS  B1  an admin can invite an email (stored in lower case)
+PASS  B2  a new invitation for the same email replaces the old one
+PASS  B3  inviting an email that already has an account is refused
+PASS  B4  an invalid email is refused
+PASS  B5  renewing an invitation gives it a fresh 30 days
+PASS  B6  an invitation can be revoked
+PASS  B7  revoking an invitation that is not open is refused
+PASS  D1  a pending registrant cannot approve themselves
+PASS  D2  an ordinary account cannot approve registrations
+PASS  D3  an ordinary account cannot reject registrations
+PASS  D4  an ordinary account cannot send invitations
+PASS  C1  an invited person who confirms their email is linked, approved and given the adult umpire role (and a second claim changes nothing)
+PASS  C2  an invitation is NOT honoured until the email is confirmed
+PASS  C3  an expired invitation is not honoured
+PASS  C4  an account that asked to be a "super_admin" gets no umpire record or roles
+PASS  C5  a self-registration creates ONE inactive record awaiting review, with no roles
+PASS  C6  adult self-registrations are recorded for review
+PASS  E1  a youth cannot be approved without a birth date
+PASS  E2  an umpire under 13 cannot be approved this way
+PASS  E3  someone under 18 cannot be approved as an adult
+PASS  E4  someone 18 or older cannot be approved as a youth
+PASS  E5  a birth date in the future is refused
+PASS  E6  a valid youth registration is approved
+PASS  E7  a registration cannot be approved twice
+PASS  E8  an admin can reject a registration
+PASS  E9  a rejected registration cannot then be approved
+PASS  F1  approval did everything: account approved, youth role granted, record activated, birth date saved
+PASS  F2  a rejected registration stays rejected with no roles
+PASS  G1  a scheduler cannot approve umpire registrations
+PASS  G2  an umpire chief can approve an umpire registration
+PASS  G3  the chief's approval granted the adult umpire role
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 551 at RAISE
+
+===== rls_check_admin_access.sql  ->  PASS: 15 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/rls_check_admin_access.sql:75: ERROR:  
+
+ADMIN ACCESS CHECK (nothing was saved)
+
+PASS  reads all 8 row(s) of divisions
+PASS  reads all 2 row(s) of game_assignments
+PASS  reads all 46 row(s) of games
+PASS  reads all 1 row(s) of leagues
+PASS  reads all 312 row(s) of little_league_age_chart_entries
+PASS  reads all 2 row(s) of little_league_age_charts
+PASS  reads all 12 row(s) of locations
+PASS  reads all 7 row(s) of profiles
+PASS  reads all 9 row(s) of roles
+PASS  reads all 2 row(s) of seasons
+PASS  reads all 27 row(s) of teams
+PASS  reads all 0 row(s) of umpire_availability
+PASS  reads all 5 row(s) of umpire_private_details
+PASS  reads all 6 row(s) of umpires
+PASS  reads all 5 row(s) of user_roles
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 58 at RAISE
+
+===== rls_check_ordinary_user.sql  ->  PASS: 41 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/rls_check_ordinary_user.sql:240: ERROR:  
+
+SECURITY CHECK REPORT (nothing was saved)
+
+INFO   tested as an ordinary account that is linked to an umpire record
+PASS   Create a league  (blocked by security rules)
+PASS   Create a season  (blocked by security rules)
+PASS   Create a division  (blocked by security rules)
+PASS   Create a team  (blocked by security rules)
+PASS   Create a location  (blocked by security rules)
+PASS   Create an umpire record  (blocked by security rules)
+PASS   Create private umpire details  (blocked by security rules)
+PASS   Create a game  (blocked by security rules)
+PASS   Assign an umpire to a game  (blocked by security rules)
+PASS   Create an age chart directly  (blocked by security rules)
+PASS   Add age chart entries directly  (blocked by security rules)
+PASS   Give yourself the super_admin role  (blocked by security rules)
+PASS   Approve your own account  (blocked by security rules)
+PASS   Edit leagues  (no rows changed)
+PASS   Edit seasons  (no rows changed)
+PASS   Edit divisions  (no rows changed)
+PASS   Edit teams  (no rows changed)
+PASS   Edit locations  (no rows changed)
+PASS   Edit umpire records  (no rows changed)
+PASS   Edit private umpire details  (no rows changed)
+PASS   Edit games  (no rows changed)
+PASS   Edit assignments  (no rows changed)
+PASS   Edit age charts  (blocked by security rules)
+PASS   Edit age chart entries  (blocked by security rules)
+PASS   Delete leagues  (no rows changed)
+PASS   Delete seasons  (no rows changed)
+PASS   Delete divisions  (no rows changed)
+PASS   Delete teams  (no rows changed)
+PASS   Delete locations  (no rows changed)
+PASS   Delete umpire records  (no rows changed)
+PASS   Delete games  (no rows changed)
+PASS   Delete assignments  (no rows changed)
+PASS   Delete role assignments  (no rows changed)
+PASS   Approve another account (set_account_status)  (refused with the expected message)
+PASS   Import an age chart (import_age_chart)  (refused with the expected message)
+PASS   Read emergency contacts and admin notes  (0 row(s) visible)
+PASS   See other people's roles  (0 row(s) visible)
+PASS   See other people's profiles  (1 row(s) visible)
+PASS   Read OTHER people's umpire records  (0 row(s) visible)
+PASS   Read OTHER people's phone numbers  (0 row(s) visible)
+PASS   Read OTHER umpires' assignments  (0 row(s) visible)
+INFO   Your own umpire record (0 or 1 is fine)  (1 row(s) visible)
+INFO   Games this account can read (schedules are not personal data)  (46 row(s) visible)
+
+Items needing attention: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 216 at RAISE
+
+===== role_rules_check.sql  ->  PASS: 5 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/role_rules_check.sql:112: ERROR:  
+
+ROLE RULES CHECK (nothing was saved)
+
+PASS  a role cannot be given to an account that is not approved
+PASS  an account cannot be both youth and adult umpire
+PASS  a valid role can be given and removed
+PASS  the last super admin cannot be removed
+PASS  a super admin can be removed when another remains
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 95 at RAISE
+
+===== self_assignment_check.sql  ->  PASS: 35 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/self_assignment_check.sql:548: ERROR:  
+
+SELF-ASSIGNMENT CHECK (nothing was saved; your real data was not changed)
+
+PASS  K1  self-assigning is OFF for a new division, ON for a new umpire, and a league has no limit to begin with
+PASS  K2  a limit of 0 is refused (use the division switch to stop self-assigning)
+PASS  K3  a limit above 500 is refused
+PASS  K4  a limit of 1 is accepted, and blank (no limit) is accepted
+PASS  S1  an umpire is offered the open places of games still to come in divisions that allow it (not the OFF division, not the played game, not the canceled one)
+PASS  S2  taking a game assigns the umpire, already Confirmed and marked as self-assigned, and records it in the history
+PASS  S3  once on a game, that game is no longer offered, and neither is a game that overlaps it, but later games still are
+PASS  S4  a game that overlaps one of the umpire's own is refused
+PASS  S5  an umpire cannot take a second place on the same game
+PASS  S6  a division that has not turned self-assigning on refuses it
+PASS  S7  a game that has already started cannot be taken
+PASS  S8  a canceled game cannot be taken
+PASS  S9  a place that is not part of the game is refused
+PASS  W1  an umpire an administrator has switched off cannot take games
+PASS  W2  ...and is offered none
+PASS  W3  an inactive umpire cannot take games
+PASS  W4  ...and is offered none
+PASS  W5  an account with no umpire record cannot take games
+PASS  W6  ...and is offered none
+PASS  T2  a place someone else already holds is refused
+PASS  T3  only the places still open are offered
+PASS  L1  with a limit of 1, an umpire who already has one upcoming game cannot take another (the played and canceled games do not count)
+PASS  L2  ...and is offered none
+PASS  L3  with a limit of 2, the second game can be taken
+PASS  L4  ...and a third cannot
+PASS  L5  with no limit, the umpire can take it
+PASS  G1  an umpire can decline a game they took for themselves
+PASS  G2  ...and the place is offered again
+PASS  Y1  a youth umpire with Little League age 13 is offered Juniors (from 12) but not Seniors (from 13)
+PASS  Y2  a youth umpire cannot take a Seniors game, with the reason
+PASS  Y3  ...but can take a Juniors game
+PASS  D1  the 'to' date limits the list
+PASS  D2  the 'from' date limits the list
+PASS  O1  a signed-out visitor cannot take a game
+PASS  O2  a signed-out visitor cannot ask what is available
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 531 at RAISE
+
+===== umpire_assignments_check.sql  ->  PASS: 50 tests passed
+BEGIN
+
+psql:D:/sandbox/RWCLL/rwcll-umpire-scheduler/supabase/tests/umpire_assignments_check.sql:842: ERROR:  
+
+UMPIRE ASSIGNMENTS CHECK (nothing was saved; your real data was not used)
+
+PASS  D1  a new division needs 2 umpires per game by default
+PASS  D2  a division can need no umpires at all (0), for divisions such as Tee Ball
+PASS  D3  a division cannot be set to need more than 4 umpires
+PASS  D4  a division can need 1, 2, 3 or 4 umpires
+PASS  D5  a game has no override to begin with (it follows its division)
+PASS  D6  a game can be set to need 0 to 4 umpires, or back to the division default
+PASS  D7  a game cannot be set to need more than 4 umpires
+PASS  D8  a game cannot be set to a negative number
+PASS  D9  a division has no separate tournament number to begin with (tournaments follow the regular default)
+PASS  D10  a division can have a tournament number of 0 to 4, or none
+PASS  D11  a tournament number cannot be more than 4
+PASS  A1  both umpires are assigned to their positions, and who assigned them is recorded
+PASS  A2  setting the same umpires again changes nothing (the original assignments are kept)
+PASS  A3  two umpires can be swapped between plate and field
+PASS  A4  clearing the field umpire leaves the plate umpire
+PASS  A5  clearing both positions removes all assignments
+PASS  A6  one umpire cannot hold two places in a game
+PASS  A7  an inactive umpire is refused, and the plate umpire who was there is still there (nothing was half-changed)
+PASS  A8  a suspended umpire is refused
+PASS  A9  nobody can be assigned to a canceled game
+PASS  A10  the umpires of a game that was canceled later can be cleared
+PASS  A11  an unknown game is refused
+PASS  A12  a position can hold only one umpire (direct writes too)
+PASS  A13  one umpire cannot hold two positions in a game (direct writes too)
+PASS  A14  the "active umpires only" rule also covers direct writes
+PASS  A15  an old assignment can still be edited after its umpire became inactive
+PASS  A16  an umpire who became inactive stays on the game while the other position is filled
+PASS  P1  three umpires can be assigned: plate, first base and third base (and the old field umpire is gone)
+PASS  P2  four umpires can be assigned: plate, first, second and third base
+PASS  P3  an unknown position is refused
+PASS  P4  an unknown position is refused by the table itself (direct writes too)
+PASS  P5  a position left out is emptied (4 umpires down to 3)
+PASS  P6  one umpire cannot hold two of the places (first base as well as plate)
+PASS  P7  an empty place is cleared, leaving only the plate umpire
+PASS  P8  an empty list leaves the game with no umpires
+PASS  Y1  a 13-year-old youth umpire cannot umpire Seniors (the reason is given)
+PASS  Y2  a 12-year-old youth umpire cannot umpire Juniors
+PASS  Y3  a 12-year-old youth umpire cannot umpire Seniors either (any division above)
+PASS  Y4  younger divisions are allowed: 13 on Juniors, 12 on Majors, 15 on Seniors
+PASS  Y5  a youth umpire with no birth date, or whose birth month is not in the chart, is NOT blocked (the rule never guesses)
+PASS  Y6  adult umpires are not affected by the age rule
+PASS  Y7  the age rule also covers direct writes
+PASS  Y8  for a Seniors game, the screen is told: Youth A and B are blocked, D and E are unchecked, and C and every adult have nothing to report
+PASS  Y9  for a Majors game no youth umpire of these ages is blocked
+PASS  O1  an ordinary account cannot assign umpires
+PASS  O2  a direct insert by an ordinary account is blocked by the security rules (the new rule did not change that)
+PASS  O4  an ordinary account cannot ask who is eligible (it is based on birth dates)
+PASS  O5  an ordinary account asking about one umpire is told nothing
+PASS  O3  a signed-out visitor cannot assign umpires at all
+PASS  O6  a signed-out visitor cannot ask who is eligible
+
+Failures: 0
+
+CONTEXT:  PL/pgSQL function inline_code_block line 822 at RAISE

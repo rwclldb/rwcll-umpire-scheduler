@@ -1,6 +1,7 @@
 import { supabase } from "../supabase";
 import { escapeHtml } from "../ui";
 import { loadContext, loadUmpireGames } from "./data";
+import { renderOpenGames } from "./open-games";
 import { renderScheduleView } from "./umpire-schedule";
 import { buildUmpireSchedule, lookupsFor } from "./schedule";
 
@@ -74,6 +75,7 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
       </p>
       <div id="my-schedule-view"></div>
     </section>
+    <div id="my-open-games"></div>
   `;
 
   renderScheduleView(container.querySelector<HTMLElement>("#my-schedule-view")!, {
@@ -89,6 +91,14 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
       return answerError ? `That did not work. ${answerError.message}` : null;
     },
     onAnswered: (message) => {
+      void renderMySchedule(container, message);
+    },
+  });
+
+  // Open places this umpire is allowed to take for themselves (nothing is shown when there are none).
+  void renderOpenGames(container.querySelector<HTMLElement>("#my-open-games")!, {
+    context,
+    onTaken: (message) => {
       void renderMySchedule(container, message);
     },
   });

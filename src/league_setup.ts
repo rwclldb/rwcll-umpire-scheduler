@@ -32,12 +32,12 @@ export async function renderLeagueSetup(
     teamsResult,
   ] = await Promise.all([
     supabase.from("leagues")
-      .select("id, name, is_active, unconfirmed_warning_days").order("name"),
+      .select("id, name, is_active, unconfirmed_warning_days, self_assign_max_games").order("name"),
     supabase.from("seasons")
       .select("id, name, starts_on, ends_on, is_active, age_chart_id")
       .order("starts_on", { ascending: false }),
     supabase.from("divisions")
-      .select("id, name, age_group, league_id, description, youngest_ll_age, oldest_ll_age, umpires_per_game, tournament_umpires, is_active")
+      .select("id, name, age_group, league_id, description, youngest_ll_age, oldest_ll_age, umpires_per_game, tournament_umpires, allow_self_assign, is_active")
       .order("name"),
     supabase.from("locations")
       .select("id, name, address, notes, is_active").order("name"),
