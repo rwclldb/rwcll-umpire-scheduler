@@ -55,3 +55,11 @@ function clean(value: string | null | undefined): string | null {
   const text = (value ?? "").trim();
   return text === "" ? null : text;
 }
+
+// The number as a link target, for tel: and sms: links: digits only, keeping a
+// leading + if there is one. "(650) 555-1234" becomes "6505551234".
+export function phoneHref(number: string): string {
+  const text = number.trim();
+  const digits = text.replace(/\D/g, "");
+  return text.startsWith("+") ? `+${digits}` : digits;
+}

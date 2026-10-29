@@ -7,6 +7,7 @@ import { renderUmpireDirectory } from "./umpires";
 import { renderLeagueSetup } from "./league_setup";
 import { renderRoleManager } from "./roles";
 import { renderBoardPage } from "./games/board";
+import { logoHtml } from "./logo";
 import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
 import { renderOutbox } from "./outbox";
@@ -87,6 +88,7 @@ function renderAuthForm() {
   app!.innerHTML = `
     <main class="page">
       <section class="auth-card">
+        ${logoHtml("auth-logo")}
         <p class="eyebrow">RWCLL</p>
         <h1>Umpire Management</h1>
         <p class="intro">
@@ -339,6 +341,7 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
     app!.innerHTML = `
       <main class="page">
         <section class="auth-card">
+          ${logoHtml("auth-logo")}
           <h1>Account status unavailable</h1>
           <p>We couldn't load your profile. Please try again later.</p>
           <button id="signout-button" class="secondary-button">
@@ -439,6 +442,7 @@ function renderAccountStatus(profile: Profile, roles = "") {
   app!.innerHTML = `
     <main class="page">
       <section class="auth-card">
+        ${logoHtml("auth-logo")}
         <p class="eyebrow">RWCLL</p>
         <h1 id="account-heading"></h1>
         <p id="account-message" class="intro"></p>
@@ -1032,6 +1036,7 @@ function renderForgotPassword() {
   app!.innerHTML = `
     <main class="page">
       <section class="auth-card">
+        ${logoHtml("auth-logo")}
         <p class="eyebrow">RWCLL</p>
         <h1>Reset your password</h1>
         <p class="intro">
@@ -1121,6 +1126,7 @@ function renderSetNewPassword() {
   app!.innerHTML = `
     <main class="page">
       <section class="auth-card">
+        ${logoHtml("auth-logo")}
         <p class="eyebrow">RWCLL</p>
         <h1>Choose a new password</h1>
         <p class="intro">

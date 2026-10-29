@@ -43,9 +43,10 @@ whenever the league's needs change.
 - Availability now also has repeating times (ending with their season), dates an umpire
   can't umpire, and a month calendar. It is built and tested here; its database change is
   waiting for its first run on your own test database.
-- Phase 10 (game day) has begun: stage **10a**, the field board and calendar, is built and
-  tested here (it needs no database change). Next are 10b (attendance, game notes,
-  substitutions, call and text links), 10c (reports) and 10d (day-of extras).
+- Phase 10 (game day) has begun. Stage **10a** (the field board and calendar) is built and in
+  use. Stage **10b-1** (attendance and check-in, and Call and Text links) is built and tested
+  here; its database change is waiting for its first run on your own test database. Next are
+  10b-2 (a note on each game, and substitutions), 10c (reports) and 10d (day-of extras).
 - Sending real email (Phase 7) is postponed until you are ready, and Phase 9 (families and
   youth safeguards) waits for the board's answers.
 
@@ -187,14 +188,20 @@ whenever the league's needs change.
 - A month calendar showing how many games there are each day, and a marker for days with open places
 - Print a day; bookmarkable day addresses
 
-**10b. Day-of actions** ⬜
+**10b-1. Attendance and calling umpires** ✅ *(built and tested; the database change has not yet had its first run on your database)*
 
-- **Attendance:** confirm that each umpire showed up (and when), with late and no-show recorded.
-  Both the umpire (checking in) and administrators can mark it
-- A **note on each game**, and a way to record a **substitution** (the umpire assigned could not
-  come; someone else worked it), keeping the original assignment on record
-- **Call or text an umpire from a game** (for example, when one is late): phone numbers become
-  links that start a call or text on a phone
+- An umpire checks in from a **Game day** card on their Home page, from 1 hour before the
+  game until it ends; administrators can also record, correct or clear it on the field board
+- Arrived (with the time; late means after the scheduled start), **Not here yet**, and
+  **No-show** shown on the board and counted in its summary; changes kept in the history
+- **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire)
+
+**10b-2. Notes and substitutions** ⬜
+
+- A **note on each game** (for day-of things the schedule does not say)
+- A way to record a **substitution**: the umpire assigned could not come and someone else worked
+  it, keeping the original assignment on record (the substitute can be an umpire in the system,
+  or just a name)
 
 **10c. Reports** ⬜
 
@@ -257,7 +264,7 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 
 - **Sign out automatically** after a period of no activity (something like 30 minutes, with a warning first)
 - **Add a person who is not an umpire** from the app: invite them with their roles, and/or a sign-up choice for them (today it takes one step in the Supabase dashboard; see FAQ section 42)
-- Use the league logo in the app (it already serves as the app icon and favicon)
+- Add the logo to printed schedules and the day sheet (it is now in the top bar and on the sign-in screens)
 - Give the **umpire admin** role the same abilities as the umpire chief (it touches about 20 places in the database and a few in the app, so it needs its own careful stage)
 
 ## Questions waiting for an answer
@@ -284,6 +291,8 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 - **Phone numbers on printouts:** an option, for administrators; for a youth umpire,
   both their own and a parent's number (the emergency contact on their record, until
   parents have accounts of their own).
+- **Check-in and "late" (Phase 10):** an umpire can check in from 1 hour before the game starts
+  until it ends; "late" means arriving after the scheduled start.
 - **Attendance and reports (Phase 10):** both the umpire and administrators can mark that an
   umpire showed up. Post-game and outside reports can be read by the umpire chief and super
   admins only.

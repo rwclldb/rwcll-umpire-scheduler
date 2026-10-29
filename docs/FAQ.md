@@ -75,6 +75,8 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 42. [Adding a person who is not an umpire (and giving them roles)](#42-adding-a-person-who-is-not-an-umpire-and-giving-them-roles)
 43. [Fields and divisions: league fields, away fields, and the order of divisions](#43-fields-and-divisions-league-fields-away-fields-and-the-order-of-divisions)
 44. [The field board and calendar](#44-the-field-board-and-calendar)
+45. [The league logo](#45-the-league-logo)
+46. [Game day: attendance, checking in, and calling umpires](#46-game-day-attendance-checking-in-and-calling-umpires)
 
 ---
 
@@ -197,6 +199,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `attendance_check.sql` | Attendance works (an umpire can check in from 1 hour before the game until it ends, and not otherwise; an administrator can record, correct and clear it; nobody can write it directly; moving umpires between places keeps it; the history records it) | `Failures: 0` |
 | `league_field_check.sql` | The league-field marker on fields works (a new field defaults to an away field; administrators can change it; an ordinary account and a signed-out visitor cannot) | `Failures: 0` |
 | `availability_patterns_check.sql` | Repeating availability and "I can't" entries work (an umpire manages only their own; days of the week, times, notes and the season are checked; a repeating time needs a season with an end date; a signed-out visitor sees nothing) | `Failures: 0` |
 | `availability_check.sql` | Availability works (an umpire manages only their own entries and sees nobody else's; an administrator manages anyone's; an entry cannot end before it starts, last more than 90 days, or carry a note over 200 characters; a signed-out visitor sees nothing) | `Failures: 0` |
@@ -440,6 +443,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\attendance_check.sql` | Tests attendance and check-in (builds its own league, games, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\league_field_check.sql` | Tests the league-field marker on locations (your data is not changed) | No (always rolls back) |
 | `supabase\tests\availability_patterns_check.sql` | Tests repeating availability and the "I can't" entries (builds its own sign-in accounts, umpires and seasons; your data is not changed) | No (always rolls back) |
 | `supabase\tests\availability_check.sql` | Tests the availability rules (builds its own sign-in accounts and umpires; your data is not changed) | No (always rolls back) |
@@ -543,10 +547,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -778,7 +782,7 @@ After signing in, an approved person sees a **top bar** (their name, their **rol
 | Super admin | **Administration** (a page of buttons for Approvals, Roles, League Setup, Locations, Umpire Directory, Outbox and My details; see below) **Games** and **Field board** |
 | Umpire chief | **Umpire Management** (registrations, umpire directory, Outbox, My details), **Games** and **Field board** |
 | Scheduler | **Umpires** (directory and Outbox), **Games**, **Field board**, **League Setup**, **My details** |
-| Youth or adult umpire | **Home** (their own printable schedule, **My availability**, and games they can take), **My details** |
+| Youth or adult umpire | **Home** (a **Game day** card for today's games with a check-in button, their own printable schedule, **My availability**, and games they can take), **My details** |
 | Treasurer, feedback reviewer, read-only admin, parent | The plain account page for now (their pages come with their features) |
 
 Combinations: chief and scheduler get *Umpire Management*, *Games* and *League Setup*. A scheduler who is also an umpire gets *Umpires*, *Games*, *League Setup*, *As an umpire*, and *My details*.
@@ -1276,4 +1280,70 @@ Beside the board (above it on a phone, where it starts tucked away under **Calen
 - Each day has its own address (for example `#/board/2026-10-31`), so you can bookmark it, and Back and Forward work.
 - The board keeps what it loaded for a minute, so stepping between days is quick. Press **Refresh** to load the latest.
 - Only people who can already see the games and their umpires get the board. Umpires do not (they have **Home**); a view for them comes later.
-- It is the first part of Phase 10 (game day). Attendance, notes on games, substitutions and tap-to-call are planned next.
+- It is the first part of Phase 10 (game day). **Attendance, checking in, and Call and Text links are in section 46.** Notes on games and substitutions are planned next.
+
+## 45. The league logo
+
+The Redwood City Little League logo appears in two places:
+
+- **In the top bar** on every screen after you sign in, at the left, on a small **white badge** (the logo has dark outlines that would disappear against the black bar). Pressing it takes you home, to your first tab.
+- **At the top of the sign-in screens**: signing in or creating an account, forgot password, choosing a new password, and the page that says your account is waiting for approval.
+
+Its description for screen readers is *Redwood City Little League*. If the picture file is ever missing, the app still works and that description is shown instead.
+
+**To change the logo** (for example, to a higher-resolution version):
+
+1. Save the new picture as **`rwcll-logo.png`** (a transparent PNG).
+2. Put it in the project's **`public`** folder, replacing the file that is there. The name must stay the same.
+3. Run `npm run build`, then push as usual. If you still see the old one in a browser, refresh it with **Ctrl+F5** (or clear the site's cached files on a phone).
+
+**What size?** The header shows it about 34 pixels tall and the sign-in screens up to about 120 pixels tall. A picture around **600 pixels wide** stays sharp on high-resolution phone screens. Keep the same shape (a bit wider than tall) so it fits the badge.
+
+**The app icon is separate.** The icon that shows in the browser tab and when someone adds the app to a phone's home screen is not this file, and is not changed by it.
+
+## 46. Game day: attendance, checking in, and calling umpires
+
+### For an umpire: checking in
+
+On the day of a game, your **Home** page has a **Game day** card at the very top listing today's games. For each one:
+
+| You see | Meaning |
+|---|---|
+| **I'm here** (a big button) | Check-in is open. Press it when you arrive |
+| *Check-in opens at 1:00 PM, an hour before the game* | It is too early. The card updates by itself when it opens |
+| **Checked in 8:52 AM** (or *Checked in 9:12 AM, 12 min late*) | Done. You are late if you checked in after the scheduled start |
+| *The game is over, and no check-in was recorded* | Too late to check in. Ask an administrator if that is wrong |
+
+- **Check-in opens 1 hour before the game starts and closes when it ends.** It does not use your location.
+- If an administrator marked you as **not here** and you are, the card says so and you can still check in.
+- A canceled game, or one already marked completed, is not shown.
+
+### For an administrator: the Field board
+
+On the **Field board** (section 44), each umpire's line now says where they stand:
+
+| Tag | Meaning |
+|---|---|
+| **Arrived 8:52 AM** | They checked in, or you recorded it. If it was after the scheduled start it adds **12 min late** (amber) |
+| **Not here yet** | The game has started, they are not recorded as here, and it is not over |
+| **No-show** | You recorded that they did not come |
+
+The line under the date counts them: *1 not here yet*, *2 no-shows*. A game that is already over never shows *Not here yet*.
+
+**Recording attendance:** press **Mark** beside an umpire, then **Arrived** (it uses the time in the box, or **now** if the box is blank), **No-show**, or **Clear** (which appears once something is recorded). A time must be on the day of the game and cannot be in the future. You can correct it later, even after the game. Every change is added to the assignment history, with who made it.
+
+### Calling or texting an umpire
+
+Under each umpire is **Call** and **Text** with their number, so if one is late you can reach them from the board. On a phone the buttons start a call or a text; on a computer they may open a calling app or do nothing.
+
+- The numbers are the same ones you can already see on the printed schedule: the account's number, otherwise the one on the umpire's record. A **youth umpire** shows their **own** number and a **parent's** (the emergency contact), each with its own Call and Text.
+- *no phone on file* means there is no number to use.
+- Only people who can see the Field board (super admins, umpire chiefs and schedulers) see them.
+
+### Good to know
+
+- **Late** is not saved separately: it is simply an arrival after the scheduled start. An umpire who checks in at exactly the start time is on time.
+- If you move an umpire to a different place on a game, **their attendance goes with them**. Taking them off the game removes it.
+- This update also fixes a small slip: moving a self-assigned umpire to another place could have caused the administrators to be told about the game a second time. It no longer does.
+- **Database change:** `20261031100000_add_attendance.sql`; the check script is `attendance_check.sql` (section 6).
+- Planned next: a note on each game, and recording a substitution (who actually worked it).

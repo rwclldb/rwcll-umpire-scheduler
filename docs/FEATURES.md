@@ -94,6 +94,15 @@ test on the league's own database.
 - A month calendar shows how many games there are on each day, with a red dot when places still need an umpire; pressing a day opens it
 - Previous and next day, a date box, and a bookmarkable address for each day
 
+**Game day: attendance and calling umpires** 🆕
+
+- A **Game day** card at the top of an umpire's Home page lists today's games, with a big **I'm here** check-in button from 1 hour before the game until it ends
+- The card shows when check-in opens, when you checked in (and how late), and says plainly when a game is over with no check-in recorded
+- On the Field board, each umpire shows **Arrived** (with the time, and how many minutes late if after the start), **Not here yet**, or **No-show**, counted in the day's summary
+- Administrators can **Mark** an arrival (now, or a time they type), a no-show, or clear it; every change is kept in the assignment history with who made it
+- **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire), for reaching someone who is late
+- Attendance stays with an umpire when they are moved to another place on a game
+
 **Further assignment rules** 🆕
 
 - An administrator can record which division a youth umpire plays in (on their record). That division is then off limits to them, however the assignment is made
@@ -146,6 +155,7 @@ test on the league's own database.
 ## 9. Colors and layout
 
 - A consistent forest-green, black and white design
+- The league logo is in the top bar (on a white badge, pressing it goes home) and at the top of the sign-in screens; replacing one file changes it everywhere 🆕
 - Every text and background color pair meets accessibility contrast standards
 - Screens adapt to phones: tables become cards, nothing scrolls sideways
 - Printed pages show only the schedule, not the app around it
