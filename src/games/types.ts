@@ -63,6 +63,9 @@ export type Assignment = {
   status: AssignmentStatus;
   self_assigned: boolean;
   confirmed_at: string | null;
+  // game day: null until someone records it; "arrived" has a time (arrived_at)
+  attendance?: "arrived" | "no_show" | null;
+  arrived_at?: string | null;
 };
 
 // An umpire gave a place up (kept so administrators can see it was declined).

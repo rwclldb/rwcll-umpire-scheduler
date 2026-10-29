@@ -1,3 +1,4 @@
+import { supabase } from "../supabase";
 import { dateKey, parseDateKey } from "./availability";
 import {
   boardCalendarHtml,
@@ -9,7 +10,8 @@ import {
   summaryText,
 } from "./board-model";
 import type { DayCount } from "./board-model";
-import { loadContext, loadGamesBetween } from "./data";
+import { loadContactNumbers, loadContext, loadGamesBetween } from "./data";
+import { localDateKey } from "./format";
 import { printHtml } from "./print";
 import type { Assignment, Game, GamesContext } from "./types";
 import { escapeHtml } from "../ui";
@@ -23,6 +25,9 @@ const KEEP_MS = 60_000;   // data is kept for a minute, so stepping between days
 type MonthData = { at: number; games: Game[]; assignments: Assignment[] };
 const months = new Map<string, MonthData>();
 let contextKept: { at: number; context: GamesContext } | null = null;
+
+// A message to show once after the board is redrawn (for example "Arrival recorded.")
+let flash = "";
 
 async function getContext(): Promise<{ context: GamesContext | null; error: string | null }> {
   if (contextKept && Date.now() - contextKept.at < KEEP_MS) return { context: contextKept.context, error: null };
@@ -132,8 +137,16 @@ export async function renderBoardPage(
   const board = buildDayBoard({ ...base, games: loadedMonth.data.games, assignments: loadedMonth.data.assignments }, dayKey);
   get<HTMLElement>("board-summary").textContent = summaryText(board.summary);
 
+  // ---- how to reach the umpires on this day's games (administrators only; if
+  // they cannot be read, the board simply has no call or text links)
+  const umpireIds = [...new Set(
+    board.fields.flatMap((field) => field.games.flatMap((game) => game.slots.map((slot) => slot.umpireId)))
+      .filter((id): id is string => Boolean(id))
+  )];
+  const contacts = umpireIds.length ? (await loadContactNumbers(umpireIds)).contacts : undefined;
+
   // ---- the day
-  let dayHtml = dayBoardHtml(board);
+  let dayHtml = dayBoardHtml(board, contacts);
   if (board.summary.games === 0 && board.summary.canceled === 0) {
     // offer the nearest days that do have games (within the month shown)
     const counts = monthCounts(loadedMonth.data.games, loadedMonth.data.assignments, context.divisions, now);
@@ -146,6 +159,13 @@ export async function renderBoardPage(
     dayHtml = `<div class="board-none">${before ? link(before, "Previous game day") : ""}${after ? link(after, "Next game day") : ""}</div>`;
   }
   get<HTMLElement>("board-day").innerHTML = dayHtml;
+
+  if (flash) {
+    const message = get<HTMLElement>("board-message");
+    message.textContent = flash;
+    message.className = "message success";
+    flash = "";
+  }
 
   // ---- the calendar (any month, by its arrows)
   const drawCalendar = async () => {
@@ -180,6 +200,12 @@ export async function renderBoardPage(
       return;
     }
 
+    const mark = target.closest<HTMLButtonElement>("[data-mark]");
+    if (mark) {
+      void recordMark(mark);
+      return;
+    }
+
     if (target.closest("#board-print")) {
       printHtml(dayBoardPrintHtml(board, new Date()));
       return;
@@ -191,6 +217,47 @@ export async function renderBoardPage(
       void renderBoardPage(container, navigate, sub);
     }
   });
+
+  // An administrator records an arrival, a no-show, or clears it.
+  const recordMark = async (button: HTMLButtonElement) => {
+    const kind = button.dataset.mark;
+    const gameId = button.dataset.game as string;
+    const message = get<HTMLElement>("board-message");
+    const say = (text: string, type: "error" | "success" = "error") => {
+      message.textContent = text;
+      message.className = `message ${type}`;
+    };
+
+    // an arrival time (blank means now): the typed time, on the day of that game
+    let arrivedAt: string | null = null;
+    if (kind === "arrived") {
+      const typed = button.closest(".board-mark-body")?.querySelector<HTMLInputElement>(".board-mark-time")?.value;
+      if (typed) {
+        const game = board.fields.flatMap((field) => field.games).find((item) => item.id === gameId);
+        const when = new Date(`${game ? localDateKey(game.startsAt) : dayKey}T${typed}:00`);
+        if (Number.isNaN(when.getTime())) return say("That time is not valid.");
+        arrivedAt = when.toISOString();
+      }
+    }
+
+    container.querySelectorAll<HTMLButtonElement>("[data-mark]").forEach((item) => { item.disabled = true; });
+
+    const { error } = await supabase.rpc("admin_set_attendance", {
+      p_game_id: gameId,
+      p_umpire_id: button.dataset.umpire as string,
+      p_attendance: kind === "clear" ? null : kind,
+      p_arrived_at: arrivedAt,
+    });
+
+    if (error) {
+      container.querySelectorAll<HTMLButtonElement>("[data-mark]").forEach((item) => { item.disabled = false; });
+      return say(`Could not record it. ${error.message}`);
+    }
+
+    months.clear();
+    flash = kind === "arrived" ? "Arrival recorded." : kind === "no_show" ? "No-show recorded." : "Attendance cleared.";
+    void renderBoardPage(container, navigate, sub);
+  };
 
   get<HTMLInputElement>("board-date").addEventListener("change", (event) => {
     const value = (event.target as HTMLInputElement).value;

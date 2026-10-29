@@ -127,7 +127,7 @@ export async function loadContext(): Promise<{
   };
 }
 
-const ASSIGNMENT_COLUMNS = "game_id, position, umpire_id, status, self_assigned, confirmed_at";
+const ASSIGNMENT_COLUMNS = "game_id, position, umpire_id, status, self_assigned, confirmed_at, attendance, arrived_at";
 
 // Places umpires have given up (newest first). Only administrators can read
 // this; if it cannot be read the answer is simply "none", because it only adds

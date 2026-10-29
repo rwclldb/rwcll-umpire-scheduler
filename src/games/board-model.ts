@@ -1,4 +1,7 @@
+import { arrivedText } from "./attendance";
 import { dateKey } from "./availability";
+import { contactText, phoneHref } from "./contacts";
+import type { ContactNumbers } from "./contacts";
 import { formatLongDate, formatPrinted, localDateKey, timeRange } from "./format";
 import { divisionNeed, openPlaces, POSITIONS, POSITION_LABEL, umpiresNeeded } from "./staffing";
 import type { Position } from "./staffing";
@@ -12,11 +15,20 @@ import { escapeHtml } from "../ui";
 
 export type SlotState = "confirmed" | "assigned" | "open";
 
+// Where an umpire stands on game day:
+//   "arrived" / "no_show": recorded
+//   "not_yet": the game has started, they are not recorded as here, and it is not over
+//   null: nothing to say (the game has not started, or it is over or canceled)
+export type Here = "arrived" | "no_show" | "not_yet" | null;
+
 export type BoardSlot = {
   position: Position;
   state: SlotState;        // "assigned" means made, but the umpire has not confirmed
   name: string | null;
   selfAssigned: boolean;
+  umpireId: string | null;
+  here: Here;
+  arrivedAt: string | null;
 };
 
 export type BoardGame = {
@@ -48,6 +60,8 @@ export type BoardSummary = {
   needed: number;          // umpire places on games still to be played
   open: number;            // of those, how many are still waiting for someone
   unconfirmed: number;     // of those, how many are filled but not yet confirmed
+  notHere: number;         // umpires on games that have started who are not recorded as here
+  noShows: number;         // umpires recorded as no-shows
 };
 
 export type DayBoard = {
@@ -100,7 +114,7 @@ export function buildDayBoard(input: BoardInput, dayKey: string): DayBoard {
   const divisions = new Map(input.divisions.map((division) => [division.id, division]));
   const locations = new Map(input.locations.map((location) => [location.id, location]));
   const rowsByGame = indexAssignments(input.assignments);
-  const summary: BoardSummary = { games: 0, canceled: 0, fields: 0, needed: 0, open: 0, unconfirmed: 0 };
+  const summary: BoardSummary = { games: 0, canceled: 0, fields: 0, needed: 0, open: 0, unconfirmed: 0, notHere: 0, noShows: 0 };
   const fields = new Map<string, BoardField>();
 
   const teamName = (id: string | null, label: string | null) =>
@@ -118,14 +132,24 @@ export function buildDayBoard(input: BoardInput, dayKey: string): DayBoard {
       for (const position of POSITIONS) {
         const row = assigned[position];
         if (row) {
+          const started = Date.parse(game.starts_at) <= input.now.getTime();
+          const here: Here =
+            row.attendance === "arrived" ? "arrived"
+            : row.attendance === "no_show" ? "no_show"
+            : playing && started ? "not_yet"
+            : null;
+
           slots.push({
             position,
             state: row.status === "confirmed" ? "confirmed" : "assigned",
             name: input.umpireNames.get(row.umpire_id) ?? "Unknown umpire",
             selfAssigned: row.self_assigned,
+            umpireId: row.umpire_id,
+            here,
+            arrivedAt: row.attendance === "arrived" ? row.arrived_at ?? null : null,
           });
         } else if (open.includes(position)) {
-          slots.push({ position, state: "open", name: null, selfAssigned: false });
+          slots.push({ position, state: "open", name: null, selfAssigned: false, umpireId: null, here: null, arrivedAt: null });
         }
       }
     }
@@ -164,7 +188,9 @@ export function buildDayBoard(input: BoardInput, dayKey: string): DayBoard {
     }
 
     summary.games += 1;
+    summary.noShows += slots.filter((slot) => slot.here === "no_show").length;
     if (playing) {
+      summary.notHere += slots.filter((slot) => slot.here === "not_yet").length;
       summary.needed += needed;
       summary.open += open.length;
       summary.unconfirmed += slots.filter((slot) => slot.state === "assigned").length;
@@ -316,13 +342,66 @@ export function summaryText(summary: BoardSummary): string {
     );
   }
   if (summary.unconfirmed > 0) parts.push(`${summary.unconfirmed} not confirmed yet`);
+  if (summary.notHere > 0) parts.push(`${summary.notHere} not here yet`);
+  if (summary.noShows > 0) parts.push(plural(summary.noShows, "no-show", "no-shows"));
 
   return parts.join(" \u00b7 ");
 }
 
 const STATUS_LABEL: Partial<Record<GameStatus, string>> = { draft: "Draft", canceled: "Canceled", completed: "Completed" };
 
-function slotHtml(slot: BoardSlot, game: BoardGame): string {
+// Call and Text links for one number (phones start a call or a text from them).
+function callLinks(name: string, number: string, label: string): string {
+  const href = phoneHref(number);
+  return `<span class="board-contact">${label ? `<span class="board-contact-label">${label}</span> ` : ""}<a class="board-call" href="tel:${escapeHtml(href)}" aria-label="Call ${escapeHtml(name)} at ${escapeHtml(number)}">Call</a> <a class="board-call" href="sms:${escapeHtml(href)}" aria-label="Text ${escapeHtml(name)} at ${escapeHtml(number)}">Text</a> <span class="board-phone">${escapeHtml(number)}</span></span>`;
+}
+
+// How to reach an umpire: their own number, and for a youth umpire a parent's too.
+function contactHtml(name: string, contact: ContactNumbers | undefined): string {
+  if (!contact) return "";
+
+  const parts = [
+    contact.own ? callLinks(name, contact.own, contact.youth ? "Own" : "") : "",
+    contact.youth && contact.parent ? callLinks(name, contact.parent, "Parent") : "",
+  ].filter(Boolean);
+
+  return parts.length
+    ? `<span class="board-contacts">${parts.join(" ")}</span>`
+    : `<span class="board-contacts board-note">${escapeHtml(contactText(contact))}</span>`;
+}
+
+// What is recorded about whether they are here, in words (never color alone).
+function hereHtml(slot: BoardSlot, game: BoardGame): string {
+  if (slot.here === "arrived" && slot.arrivedAt) {
+    const text = arrivedText(game.startsAt, slot.arrivedAt);
+    return `<span class="board-tag ${/late/.test(text) ? "board-tag-warn" : ""}">${escapeHtml(text)}</span>`;
+  }
+  if (slot.here === "no_show") return `<span class="board-tag board-tag-bad">No-show</span>`;
+  if (slot.here === "not_yet") return `<span class="board-tag board-tag-warn">Not here yet</span>`;
+  return "";
+}
+
+// An administrator records, corrects or clears attendance.
+function markHtml(slot: BoardSlot, game: BoardGame): string {
+  if (!slot.umpireId || game.status === "canceled") return "";
+  const data = `data-game="${escapeHtml(game.id)}" data-umpire="${escapeHtml(slot.umpireId)}"`;
+  const name = escapeHtml(slot.name ?? "this umpire");
+
+  return `
+    <details class="board-mark">
+      <summary aria-label="Record attendance for ${name}">Mark</summary>
+      <div class="board-mark-body">
+        <label>Arrived at <input type="time" class="board-mark-time" aria-label="Arrival time for ${name}; leave blank for now" /></label>
+        <button type="button" class="secondary-button" data-mark="arrived" ${data}>Arrived</button>
+        <button type="button" class="secondary-button" data-mark="no_show" ${data}>No-show</button>
+        ${slot.here === "arrived" || slot.here === "no_show"
+          ? `<button type="button" class="secondary-button" data-mark="clear" ${data}>Clear</button>`
+          : ""}
+      </div>
+    </details>`;
+}
+
+function slotHtml(slot: BoardSlot, game: BoardGame, contacts?: Map<string, ContactNumbers>): string {
   const position = `<span class="board-pos">${escapeHtml(POSITION_LABEL[slot.position])}</span>`;
 
   if (slot.state === "open") {
@@ -333,10 +412,17 @@ function slotHtml(slot: BoardSlot, game: BoardGame): string {
     ? `<span class="board-tag">Confirmed</span>`
     : `<span class="board-tag board-tag-warn">Not confirmed</span>`;
 
-  return `<li class="board-ump board-ump-${slot.state}">${position} ${escapeHtml(slot.name ?? "")} ${game.finished && slot.state === "assigned" ? "" : tag}${slot.selfAssigned ? ` <span class="board-note">(took it themselves)</span>` : ""}</li>`;
+  // how to reach them, and the control to record attendance: on a row of their own
+  const actions = [
+    slot.umpireId ? contactHtml(slot.name ?? "this umpire", contacts?.get(slot.umpireId)) : "",
+    markHtml(slot, game),
+  ].filter(Boolean).join("\n");
+
+  return `<li class="board-ump board-ump-${slot.state}">${position} ${escapeHtml(slot.name ?? "")} ${game.finished && slot.state === "assigned" ? "" : tag}${slot.selfAssigned ? ` <span class="board-note">(took it themselves)</span>` : ""} ${hereHtml(slot, game)}
+    ${actions ? `<div class="board-ump-actions">${actions}</div>` : ""}</li>`;
 }
 
-function gameHtml(game: BoardGame): string {
+function gameHtml(game: BoardGame, contacts?: Map<string, ContactNumbers>): string {
   const badges = [
     STATUS_LABEL[game.status] ? `<span class="board-badge board-badge-${game.status}">${STATUS_LABEL[game.status]}</span>` : "",
     game.gameType !== "regular" ? `<span class="board-badge">${escapeHtml(game.gameType)}</span>` : "",
@@ -352,12 +438,12 @@ function gameHtml(game: BoardGame): string {
           ${badges}
         </div>
         ${game.notes ? `<p class="board-note">${escapeHtml(game.notes)}</p>` : ""}
-        ${game.slots.length ? `<ul class="board-umps">${game.slots.map((slot) => slotHtml(slot, game)).join("")}</ul>` : ""}
+        ${game.slots.length ? `<ul class="board-umps">${game.slots.map((slot) => slotHtml(slot, game, contacts)).join("")}</ul>` : ""}
       </div>
     </li>`;
 }
 
-function fieldHtml(field: BoardField): string {
+function fieldHtml(field: BoardField, contacts?: Map<string, ContactNumbers>): string {
   const maps = field.address
     ? ` <a class="board-map" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(field.address)}" target="_blank" rel="noopener">${escapeHtml(field.address)}</a>`
     : "";
@@ -368,21 +454,21 @@ function fieldHtml(field: BoardField): string {
         <span class="field-kind ${field.league ? "field-kind-league" : "field-kind-away"}">${field.league ? "League field" : "Away field"}</span>
       </h3>
       ${maps ? `<p class="board-address">${maps}</p>` : ""}
-      <ol class="board-games">${field.games.map(gameHtml).join("")}</ol>
+      <ol class="board-games">${field.games.map((game) => gameHtml(game, contacts)).join("")}</ol>
     </section>`;
 }
 
-export function dayBoardHtml(board: DayBoard): string {
+export function dayBoardHtml(board: DayBoard, contacts?: Map<string, ContactNumbers>): string {
   const league = board.fields.filter((field) => field.league);
   const away = board.fields.filter((field) => !field.league);
 
   return `
-    ${league.map(fieldHtml).join("")}
+    ${league.map((field) => fieldHtml(field, contacts)).join("")}
     ${board.emptyLeagueFields.length
       ? `<p class="board-empty-fields">No games at: ${board.emptyLeagueFields.map(escapeHtml).join(", ")}.</p>`
       : ""}
     ${away.length
-      ? `<h2 class="board-away-title">Games at other fields</h2>${away.map(fieldHtml).join("")}`
+      ? `<h2 class="board-away-title">Games at other fields</h2>${away.map((field) => fieldHtml(field, contacts)).join("")}`
       : ""}
   `;
 }

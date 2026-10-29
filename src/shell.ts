@@ -1,3 +1,4 @@
+import { logoHtml } from "./logo";
 import { escapeHtml } from "./ui";
 
 // One screen of the signed-in app. A person sees the pages their roles allow.
@@ -28,6 +29,9 @@ export function addTopBar(
     "afterbegin",
     `
       <header class="topbar">
+        <a class="topbar-brand" href="#/" aria-label="Redwood City Little League: home">
+          ${logoHtml("topbar-logo")}
+        </a>
         <span class="topbar-user">
           <span class="topbar-name">
             ${name ? `Signed in as ${escapeHtml(name)}` : "Signed in"}

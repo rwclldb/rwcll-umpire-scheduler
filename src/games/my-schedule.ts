@@ -2,6 +2,8 @@ import { supabase } from "../supabase";
 import { escapeHtml } from "../ui";
 import { loadContext, loadUmpireGames } from "./data";
 import { renderAvailabilityEditor } from "./availability-editor";
+import { wireGameDay } from "./game-day";
+import { gameDayEntries, gameDayHtml } from "./game-day-model";
 import { renderOpenGames } from "./open-games";
 import { renderScheduleView } from "./umpire-schedule";
 import { buildUmpireSchedule, lookupsFor } from "./schedule";
@@ -64,7 +66,11 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
     (game) => game.myStatus === "assigned" && game.status !== "canceled" && Date.parse(game.startsAt) > Date.now()
   ).length;
 
+  // today's games, with a check-in button when one is within an hour of starting
+  const gameDay = gameDayEntries(items, games.assignments, me.id as string, new Date());
+
   container.innerHTML = `
+    <div id="my-game-day">${gameDayHtml(gameDay)}</div>
     <section class="my-schedule">
       <h2>My schedule</h2>
       ${notice ? `<p class="message success" role="status">${escapeHtml(notice)}</p>` : ""}
@@ -79,6 +85,10 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
     <div id="my-availability"></div>
     <div id="my-open-games"></div>
   `;
+
+  wireGameDay(container.querySelector<HTMLElement>("#my-game-day")!, gameDay, (message) => {
+    void renderMySchedule(container, message);
+  });
 
   renderScheduleView(container.querySelector<HTMLElement>("#my-schedule-view")!, {
     umpireName: (me.display_name as string) || "Me",
