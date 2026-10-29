@@ -6,6 +6,7 @@ import { adminLandingHtml, adminSectionFor, adminSubnavHtml } from "./admin-sect
 import { renderUmpireDirectory } from "./umpires";
 import { renderLeagueSetup } from "./league_setup";
 import { renderRoleManager } from "./roles";
+import { renderBoardPage } from "./games/board";
 import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
 import { renderOutbox } from "./outbox";
@@ -840,12 +841,19 @@ function pagesFor(
     }
   }
 
-  // Everyone who manages the schedule can see and change the games.
+  // Everyone who manages the schedule can see and change the games, and see
+  // each day's games on the field board.
   if (flags.isSuperAdmin || flags.isUmpireChief || flags.isScheduler) {
     pages.push({
       id: "games",
       label: "Games",
       render: (container) => renderGamesPage(container),
+    });
+
+    pages.push({
+      id: "board",
+      label: "Field board",
+      render: (container, navigate, sub) => renderBoardPage(container, navigate, sub),
     });
   }
 

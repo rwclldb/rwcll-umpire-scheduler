@@ -72,6 +72,9 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 39. [Availability: when umpires can umpire](#39-availability-when-umpires-can-umpire)
 40. [Further assignment rules: the division they play in, and messages about games umpires take](#40-further-assignment-rules-the-division-they-play-in-and-messages-about-games-umpires-take)
 41. [Availability: repeating times, dates you can't umpire, and the calendar](#41-availability-repeating-times-dates-you-cant-umpire-and-the-calendar)
+42. [Adding a person who is not an umpire (and giving them roles)](#42-adding-a-person-who-is-not-an-umpire-and-giving-them-roles)
+43. [Fields and divisions: league fields, away fields, and the order of divisions](#43-fields-and-divisions-league-fields-away-fields-and-the-order-of-divisions)
+44. [The field board and calendar](#44-the-field-board-and-calendar)
 
 ---
 
@@ -194,6 +197,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `league_field_check.sql` | The league-field marker on fields works (a new field defaults to an away field; administrators can change it; an ordinary account and a signed-out visitor cannot) | `Failures: 0` |
 | `availability_patterns_check.sql` | Repeating availability and "I can't" entries work (an umpire manages only their own; days of the week, times, notes and the season are checked; a repeating time needs a season with an end date; a signed-out visitor sees nothing) | `Failures: 0` |
 | `availability_check.sql` | Availability works (an umpire manages only their own entries and sees nobody else's; an administrator manages anyone's; an entry cannot end before it starts, last more than 90 days, or carry a note over 200 characters; a signed-out visitor sees nothing) | `Failures: 0` |
 | `self_assignment_check.sql` | Umpires assigning themselves works (only where a division allows it and the umpire is allowed; overlapping games, taken places, played and canceled games, the limit on upcoming games and the youth age rule are all refused; the places offered are right; a signed-out visitor cannot) | `Failures: 0` |
@@ -436,6 +440,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\league_field_check.sql` | Tests the league-field marker on locations (your data is not changed) | No (always rolls back) |
 | `supabase\tests\availability_patterns_check.sql` | Tests repeating availability and the "I can't" entries (builds its own sign-in accounts, umpires and seasons; your data is not changed) | No (always rolls back) |
 | `supabase\tests\availability_check.sql` | Tests the availability rules (builds its own sign-in accounts and umpires; your data is not changed) | No (always rolls back) |
 | `supabase\tests\self_assignment_check.sql` | Tests umpires assigning themselves (builds its own league, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
@@ -538,10 +543,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -770,9 +775,9 @@ After signing in, an approved person sees a **top bar** (their name, their **rol
 
 | Role | Pages |
 |---|---|
-| Super admin | **Administration** (a page of buttons for Approvals, Roles, League Setup, Locations, Umpire Directory, Outbox and My details; see below) and **Games** |
-| Umpire chief | **Umpire Management** (registrations, umpire directory, Outbox, My details) and **Games** |
-| Scheduler | **Umpires** (directory and Outbox), **Games**, **League Setup**, **My details** |
+| Super admin | **Administration** (a page of buttons for Approvals, Roles, League Setup, Locations, Umpire Directory, Outbox and My details; see below) **Games** and **Field board** |
+| Umpire chief | **Umpire Management** (registrations, umpire directory, Outbox, My details), **Games** and **Field board** |
+| Scheduler | **Umpires** (directory and Outbox), **Games**, **Field board**, **League Setup**, **My details** |
 | Youth or adult umpire | **Home** (their own printable schedule, **My availability**, and games they can take), **My details** |
 | Treasurer, feedback reviewer, read-only admin, parent | The plain account page for now (their pages come with their features) |
 
@@ -785,7 +790,7 @@ Combinations: chief and scheduler get *Umpire Management*, *Games* and *League S
 | **Approvals** | New accounts and umpire registrations waiting for approval, and the other pending accounts |
 | **Roles** | Giving people their roles, and what each role allows |
 | **League Setup** | Leagues, seasons, divisions and teams, and creating a season from the registration files |
-| **Locations** | The fields where games are played, with their addresses |
+| **Locations** | The fields where games are played, with their addresses, marked as a league field (one this league runs) or an away field (one our teams travel to) |
 | **Umpire Directory** | Everyone who umpires: records, contact details, invitations, linking to accounts |
 | **Outbox** | Messages waiting to be sent (invitations, assignments, reminders) |
 | **My details** | Your own phone number and text-message preference |
@@ -1207,3 +1212,68 @@ Under the lists is a **month calendar**, with arrows to move between months. It 
 **Press a day** to put that date into the form below (the **Starting** date for a repeating time, or the **Date** for a single time).
 
 **Check script:** `availability_patterns_check.sql` tests the database rules (section 6).
+
+## 42. Adding a person who is not an umpire (and giving them roles)
+
+**Short answer:** it can be done from the app **except for creating the account itself**, which today needs one step in the Supabase dashboard (no SQL).
+
+**Why.** The **Create account** page only offers *an adult umpire* or *a youth umpire*. There is no choice for a board member, scheduler or other volunteer, and signing them up as an umpire would create an umpire registration that then has to be rejected. The invitation feature (section 26) is for umpire records.
+
+**How to do it today:**
+
+1. Open your Supabase project, **Authentication**, **Users**, then add a user (the button is called **Add user**, then **Create new user**; the labels may differ slightly). Enter their **email** and a **password**, and tick the option to **auto confirm** the user, so no email is needed.
+2. In the app, sign in as super admin and open **Administration**, then **Approvals**. The person appears under **Other pending accounts**. Press **Approve**.
+3. Open **Roles**, find them, and give them the roles they need (for example **scheduler** or **umpire chief**). Roles can only be given to an approved account, which is why step 2 comes first.
+4. Give them the email and password and ask them to sign in. Once email is set up (section 27), they can use **Forgot password** to choose their own.
+
+**What is planned** (see the roadmap): inviting a person with their roles from the app (an administrator enters an email and the roles, and the person is approved with them when they sign up, like umpire invitations), and/or a third sign-up choice for people who are not umpires. Parents and guardians will need a sign-up path too (Phase 9), so this will probably be done together.
+
+## 43. Fields and divisions: league fields, away fields, and the order of divisions
+
+**Divisions are listed youngest first.** Wherever divisions are listed or chosen (League Setup, the teams panel, the Games filter, and an umpire's **Division they play in**), they are in order of the **lowest age in their range**, then the highest, then by name. For example: A (5 to 7), AA (6 to 9), AAA (8 to 11), Majors (9 to 12), Juniors (12 to 14), Seniors (13 to 16). A division with **no age range goes last**. To change where a division appears, change its age range in League Setup.
+
+**League fields and away fields.** Each field in **Administration**, **Locations** is marked:
+
+| Marker | Meaning |
+|---|---|
+| **League field** | A field this league runs (our home fields) |
+| **Away field** | A field our teams travel to (for example, *Away Field - Menlo Park*) |
+
+- When you **add or edit** a field, tick or untick **A field this league runs**. The box starts **ticked** for a new field, because most fields you add by hand are your own.
+- A field that appears in a **game import** and did not exist yet is created as an **away field** (it is more likely to be one), so check the marker afterwards.
+- When the database change was applied, **every existing field became a league field**. Untick any away fields once.
+- The marker will be used by the field board (Phase 10), which will show only the league's own fields.
+
+**Check script:** `league_field_check.sql` (section 6).
+
+## 44. The field board and calendar
+
+The **Field board** tab (for super admins, umpire chiefs and schedulers) shows **one day's games, field by field**, with who is umpiring each. It is for looking at a day and for printing it; to change a game or its umpires, use the **Games** tab. It needs no database change.
+
+### The day
+
+- **Today** is shown when you open the tab. **Previous day**, **Today** and **Next day** move around, the **Go to** box jumps to any date, and **Print this day** makes a day sheet (a table for each field).
+- Each field is a card, with its name, whether it is a **League field** or an **Away field**, and its address (press it to open a map). The league's own fields come first, then a heading **Games at other fields** for away games. League fields with no games that day are listed in one line (*No games at: Kennedy.*).
+- Each game shows its **time**, **division**, the two teams (an opponent from another league shows as a label, such as *Menlo Park LL*), any note on the game, and **every umpire place**:
+
+| You see | Meaning |
+|---|---|
+| **Plate  Ann Lee  Confirmed** | The umpire is on the game and has confirmed |
+| **Field  Bob Ray  Not confirmed** | An umpire is assigned but has not answered yet |
+| **Field  Needs an umpire** | Nobody is assigned to that place yet |
+| *(took it themselves)* | The umpire took the game for themselves (section 38) |
+| **Canceled**, **Draft**, **Completed** | The game's status. Canceled games are struck through and have no places |
+
+- A game that is **already over** shows *No umpire recorded* instead of *Needs an umpire*, because it is too late to fill it.
+- The line under the date adds it up: *4 games, 3 fields, 1 canceled, 3 places need an umpire, 2 not confirmed yet*. Games already over, and canceled games, are not counted in the places.
+
+### The calendar
+
+Beside the board (above it on a phone, where it starts tucked away under **Calendar**) is a **month calendar**. Each day with games shows **how many**; a **red dot** means some places on that day still need an umpire. The day shown is outlined, and today has a ring. **Press a day** to open its board; the arrows move between months without changing the day you are looking at. Canceled games are not counted in the number.
+
+### Good to know
+
+- Each day has its own address (for example `#/board/2026-10-31`), so you can bookmark it, and Back and Forward work.
+- The board keeps what it loaded for a minute, so stepping between days is quick. Press **Refresh** to load the latest.
+- Only people who can already see the games and their umpires get the board. Umpires do not (they have **Home**); a view for them comes later.
+- It is the first part of Phase 10 (game day). Attendance, notes on games, substitutions and tap-to-call are planned next.

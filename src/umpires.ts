@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { queueEmail } from "./email";
+import { sortDivisions } from "./division-order";
 import { renderAvailabilityEditor } from "./games/availability-editor";
 
 type UmpireClassification = "youth" | "adult";
@@ -794,7 +795,7 @@ async function showEditForm(umpireId: string) {
   // The divisions to choose from, for "the division they play in". If they
   // cannot be loaded, the choice is left out (and the saved value untouched).
   const [divisionsResult, leaguesResult] = await Promise.all([
-    supabase.from("divisions").select("id, name, league_id, is_active").order("name"),
+    supabase.from("divisions").select("id, name, league_id, is_active, youngest_ll_age, oldest_ll_age").order("name"),
     supabase.from("leagues").select("id, name").order("name"),
   ]);
   const leagueNames = new Map(
@@ -802,7 +803,7 @@ async function showEditForm(umpireId: string) {
   );
   const divisionChoices = divisionsResult.error
     ? null
-    : ((divisionsResult.data ?? []) as { id: string; name: string; league_id: string; is_active: boolean }[])
+    : sortDivisions((divisionsResult.data ?? []) as { id: string; name: string; league_id: string; is_active: boolean; youngest_ll_age: number | null; oldest_ll_age: number | null }[])
         .map((division) => `
           <option value="${escapeHtml(division.id)}"
             ${umpire.plays_in_division_id === division.id ? "selected" : ""}>

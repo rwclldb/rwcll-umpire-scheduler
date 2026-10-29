@@ -19,6 +19,9 @@ export function renderLocations(locations: LocationRecord[]): string {
             <span class="setup-status">
               ${location.is_active ? "Active" : "Inactive"}
             </span>
+            <span class="field-kind ${location.is_league_field ? "field-kind-league" : "field-kind-away"}">
+              ${location.is_league_field ? "League field" : "Away field"}
+            </span>
           </div>
           <button type="button"
             class="secondary-button season-edit-button"
@@ -48,6 +51,8 @@ export function renderLocationForm(location: LocationRecord | null): string {
   const address = location?.address ?? "";
   const notes = location?.notes ?? "";
   const active = location?.is_active ?? true;
+  // most new fields are ones this league runs
+  const leagueField = location?.is_league_field ?? true;
 
   return `
     <form id="location-form" class="create-umpire-form">
@@ -71,6 +76,15 @@ export function renderLocationForm(location: LocationRecord | null): string {
           ${active ? "checked" : ""} />
         Active location
       </label>
+
+      <label class="season-checkbox-label">
+        <input name="is_league_field" type="checkbox"
+          ${leagueField ? "checked" : ""} />
+        A field this league runs
+      </label>
+      <p class="season-dates">
+        Leave this unticked for a field our teams travel to (an away field).
+      </p>
       ${location
         ? `<button id="delete-location-button" type="button"
             class="secondary-button">
@@ -127,6 +141,9 @@ export function wireLocationForm(container: HTMLElement): void {
     const isActive = form.querySelector<HTMLInputElement>(
       '[name="is_active"]',
     )?.checked ?? false;
+    const isLeagueField = form.querySelector<HTMLInputElement>(
+      '[name="is_league_field"]',
+    )?.checked ?? false;
 
     if (!name) {
       if (message) {
@@ -149,6 +166,7 @@ export function wireLocationForm(container: HTMLElement): void {
       address: address || null,
       notes: notes || null,
       is_active: isActive,
+      is_league_field: isLeagueField,
     };
 
     const result = state.editingLocationId

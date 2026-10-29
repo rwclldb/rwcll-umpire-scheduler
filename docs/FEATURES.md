@@ -56,6 +56,8 @@ test on the league's own database.
 
 - **Leagues, seasons, divisions, teams and fields** (with addresses) can be added and edited, and removed when nothing depends on them
 - Divisions have a Little League age range, a default number of umpires per game (including none), and an optional different number for tournament games 🆕
+- Divisions are listed **youngest first** (by the lowest age in their range) wherever they are chosen or listed; a division with no age range comes last 🆕
+- Each field is marked as a **league field** (one this league runs) or an **away field** (one our teams travel to) 🆕
 - Teams show their division, coach and whether they are active, and can be filtered by division (with the number of teams in each)
 - **Little League age charts** can be imported (birth month and year to Little League age), and a season can be linked to one
 - **Create a season from the registration system's files:** the team and division files are read, checked, and the season, its divisions and its teams are created in one all-or-nothing step. Division names match even when they carry a bracketed description, and teams with no coach are flagged
@@ -83,6 +85,14 @@ test on the league's own database.
 - Only active umpires can be assigned, and nobody can be assigned to a canceled game
 - Who made each assignment is recorded
 - Super admins, umpire chiefs and schedulers can assign umpires
+
+**Field board and calendar** 🆕
+
+- A **Field board** tab for super admins, umpire chiefs and schedulers: one day's games field by field, league fields first, then away games
+- Each game shows its time, division, teams (or an out-of-league label), notes, status, and every umpire place: confirmed, not confirmed, or needs an umpire
+- A summary line (games, fields, canceled, places that need an umpire, umpires not yet confirmed), and the day can be printed
+- A month calendar shows how many games there are on each day, with a red dot when places still need an umpire; pressing a day opens it
+- Previous and next day, a date box, and a bookmarkable address for each day
 
 **Further assignment rules** 🆕
 

@@ -1,4 +1,5 @@
 import { supabase } from "../supabase";
+import { sortDivisions } from "../division-order";
 import { groupAvailability } from "./availability";
 import type { PatternRow, UmpireAvailability } from "./availability";
 import { combineContacts } from "./contacts";
@@ -55,7 +56,7 @@ export async function loadContext(): Promise<{
 }> {
   const [seasons, divisions, teams, locations, umpires, leagues] = await Promise.all([
     supabase.from("seasons").select("id, name, is_active, starts_on"),
-    supabase.from("divisions").select("id, name, is_active, league_id, umpires_per_game, tournament_umpires").order("name"),
+    supabase.from("divisions").select("id, name, is_active, league_id, umpires_per_game, tournament_umpires, youngest_ll_age, oldest_ll_age").order("name"),
     fetchAll<TeamOption>((from, to) =>
       supabase
         .from("teams")
@@ -63,7 +64,7 @@ export async function loadContext(): Promise<{
         .order("name")
         .range(from, to)
     ),
-    supabase.from("locations").select("id, name, is_active, address").order("name"),
+    supabase.from("locations").select("id, name, is_active, address, is_league_field").order("name"),
     fetchAll<{ id: string; display_name: string; classification: string; eligibility_status: string }>((from, to) =>
       supabase
         .from("umpires")
@@ -87,7 +88,8 @@ export async function loadContext(): Promise<{
   return {
     context: {
       seasons: (seasons.data ?? []) as SeasonOption[],
-      divisions: ((divisions.data ?? []) as DivisionOption[]).map((division) => ({
+      // youngest division first (by the lowest age in its range)
+      divisions: sortDivisions((divisions.data ?? []) as DivisionOption[]).map((division) => ({
         ...division,
         umpires_per_game: division.umpires_per_game ?? 2,
         tournament_umpires: division.tournament_umpires ?? null,
@@ -180,6 +182,47 @@ export async function loadSeasonGames(seasonId: string): Promise<{
     assignments: assignments.rows.filter((row) => ids.has(row.game_id)),
     error: null,
   };
+}
+
+// Every game that starts within a stretch of time (for example one month), with
+// the umpires assigned to them. Used by the field board and its calendar.
+export async function loadGamesBetween(fromIso: string, toIso: string): Promise<{
+  games: Game[];
+  assignments: Assignment[];
+  error: string | null;
+}> {
+  const games = await fetchAll<Game>((from, to) =>
+    supabase
+      .from("games")
+      .select(GAME_COLUMNS)
+      .gte("starts_at", fromIso)
+      .lt("starts_at", toIso)
+      .order("starts_at")
+      .range(from, to)
+  );
+
+  if (games.error) return { games: [], assignments: [], error: games.error };
+
+  const assignments: Assignment[] = [];
+  const ids = games.rows.map((game) => game.id);
+
+  for (let start = 0; start < ids.length; start += 100) {
+    const group = ids.slice(start, start + 100);
+    const page = await fetchAll<Assignment>((from, to) =>
+      supabase
+        .from("game_assignments")
+        .select(ASSIGNMENT_COLUMNS)
+        .in("game_id", group)
+        .order("game_id")
+        .order("position")
+        .range(from, to)
+    );
+
+    if (page.error) return { games: [], assignments: [], error: page.error };
+    assignments.push(...page.rows);
+  }
+
+  return { games: games.rows, assignments, error: null };
 }
 
 // An entry of availability, as the editing screen shows it: a time the umpire

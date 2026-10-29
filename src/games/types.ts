@@ -23,11 +23,16 @@ export type Game = {
 };
 
 export type NamedOption = { id: string; name: string; is_active: boolean };
-export type LocationOption = NamedOption & { address: string | null };
+export type LocationOption = NamedOption & {
+  address: string | null;
+  is_league_field?: boolean; // a field this league runs, as opposed to one our teams travel to
+};
 export type DivisionOption = NamedOption & {
   league_id: string;
   umpires_per_game: number; // the default number of umpires a game in this division needs (0 to 4)
   tournament_umpires: number | null; // the default for tournament games; null means "the same as regular games"
+  youngest_ll_age?: number | null; // the lowest age in its range (divisions are listed youngest first)
+  oldest_ll_age?: number | null;
 };
 export type TeamOption = NamedOption & {
   season_id: string;
