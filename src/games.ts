@@ -16,6 +16,7 @@ import { POSITIONS, POSITION_LABEL, assignmentsByGame, divisionNeed, slotStates,
 import { computeWarnings } from "./games/warnings";
 import type { Warning } from "./games/warnings";
 import type { Assignment, Game, GameStatus, SeasonOption, Decline } from "./games/types";
+import { appNow, appNowMs } from "./clock";
 
 type Filters = {
   seasonId: string;
@@ -103,7 +104,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
       seasonId: defaultSeasonId(context.seasons),
       divisionId: "",
       fieldId: "",
-      from: localDateKey(new Date().toISOString()),
+      from: localDateKey(appNow().toISOString()),
       to: "",
       status: "not_canceled",
       search: "",
@@ -329,7 +330,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
     const warnings = computeWarnings({
       games,
       assignedCount,
-      now: new Date(),
+      now: appNow(),
       teamName: (id) => teamNames.get(id) ?? "A team",
       fieldName: (id) => fieldNames.get(id) ?? "The field",
       sidesText,
@@ -424,7 +425,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
 
               // Someone gave a place up and is no longer on the game: say so, while the game is still to come.
               const onGame = new Set(Object.values(placed));
-              const declinedLines = game.status === "canceled" || Date.parse(game.starts_at) <= Date.now()
+              const declinedLines = game.status === "canceled" || Date.parse(game.starts_at) <= appNowMs()
                 ? []
                 : (declinedByGame.get(game.id) ?? [])
                     .filter((item) => !onGame.has(item.umpire_id))

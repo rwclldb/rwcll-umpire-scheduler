@@ -77,6 +77,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 44. [The field board and calendar](#44-the-field-board-and-calendar)
 45. [The league logo](#45-the-league-logo)
 46. [Game day: attendance, checking in, and calling umpires](#46-game-day-attendance-checking-in-and-calling-umpires)
+47. [The demo clock: a pretend time for testing and demonstrations](#47-the-demo-clock-a-pretend-time-for-testing-and-demonstrations)
 
 ---
 
@@ -199,6 +200,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `demo_clock_check.sql` | The demo clock works and is safe (with it off, a pretend time changes nothing; with it on, check-in and attendance use it; nobody can switch it on from the app) | `Failures: 0` |
 | `attendance_check.sql` | Attendance works (an umpire can check in from 1 hour before the game until it ends, and not otherwise; an administrator can record, correct and clear it; nobody can write it directly; moving umpires between places keeps it; the history records it) | `Failures: 0` |
 | `league_field_check.sql` | The league-field marker on fields works (a new field defaults to an away field; administrators can change it; an ordinary account and a signed-out visitor cannot) | `Failures: 0` |
 | `availability_patterns_check.sql` | Repeating availability and "I can't" entries work (an umpire manages only their own; days of the week, times, notes and the season are checked; a repeating time needs a season with an end date; a signed-out visitor sees nothing) | `Failures: 0` |
@@ -443,6 +445,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\demo_clock_check.sql` | Tests the demo clock, switching it off and on inside its own run (your real setting is not changed) | No (always rolls back) |
 | `supabase\tests\attendance_check.sql` | Tests attendance and check-in (builds its own league, games, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\league_field_check.sql` | Tests the league-field marker on locations (your data is not changed) | No (always rolls back) |
 | `supabase\tests\availability_patterns_check.sql` | Tests repeating availability and the "I can't" entries (builds its own sign-in accounts, umpires and seasons; your data is not changed) | No (always rolls back) |
@@ -547,10 +550,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -1347,3 +1350,45 @@ Under each umpire is **Call** and **Text** with their number, so if one is late 
 - This update also fixes a small slip: moving a self-assigned umpire to another place could have caused the administrators to be told about the game a second time. It no longer does.
 - **Database change:** `20261031100000_add_attendance.sql`; the check script is `attendance_check.sql` (section 6).
 - Planned next: a note on each game, and recording a substitution (who actually worked it).
+
+## 47. The demo clock: a pretend time for testing and demonstrations
+
+**What it is for.** Some things depend on the time: a **Game day** card with a check-in button, **Not here yet** on the field board, which day is **Today**. If the games are on Saturday and it is Thursday, you cannot try them. The **demo clock** lets you set a **pretend time**, so the app behaves as if it were Saturday morning.
+
+### Turning it on (test database only)
+
+It is **off by default**, and it can only be switched on **in the database**, never from the app. `seed.sql` turns it on for the test database. To do it by hand, in the Supabase SQL Editor of your **test** project:
+
+```
+update public.app_settings set value = 'true' where key = 'demo_clock_allowed';
+```
+
+and to turn it off again:
+
+```
+update public.app_settings set value = 'false' where key = 'demo_clock_allowed';
+```
+
+**Never turn it on for the live database.** Where it is off, the control does not appear at all, a pretend time left in a browser is thrown away, and the database ignores any pretend time it is sent.
+
+### Using it
+
+1. Sign in as anyone (an administrator or an umpire). A small **Demo clock** box appears at the bottom of the screen.
+2. Press **Set pretend time**, choose a **date** and **time**, and press **Set**. The page reloads.
+3. The box turns **amber** and says *Pretend time: Sat, Oct 31, 8:30 AM (not real)*. The pretend clock **keeps ticking** from the moment you set it.
+4. Press **Change** to pick another time, or **Use real time** to go back.
+
+Each **browser** has its own pretend time (it is kept in that browser only). So a tester on their own phone sets their own, and several people can pretend different times at once.
+
+### What the pretend time covers
+
+- The screens: which day is **Today** on the Field board, the **Game day** card and when check-in opens, **Not here yet** and **late**, schedules, and availability.
+- **Checking in**, and an administrator **recording an arrival or a no-show**: the pretend time is what gets recorded, and the check-in window is judged against it. So on a Thursday you can set Saturday 8:30 AM and check in to a 9:00 game.
+
+### What it does not cover
+
+- Other database rules still use the **real** time. For example, a game that has *really* started cannot be taken from **Games you can take**, and the daily summary and unconfirmed reminders use the real day.
+- Things that record a real event, such as *Printed at* on a printout, use the real time.
+- Anything saved while pretending (such as an arrival) keeps the pretend time on it, so it looks odd later. Use it on test data.
+
+**Check script:** `demo_clock_check.sql` (section 6). **Database change:** `20261101100000_add_demo_clock.sql`.

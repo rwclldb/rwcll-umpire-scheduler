@@ -15,6 +15,7 @@ import { localDateKey } from "./format";
 import { printHtml } from "./print";
 import type { Assignment, Game, GamesContext } from "./types";
 import { escapeHtml } from "../ui";
+import { appNow, demoNowIso } from "../clock";
 
 // The field board: one day's games by field, with the umpires, and a calendar
 // that shows how many games there are on each day. The day is in the address
@@ -67,7 +68,7 @@ export async function renderBoardPage(
   navigate: (address: string) => void,
   sub?: string
 ): Promise<void> {
-  const now = new Date();
+  const now = appNow();
   const todayKey = dateKey(now);
   const dayKey = chosenDay(sub, todayKey);
   const day = parseDateKey(dayKey) as Date;
@@ -247,6 +248,7 @@ export async function renderBoardPage(
       p_umpire_id: button.dataset.umpire as string,
       p_attendance: kind === "clear" ? null : kind,
       p_arrived_at: arrivedAt,
+      ...(demoNowIso() ? { p_now: demoNowIso() } : {}),
     });
 
     if (error) {

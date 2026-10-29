@@ -7,6 +7,7 @@ import { renderUmpireDirectory } from "./umpires";
 import { renderLeagueSetup } from "./league_setup";
 import { renderRoleManager } from "./roles";
 import { renderBoardPage } from "./games/board";
+import { mountDemoClock, removeDemoClock } from "./demo-clock";
 import { logoHtml } from "./logo";
 import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
@@ -85,6 +86,7 @@ function showMessage(message: string, kind: "error" | "success" = "error") {
 }
 
 function renderAuthForm() {
+  removeDemoClock();
   app!.innerHTML = `
     <main class="page">
       <section class="auth-card">
@@ -409,6 +411,7 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
         pages,
         onSignOut: () => void signOut(),
       });
+      void mountDemoClock();   // (only appears where the database has the demo clock switched on)
       return;
     }
   }
@@ -418,6 +421,7 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
 
 
 function renderAccountStatus(profile: Profile, roles = "") {
+  removeDemoClock();
   const details: Record<AccountStatus, { title: string; text: string }> = {
     pending: {
       title: "Awaiting approval",

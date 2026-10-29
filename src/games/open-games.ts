@@ -8,9 +8,10 @@ import { POSITION_NAME } from "./staffing";
 import { groupOptions } from "./take-options";
 import type { TakeOption } from "./take-options";
 import type { GamesContext, Position } from "./types";
+import { appNow } from "../clock";
 
 const dayText = (offsetDays: number): string => {
-  const date = new Date();
+  const date = appNow();
   date.setDate(date.getDate() + offsetDays);
   return localDateKey(date.toISOString());
 };

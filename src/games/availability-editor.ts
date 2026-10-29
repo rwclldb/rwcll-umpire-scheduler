@@ -6,6 +6,7 @@ import { daySummaries, monthGridHtml } from "./availability-calendar";
 import { loadSeasonOptions, loadUmpireAvailability, loadUmpirePatterns } from "./data";
 import type { AvailabilityRow, AvailabilitySeason } from "./data";
 import { formatDate, formatTime, localDateKey } from "./format";
+import { appNow, appNowMs } from "../clock";
 
 type EntryType = "one" | "repeat" | "cannot";
 
@@ -32,7 +33,7 @@ export async function renderAvailabilityEditor(
   let rows: AvailabilityRow[] = [];
   let patterns: PatternRow[] = [];
   let seasons: AvailabilitySeason[] = [];
-  const now = new Date();
+  const now = appNow();
   let month = { year: now.getFullYear(), month: now.getMonth() };
 
   const heading = (text = "") =>
@@ -146,7 +147,7 @@ export async function renderAvailabilityEditor(
     element.className = text ? `message ${kind}` : "message";
   };
 
-  const todayKey = () => dateKey(new Date());
+  const todayKey = () => dateKey(appNow());
   const seasonById = (id: string) => seasons.find((season) => season.id === id);
 
   // Seasons a repeating time can be for: they have an end date that has not passed.
@@ -491,9 +492,9 @@ export async function renderAvailabilityEditor(
 
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return say("That date or time is not valid.");
     if (end <= start) return say("The end time must be after the start time. For the whole day, tick All day.");
-    if (end.getTime() <= Date.now()) return say("That time has already passed.");
+    if (end.getTime() <= appNowMs()) return say("That time has already passed.");
 
-    const twoYears = new Date();
+    const twoYears = appNow();
     twoYears.setFullYear(twoYears.getFullYear() + 2);
     if (start > twoYears) return say("Choose a date within the next two years.");
 

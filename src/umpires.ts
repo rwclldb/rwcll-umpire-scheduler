@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { queueEmail } from "./email";
 import { sortDivisions } from "./division-order";
 import { renderAvailabilityEditor } from "./games/availability-editor";
+import { appNow } from "./clock";
 
 type UmpireClassification = "youth" | "adult";
 type EligibilityStatus = "active" | "inactive" | "suspended";
@@ -57,7 +58,7 @@ function escapeHtml(value: string): string {
 
 // Whole years since a birth date given as YYYY-MM-DD, or null if it is not
 // a usable date. A date in the future gives a negative number.
-function ageFromBirthDate(value: string, today = new Date()): number | null {
+function ageFromBirthDate(value: string, today = appNow()): number | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
 

@@ -1,3 +1,4 @@
+import { appNow } from "../clock";
 // Date and time helpers for the Games screens.
 // Games are stored as exact moments (UTC) and shown in the time zone of the
 // computer that is looking at them.
@@ -49,7 +50,7 @@ const timeFormat = new Intl.DateTimeFormat("en-US", {
 // (or the one given), so ordinary dates stay short.
 export function formatDate(
   iso: string,
-  referenceYear: number = new Date().getFullYear()
+  referenceYear: number = appNow().getFullYear()
 ): string {
   const date = new Date(iso);
   const text = dateFormat.format(date);

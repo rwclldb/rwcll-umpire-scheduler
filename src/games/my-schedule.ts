@@ -7,6 +7,7 @@ import { gameDayEntries, gameDayHtml } from "./game-day-model";
 import { renderOpenGames } from "./open-games";
 import { renderScheduleView } from "./umpire-schedule";
 import { buildUmpireSchedule, lookupsFor } from "./schedule";
+import { appNow, appNowMs } from "../clock";
 
 // An umpire's own schedule, on their Home page. An umpire can read only their
 // own assignments, so this can only ever show their own games (and their own
@@ -63,11 +64,11 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
 
   // games that are still to come and are waiting for this umpire's answer
   const waiting = items.filter(
-    (game) => game.myStatus === "assigned" && game.status !== "canceled" && Date.parse(game.startsAt) > Date.now()
+    (game) => game.myStatus === "assigned" && game.status !== "canceled" && Date.parse(game.startsAt) > appNowMs()
   ).length;
 
   // today's games, with a check-in button when one is within an hour of starting
-  const gameDay = gameDayEntries(items, games.assignments, me.id as string, new Date());
+  const gameDay = gameDayEntries(items, games.assignments, me.id as string, appNow());
 
   container.innerHTML = `
     <div id="my-game-day">${gameDayHtml(gameDay)}</div>

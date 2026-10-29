@@ -12,6 +12,7 @@ import {
 } from "./schedule";
 import type { UmpireGame } from "./schedule";
 import type { GamesContext } from "./types";
+import { appNow, appNowMs } from "../clock";
 
 // One umpire's games, with date choices, a preview, and Print / Download.
 // Used for an administrator looking at any umpire, and for an umpire looking
@@ -31,7 +32,7 @@ export function renderScheduleView(
   }
 ): void {
   const { umpireName, items } = options;
-  const today = localDateKey(new Date().toISOString());
+  const today = localDateKey(appNow().toISOString());
 
   container.innerHTML = `
     <div class="schedule-view">
@@ -88,7 +89,7 @@ export function renderScheduleView(
 
   // Whether this umpire can still answer for the game (it has not started and is not canceled).
   const canAnswer = (game: UmpireGame) =>
-    Boolean(options.onAnswer) && game.status !== "canceled" && Date.parse(game.startsAt) > Date.now();
+    Boolean(options.onAnswer) && game.status !== "canceled" && Date.parse(game.startsAt) > appNowMs();
 
   const statusCell = (game: UmpireGame): string => {
     if (game.status === "canceled") return "&mdash;";

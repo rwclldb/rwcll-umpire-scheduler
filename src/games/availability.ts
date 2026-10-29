@@ -1,3 +1,4 @@
+import { appNow, appNowMs } from "../clock";
 // Availability: when an umpire has said they CAN umpire (and when they cannot).
 //
 // Each entry is a window of time. Repeating times ("every Monday to Friday, 5 to
@@ -45,7 +46,7 @@ export function mergeWindows(windows: Window[]): { start: number; end: number }[
 export function availabilityFor(
   game: { starts_at: string; ends_at: string },
   entry: UmpireAvailability | Window[] | undefined,
-  now: number = Date.now()
+  now: number = appNowMs()
 ): Availability {
   const { windows, exceptions } = Array.isArray(entry)
     ? { windows: entry, exceptions: [] as Window[] }
@@ -129,7 +130,7 @@ function parseClock(value: string): { h: number; m: number } | null {
 export function expandPattern(
   pattern: PatternRow,
   seasonEndsOn: string | null | undefined,
-  today: Date = new Date(),
+  today: Date = appNow(),
   maxDays = 366
 ): Window[] {
   const seasonEnd = parseDateKey(seasonEndsOn);
@@ -168,7 +169,7 @@ export function expandPattern(
 export function expandPatterns(
   patterns: PatternRow[],
   seasonEnds: Map<string, string | null>,
-  today: Date = new Date()
+  today: Date = appNow()
 ): Window[] {
   return patterns.flatMap((pattern) => expandPattern(pattern, seasonEnds.get(pattern.season_id), today));
 }
@@ -179,7 +180,7 @@ export function groupAvailability(
   rows: { umpire_id: string; starts_at: string; ends_at: string; kind?: string }[],
   patterns: PatternRow[],
   seasonEnds: Map<string, string | null>,
-  today: Date = new Date()
+  today: Date = appNow()
 ): Map<string, UmpireAvailability> {
   const map = new Map<string, UmpireAvailability>();
   const entryFor = (umpireId: string) => {
@@ -248,7 +249,7 @@ export function clockText(value: string): string {
 }
 
 // "Jun 30", or "Jun 30, 2027" when it is not this year.
-export function shortDate(key: string, today: Date = new Date()): string {
+export function shortDate(key: string, today: Date = appNow()): string {
   const date = parseDateKey(key);
   if (!date) return key;
 
@@ -264,7 +265,7 @@ export function shortDate(key: string, today: Date = new Date()): string {
 export function describePattern(
   pattern: PatternRow,
   season: { name: string; ends_on: string | null } | undefined,
-  today: Date = new Date()
+  today: Date = appNow()
 ): string {
   const allDay = /^00:00/.test(pattern.start_time) && /^23:59/.test(pattern.end_time);
   const times = allDay ? "all day" : `${clockText(pattern.start_time)} \u2013 ${clockText(pattern.end_time)}`;
