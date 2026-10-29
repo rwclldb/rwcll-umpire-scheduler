@@ -20,7 +20,7 @@ whenever the league's needs change.
 
 ## Where we are
 
-**Phases 5 and 6 are built. We are between pieces.**
+**Phases 0 to 6 are built. Phase 10 (game day) has begun.**
 
 - Phases 0 to 4 are finished: the foundations, accounts and security, league
   setup, umpire registration, and games and schedules.
@@ -43,7 +43,11 @@ whenever the league's needs change.
 - Availability now also has repeating times (ending with their season), dates an umpire
   can't umpire, and a month calendar. It is built and tested here; its database change is
   waiting for its first run on your own test database.
-- Next: your choice. Sending real email (Phase 7) is postponed until you are ready.
+- Phase 10 (game day) has begun: stage **10a**, the field board and calendar, is built and
+  tested here (it needs no database change). Next are 10b (attendance, game notes,
+  substitutions, call and text links), 10c (reports) and 10d (day-of extras).
+- Sending real email (Phase 7) is postponed until you are ready, and Phase 9 (families and
+  youth safeguards) waits for the board's answers.
 
 ---
 
@@ -174,10 +178,36 @@ whenever the league's needs change.
 - Parent consent for umpires under 13 before they can be active
 - Read-only access for parents
 
-### Phase 10: Game day ⬜
+### Phase 10: Game day 🔧 ← we are here
 
-- A field board showing the day's games
-- Post-game reports from umpires
+**10a. Field board and calendar** ✅ *(built and tested; no database change)*
+
+- One day's games by field and time, with the umpires and which places are open or not yet
+  confirmed; league fields first, then away games
+- A month calendar showing how many games there are each day, and a marker for days with open places
+- Print a day; bookmarkable day addresses
+
+**10b. Day-of actions** ⬜
+
+- **Attendance:** confirm that each umpire showed up (and when), with late and no-show recorded.
+  Both the umpire (checking in) and administrators can mark it
+- A **note on each game**, and a way to record a **substitution** (the umpire assigned could not
+  come; someone else worked it), keeping the original assignment on record
+- **Call or text an umpire from a game** (for example, when one is late): phone numbers become
+  links that start a call or text on a phone
+
+**10c. Reports** ⬜
+
+- **Post-game reports** from umpires
+- **Reports from outside** (coaches, parents, the board) that administrators add to an umpire's record
+- Reports can be read by the umpire chief and super admins only
+
+**10d. Day-of extras** ⬜ *(ideas, to be chosen)*
+
+- Rainouts and field closures that cancel or move many games at once, and tell the umpires
+- A "running late" button for umpires; a call-around list of available umpires for an uncovered game
+- Field notes (parking, gate codes) and directions; an umpire's own "my day" view
+- Incident and injury reports; recording the final score
 
 ### Phase 11: Certifications and training ⬜
 
@@ -223,7 +253,16 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 
 ---
 
+## Smaller things on the list
+
+- **Sign out automatically** after a period of no activity (something like 30 minutes, with a warning first)
+- **Add a person who is not an umpire** from the app: invite them with their roles, and/or a sign-up choice for them (today it takes one step in the Supabase dashboard; see FAQ section 42)
+- Use the league logo in the app (it already serves as the app icon and favicon)
+- Give the **umpire admin** role the same abilities as the umpire chief (it touches about 20 places in the database and a few in the app, so it needs its own careful stage)
+
 ## Questions waiting for an answer
+
+- **Families and youth safeguards (Phase 9), for the board:** do we keep the rule that an umpire must be 13 or older? What should a parent or guardian be able to see and do? Who creates the link between a parent and a youth umpire, and how is parental consent recorded? What changes when a youth umpire turns 18? What do the league's insurance and Little League's youth-protection rules require?
 
 - **Paying umpires (Phase 12):** how are youth umpires paid today, and how much? Does the
   league take W-9s or issue any tax forms? What do the league's accountant, insurer and
@@ -245,6 +284,9 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 - **Phone numbers on printouts:** an option, for administrators; for a youth umpire,
   both their own and a parent's number (the emergency contact on their record, until
   parents have accounts of their own).
+- **Attendance and reports (Phase 10):** both the umpire and administrators can mark that an
+  umpire showed up. Post-game and outside reports can be read by the umpire chief and super
+  admins only.
 - **Own division and messages:** a youth umpire cannot umpire the division they play in (recorded
   on their record; if blank, any division whose ages include theirs). Administrators are told
   straight away when an umpire takes a game within 48 hours, otherwise in a daily summary.

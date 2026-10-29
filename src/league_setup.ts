@@ -1,5 +1,6 @@
 import { renderDivisionForm, renderDivisions, wireDivisionForm } from "./setup/divisions";
 import { renderLeagueForm, renderLeagues, wireLeagueForm } from "./setup/leagues";
+import { sortDivisions } from "./division-order";
 import { renderLocationForm, renderLocations, wireLocationForm } from "./setup/locations";
 import { renderSeasonImport } from "./setup/season-import";
 import { renderSeasonForm, renderSeasons, wireSeasonForm } from "./setup/seasons";
@@ -55,7 +56,7 @@ export async function renderLeagueSetup(
       .select("id, name, age_group, league_id, description, youngest_ll_age, oldest_ll_age, umpires_per_game, tournament_umpires, allow_self_assign, is_active")
       .order("name"),
     supabase.from("locations")
-      .select("id, name, address, notes, is_active").order("name"),
+      .select("id, name, address, notes, is_active, is_league_field").order("name"),
     supabase.from("little_league_age_charts")
       .select("id, chart_year, name")
       .order("chart_year", { ascending: false })
@@ -99,7 +100,7 @@ export async function renderLeagueSetup(
 
   const leagues = (leaguesResult.data ?? []) as SetupRecord[];
   const seasons = (seasonsResult.data ?? []) as SeasonRecord[];
-  const divisions = (divisionsResult.data ?? []) as DivisionRecord[];
+  const divisions = sortDivisions((divisionsResult.data ?? []) as DivisionRecord[]);
   const locations = (locationsResult.data ?? []) as LocationRecord[];
   const teams = (teamsResult.data ?? []) as TeamRecord[];
 

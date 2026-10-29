@@ -2010,3 +2010,361 @@ input[type="radio"] {
   background: #f6d4d4 repeating-linear-gradient(45deg, transparent 0 4px, rgba(161, 38, 38, 0.35) 4px 6px);
   border-color: #a12626;
 }
+
+/* ---- a field this league runs, or one our teams travel to ---- */
+.field-kind {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.field-kind-league {
+  color: #14532d;
+  background: #cfe8d6;
+}
+
+.field-kind-away {
+  color: #3d4a42;
+  background: #e8ecea;
+}
+
+/* ---- Field board ---- */
+.board-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+
+.board-controls button {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+}
+
+.board-goto {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.board-goto input {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+}
+
+.board-date {
+  margin: 18px 0 2px;
+}
+
+.board-summary {
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+
+/* the day's board and the calendar: stacked on a phone, side by side on a wide screen */
+.board-layout {
+  display: grid;
+  grid-template-areas: "cal" "day";
+  gap: 12px;
+}
+
+.board-calendar-box {
+  grid-area: cal;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid #d6ddd8;
+  border-radius: 10px;
+}
+
+#board-day {
+  grid-area: day;
+  min-width: 0;
+}
+
+.board-cal {
+  max-width: none;
+  margin-top: 8px;
+}
+
+@media (min-width: 900px) {
+  .board-layout {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-areas: "day cal";
+    align-items: start;
+    gap: 24px;
+  }
+
+  .board-calendar-box {
+    position: sticky;
+    top: 12px;
+  }
+}
+
+.board-calendar-box > summary {
+  min-height: 40px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.board-field {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #c4ccc7;
+  border-radius: 10px;
+}
+
+.board-field h3 {
+  margin: 0 0 2px;
+}
+
+.board-address {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.board-games {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-game {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: 4px 14px;
+  padding: 10px 0;
+  border-top: 1px solid #e3e8e5;
+}
+
+.board-time {
+  font-weight: 700;
+}
+
+.board-division {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 9px;
+  color: #14532d;
+  background: #cfe8d6;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.board-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 9px;
+  color: #3d4a42;
+  background: #e8ecea;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.board-badge-canceled {
+  color: #7a1717;
+  background: #f6d4d4;
+}
+
+.board-badge-completed {
+  color: #14532d;
+  background: #cfe8d6;
+}
+
+.board-status-canceled .board-teams strong {
+  text-decoration: line-through;
+}
+
+.board-status-canceled .board-time,
+.board-status-canceled .board-teams {
+  color: #4a4f52;
+}
+
+.board-status-draft {
+  border-top-style: dashed;
+}
+
+.board-note {
+  margin: 4px 0 0;
+  color: #3d4a42;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.board-umps {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-ump {
+  margin: 2px 0;
+}
+
+.board-pos {
+  display: inline-block;
+  min-width: 4.2rem;
+  color: #3d4a42;
+  font-weight: 700;
+}
+
+.board-ump-open {
+  display: inline-block;
+  padding: 1px 10px;
+  color: #8a4b00;
+  background: #fff1d6;
+  border-radius: 8px;
+}
+
+.board-umps .board-ump-open {
+  display: block;
+  width: fit-content;
+}
+
+.board-tag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 8px;
+  color: #14532d;
+  background: #cfe8d6;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.board-tag-warn {
+  color: #8a4b00;
+  background: #fff1d6;
+}
+
+.board-away-title {
+  margin: 22px 0 8px;
+  font-size: 1.1rem;
+}
+
+.board-empty-fields {
+  color: #3d4a42;
+  font-style: italic;
+}
+
+.board-none {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.board-none button {
+  width: auto;
+  margin: 0;
+}
+
+/* calendar days on the board: the day, and how many games */
+.board-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.board-has {
+  background: #eaf4ed;
+  border-color: #1b6b3a;
+}
+
+.board-count {
+  min-width: 20px;
+  padding: 0 6px;
+  color: #ffffff;
+  background: #1b6b3a;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.board-open::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  background: #a12626;
+  border: 1px solid #ffffff;
+  border-radius: 50%;
+}
+
+.board-today {
+  box-shadow: inset 0 0 0 2px #1b6b3a;
+}
+
+.board-selected {
+  outline: 3px solid #14532d;
+  outline-offset: 1px;
+}
+
+.board-keynum {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 6px;
+  color: #ffffff;
+  background: #1b6b3a;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.board-keydot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  background: #a12626;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+
+.board-keyring {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 2px #1b6b3a;
+  vertical-align: -2px;
+}
+
+@media (max-width: 640px) {
+  .board-game {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .board-controls {
+    gap: 6px;
+  }
+
+  .board-controls button {
+    padding-inline: 10px;
+    font-size: 0.95rem;
+  }
+
+  .board-controls .board-goto {
+    flex: 1 1 100%;
+  }
+
+  .board-goto input {
+    flex: 1 1 auto;
+  }
+}
