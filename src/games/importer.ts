@@ -9,6 +9,7 @@ import { cleanDivisionLabel } from "./matching";
 import { buildPlan, defaultSettings, locationKey, summarize } from "./plan";
 import type { ImportSettings, MatchContext, Plan } from "./plan";
 import type { Game, GamesContext } from "./types";
+import { appNow } from "../clock";
 
 export type ImporterOptions = {
   context: GamesContext;
@@ -503,7 +504,7 @@ export function renderImporter(container: HTMLElement, options: ImporterOptions)
     if (result.teams_created) parts.push(`Created ${result.teams_created} ${result.teams_created === 1 ? "team" : "teams"}.`);
     if (result.locations_created) parts.push(`Created ${result.locations_created} ${result.locations_created === 1 ? "field" : "fields"}.`);
 
-    const today = startOfToday(new Date()).toISOString();
+    const today = startOfToday(appNow()).toISOString();
     if (plan.games.some((game) => game.payload.starts_at < today)) {
       parts.push("The list starts from today: change From to see earlier games.");
     }

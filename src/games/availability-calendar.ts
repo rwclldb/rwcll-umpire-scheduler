@@ -2,6 +2,7 @@ import { dateKey, mergeWindows } from "./availability";
 import type { Window } from "./availability";
 import { formatTime } from "./format";
 import { escapeHtml } from "../ui";
+import { appNow } from "../clock";
 
 // A month calendar of what an umpire has entered: which days they can umpire
 // (all day, or part of it), and which they marked as ones they cannot.
@@ -50,7 +51,7 @@ export function daySummaries(
   month: number,
   windows: Window[],
   exceptions: Window[],
-  now: Date = new Date()
+  now: Date = appNow()
 ): DaySummary[] {
   const can = mergeWindows(windows);
   const cannot = mergeWindows(exceptions);

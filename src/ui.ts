@@ -1,3 +1,4 @@
+import { appNow } from "./clock";
 
 
 export function escapeHtml(value: string): string {
@@ -17,7 +18,7 @@ export function escapeHtml(value: string): string {
 // usable date. A date in the future gives a negative number.
 export function ageFromBirthDate(
   value: string,
-  today: Date = new Date(),
+  today: Date = appNow(),
 ): number | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;

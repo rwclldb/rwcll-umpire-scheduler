@@ -103,6 +103,13 @@ test on the league's own database.
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire), for reaching someone who is late
 - Attendance stays with an umpire when they are moved to another place on a game
 
+**Demo clock** 🆕
+
+- For testing and demonstrations: a small **Demo clock** box lets anyone set a **pretend date and time** (kept in that browser only), so a Saturday game can be tried on a Thursday
+- It is amber and says *not real* while it is in use; **Use real time** puts it back
+- The Field board, the Game day card, schedules and availability follow the pretend time, and so do check-in and recording attendance
+- It appears only where the database has it switched on (the test database); where it is off the box is hidden and any pretend time is ignored
+
 **Further assignment rules** 🆕
 
 - An administrator can record which division a youth umpire plays in (on their record). That division is then off limits to them, however the assignment is made

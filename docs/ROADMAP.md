@@ -43,10 +43,12 @@ whenever the league's needs change.
 - Availability now also has repeating times (ending with their season), dates an umpire
   can't umpire, and a month calendar. It is built and tested here; its database change is
   waiting for its first run on your own test database.
+- A **demo clock** (a pretend date and time, for testing and demonstrations) is built and tested
+  here; its database change is waiting for its first run on your own test database.
 - Phase 10 (game day) has begun. Stage **10a** (the field board and calendar) is built and in
   use. Stage **10b-1** (attendance and check-in, and Call and Text links) is built and tested
   here; its database change is waiting for its first run on your own test database. Next are
-  10b-2 (a note on each game, and substitutions), 10c (reports) and 10d (day-of extras).
+  10b-2 (a note on each game), 10c (reports) and 10d (day-of extras).
 - Sending real email (Phase 7) is postponed until you are ready, and Phase 9 (families and
   youth safeguards) waits for the board's answers.
 
@@ -196,12 +198,14 @@ whenever the league's needs change.
   **No-show** shown on the board and counted in its summary; changes kept in the history
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire)
 
-**10b-2. Notes and substitutions** ⬜
+**10b-2. Game notes** ⬜
 
-- A **note on each game** (for day-of things the schedule does not say)
-- A way to record a **substitution**: the umpire assigned could not come and someone else worked
-  it, keeping the original assignment on record (the substitute can be an umpire in the system,
-  or just a name)
+- A **note on each game** for day-of things the schedule does not say. **Admins and umpires can
+  both write notes**
+- Substitutions need no separate feature for now: if a substitute is known **before the
+  printout**, an administrator changes the assignment and the new person is on the list; if it
+  happens **after the printout**, an administrator updates the system later from the game note.
+  (A "who actually worked" field can be added later if it is wanted.)
 
 **10c. Reports** ⬜
 
@@ -291,6 +295,9 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 - **Phone numbers on printouts:** an option, for administrators; for a youth umpire,
   both their own and a parent's number (the emergency contact on their record, until
   parents have accounts of their own).
+- **Game notes and substitutions (Phase 10):** admins and umpires can both write notes on a game.
+  A substitute known before the printout is handled by changing the assignment; after the
+  printout, an administrator updates the system later from the note.
 - **Check-in and "late" (Phase 10):** an umpire can check in from 1 hour before the game starts
   until it ends; "late" means arriving after the scheduled start.
 - **Attendance and reports (Phase 10):** both the umpire and administrators can mark that an

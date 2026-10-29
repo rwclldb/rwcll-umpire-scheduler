@@ -1,6 +1,7 @@
 import { supabase } from "../supabase";
 import { msUntilNextOpening } from "./game-day-model";
 import type { GameDayEntry } from "./game-day-model";
+import { appNow, demoNowIso } from "../clock";
 
 // Makes the buttons work. `refresh` redraws the whole Home page (with a message).
 export function wireGameDay(
@@ -16,7 +17,13 @@ export function wireGameDay(
 
     button.disabled = true;
     void (async () => {
-      const { error } = await supabase.rpc("check_in", { p_game_id: button.dataset.checkin });
+      // (a pretend time is sent only when one is set; the database ignores it
+      // unless the demo clock is switched on there)
+      const pretend = demoNowIso();
+      const { error } = await supabase.rpc("check_in", {
+        p_game_id: button.dataset.checkin,
+        ...(pretend ? { p_now: pretend } : {}),
+      });
 
       if (error) {
         button.disabled = false;
@@ -32,7 +39,7 @@ export function wireGameDay(
   });
 
   // When a check-in is about to open, redraw so the button appears by itself.
-  const wait = msUntilNextOpening(entries, new Date());
+  const wait = msUntilNextOpening(entries, appNow());
   if (wait !== null) {
     window.setTimeout(() => {
       if (container.isConnected) refresh("");

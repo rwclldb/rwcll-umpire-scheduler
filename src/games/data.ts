@@ -4,6 +4,7 @@ import { groupAvailability } from "./availability";
 import type { PatternRow, UmpireAvailability } from "./availability";
 import { combineContacts } from "./contacts";
 import type { ContactNumbers } from "./contacts";
+import { appNow } from "../clock";
 import type {
   Assignment,
   DivisionOption,
@@ -250,7 +251,7 @@ export async function loadAvailability(): Promise<Map<string, UmpireAvailability
       supabase
         .from("umpire_availability")
         .select(AVAILABILITY_COLUMNS)
-        .gt("ends_at", new Date().toISOString())
+        .gt("ends_at", appNow().toISOString())
         .order("starts_at")
         .range(from, to)
     ),
@@ -284,7 +285,7 @@ export async function loadUmpireAvailability(umpireId: string): Promise<{
       .from("umpire_availability")
       .select(AVAILABILITY_COLUMNS)
       .eq("umpire_id", umpireId)
-      .gt("ends_at", new Date().toISOString())
+      .gt("ends_at", appNow().toISOString())
       .order("starts_at")
       .range(from, to)
   );
