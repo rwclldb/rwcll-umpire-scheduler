@@ -4,10 +4,12 @@ import { groupAvailability } from "./availability";
 import type { PatternRow, UmpireAvailability } from "./availability";
 import { combineContacts } from "./contacts";
 import type { ContactNumbers } from "./contacts";
-import { appNow } from "../clock";
+import { appNow, demoNowIso } from "../clock";
 import type {
   Assignment,
+  FieldClosure,
   GameNote,
+  RunningLate,
   DivisionOption,
   Game,
   GamesContext,
@@ -66,7 +68,7 @@ export async function loadContext(): Promise<{
         .order("name")
         .range(from, to)
     ),
-    supabase.from("locations").select("id, name, is_active, address, is_league_field").order("name"),
+    supabase.from("locations").select("id, name, is_active, address, is_league_field, directions").order("name"),
     fetchAll<{ id: string; display_name: string; classification: string; eligibility_status: string }>((from, to) =>
       supabase
         .from("umpires")
@@ -242,7 +244,7 @@ export async function loadGameNotes(gameIds: string[]): Promise<{
     const page = await fetchAll<GameNote>((from, to) =>
       supabase
         .from("game_notes")
-        .select("id, game_id, author_name, body, created_at")
+        .select("id, game_id, author_name, body, created_at, admin_only")
         .in("game_id", group)
         .order("created_at")
         .range(from, to)
@@ -258,6 +260,93 @@ export async function loadGameNotes(gameIds: string[]): Promise<{
   }
 
   return { notes, error: null };
+}
+
+// ---- game day extras ----
+
+// Access details (a gate code) for fields: administrators only. Empty if they
+// cannot be read.
+export async function loadAccessDetails(locationIds: string[]): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (locationIds.length === 0) return result;
+
+  const { data, error } = await supabase.from("location_access_notes").select("location_id, body").in("location_id", locationIds);
+  if (error) return result;
+
+  for (const row of (data ?? []) as { location_id: string; body: string }[]) result.set(row.location_id, row.body);
+  return result;
+}
+
+// An umpire asks for the access details of one of their games. The database
+// decides (from 24 hours before the game until it ends); null means "none for you".
+export async function loadGameAccess(gameId: string): Promise<string | null> {
+  const pretend = demoNowIso();
+  const { data, error } = await supabase.rpc("get_game_access_details", {
+    p_game_id: gameId,
+    ...(pretend ? { p_now: pretend } : {}),
+  });
+
+  return error || typeof data !== "string" || data === "" ? null : data;
+}
+
+// Rainouts that overlap a stretch of time, newest last, each with how many games it canceled.
+export async function loadClosures(fromIso: string, toIso: string): Promise<{ closures: FieldClosure[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("field_closures")
+    .select("id, location_id, closes_from, closes_to, reason, created_by_name, created_at, reopened_at, reopened_by_name")
+    .lt("closes_from", toIso)
+    .gt("closes_to", fromIso)
+    .order("closes_from");
+
+  if (error) return { closures: [], error: error.message };
+
+  const rows = (data ?? []) as Omit<FieldClosure, "games">[];
+  const counts = new Map<string, number>();
+
+  if (rows.length) {
+    const games = await supabase.from("field_closure_games").select("closure_id").in("closure_id", rows.map((row) => row.id));
+    if (!games.error) {
+      for (const row of (games.data ?? []) as { closure_id: string }[]) counts.set(row.closure_id, (counts.get(row.closure_id) ?? 0) + 1);
+    }
+  }
+
+  return { closures: rows.map((row) => ({ ...row, games: counts.get(row.id) ?? 0 })), error: null };
+}
+
+// Who has said they are running late, by "gameId:umpireId". (An administrator
+// reads all of them; an umpire only their own.)
+export async function loadRunningLate(gameIds: string[]): Promise<Map<string, RunningLate>> {
+  const result = new Map<string, RunningLate>();
+  const ids = [...new Set(gameIds)];
+
+  for (let start = 0; start < ids.length; start += 100) {
+    const { data, error } = await supabase
+      .from("running_late_reports")
+      .select("game_id, umpire_id, minutes, reported_at")
+      .in("game_id", ids.slice(start, start + 100));
+    if (error) return new Map();
+
+    for (const row of (data ?? []) as RunningLate[]) result.set(`${row.game_id}:${row.umpire_id}`, row);
+  }
+
+  return result;
+}
+
+// The other umpires on an umpire's own games: names and places only.
+export async function loadPartners(gameIds: string[]): Promise<Map<string, { position: string; name: string }[]>> {
+  const result = new Map<string, { position: string; name: string }[]>();
+  if (gameIds.length === 0) return result;
+
+  const { data, error } = await supabase.rpc("game_partners", { p_game_ids: [...new Set(gameIds)] });
+  if (error) return result;
+
+  for (const row of (data ?? []) as { game_id: string; position: string; umpire_name: string }[]) {
+    const list = result.get(row.game_id) ?? [];
+    list.push({ position: row.position, name: row.umpire_name });
+    result.set(row.game_id, list);
+  }
+
+  return result;
 }
 
 // An entry of availability, as the editing screen shows it: a time the umpire
@@ -415,7 +504,7 @@ export async function loadContactNumbers(umpireIds: string[]): Promise<{
     const youthIds = rows.filter((row) => row.classification === "youth").map((row) => row.id);
 
     const accounts = profileIds.length
-      ? await supabase.from("account_contact").select("profile_id, phone").in("profile_id", profileIds)
+      ? await supabase.from("account_contact").select("profile_id, phone, sms_opt_in").in("profile_id", profileIds)
       : { data: [], error: null };
     if (accounts.error) return { contacts: new Map(), error: accounts.error.message };
 
@@ -432,13 +521,18 @@ export async function loadContactNumbers(umpireIds: string[]): Promise<{
         (row): [string, string | null] => [row.profile_id, row.phone]
       )
     );
+    const textAgreed = new Map(
+      ((accounts.data ?? []) as { profile_id: string; sms_opt_in?: boolean | null }[]).map(
+        (row): [string, boolean] => [row.profile_id, Boolean(row.sms_opt_in)]
+      )
+    );
     const parentPhones = new Map(
       ((parents.data ?? []) as { umpire_id: string; emergency_contact_phone: string | null }[]).map(
         (row): [string, string | null] => [row.umpire_id, row.emergency_contact_phone]
       )
     );
 
-    for (const [id, value] of combineContacts(rows, accountPhones, parentPhones)) {
+    for (const [id, value] of combineContacts(rows, accountPhones, parentPhones, textAgreed)) {
       contacts.set(id, value);
     }
   }

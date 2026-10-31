@@ -43,6 +43,7 @@ whenever the league's needs change.
 - Availability now also has repeating times (ending with their season), dates an umpire
   can't umpire, and a month calendar. It is built and tested here; its database change is
   waiting for its first run on your own test database.
+- Stage **10d** (rainouts, running late, call-around list, field notes, the umpire's day, and administrators-only notes) is built and tested here; its database change is waiting for a first run. That finishes Phase 10 except **10c, reports**, which needs a few privacy decisions first.
 - A **demo clock** (a pretend date and time, for testing and demonstrations) is built and tested
   here; its database change is waiting for its first run on your own test database.
 - Phase 10 (game day) has begun. Stage **10a** (the field board and calendar) is built and in
@@ -214,12 +215,18 @@ whenever the league's needs change.
 - **Reports from outside** (coaches, parents, the board) that administrators add to an umpire's record
 - Reports can be read by the umpire chief and super admins only
 
-**10d. Day-of extras** ⬜ *(ideas, to be chosen)*
+**10d. Day-of extras** ✅ *(built and tested; the database change has not yet had its first run on your database)*
 
-- Rainouts and field closures that cancel or move many games at once, and tell the umpires
-- A "running late" button for umpires; a call-around list of available umpires for an uncovered game
-- Field notes (parking, gate codes) and directions; an umpire's own "my day" view
-- Incident and injury reports; recording the final score
+- **Rainouts and field closures:** cancel or move all the games on a field and day with one action, with a
+  reason, and tell the umpires
+- **Running late:** a button for an umpire to tell the administrators they are running late (and by how much)
+- **Call-around list:** for a game with an open place, the umpires who could cover it (allowed by the
+  rules, and with availability if entered), with Call and Text, so an administrator can phone around
+- **Field notes:** parking and directions, and access details such as a gate code, kept with each field
+- **Umpire day view:** an umpire's own view of their day: where to go, how to get in, who else is on
+  the game, and the notes
+- Not needed: **injury and incident** reports (these go in the game notes) and **scores** (this app
+  does not record them)
 
 ### Phase 11: Certifications and training ⬜
 
@@ -267,12 +274,14 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 
 ## Smaller things on the list
 
-- **Sign out automatically** after a period of no activity (something like 30 minutes, with a warning first)
+- Change the automatic sign-out from 30 minutes (for demonstrations) to about **10 minutes for administrators**, and something much longer (or off) for umpires (a setting; see FAQ section 49)
 - **Add a person who is not an umpire** from the app: invite them with their roles, and/or a sign-up choice for them (today it takes one step in the Supabase dashboard; see FAQ section 42)
 - Add the logo to printed schedules and the day sheet (it is now in the top bar and on the sign-in screens)
 - Give the **umpire admin** role the same abilities as the umpire chief (it touches about 20 places in the database and a few in the app, so it needs its own careful stage)
 
 ## Questions waiting for an answer
+
+
 
 - **Families and youth safeguards (Phase 9), for the board:** do we keep the rule that an umpire must be 13 or older? What should a parent or guardian be able to see and do? Who creates the link between a parent and a youth umpire, and how is parental consent recorded? What changes when a youth umpire turns 18? What do the league's insurance and Little League's youth-protection rules require?
 
@@ -296,6 +305,7 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 - **Phone numbers on printouts:** an option, for administrators; for a youth umpire,
   both their own and a parent's number (the emergency contact on their record, until
   parents have accounts of their own).
+- **Day-of extras privacy (Phase 10):** access details (gate codes) are readable by administrators and by the umpires on a game at that field from 24 hours before until it ends. In the call-around list a youth umpire shows their own number and a parent's. Game notes can be marked administrators only. Text links appear only for people who agreed to texts; a parent's number is for calls only.
 - **Game notes and substitutions (Phase 10):** admins and umpires can both write notes on a game.
   A substitute known before the printout is handled by changing the assignment; after the
   printout, an administrator updates the system later from the note.

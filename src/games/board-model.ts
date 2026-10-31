@@ -1,12 +1,13 @@
 import { arrivedText } from "./attendance";
 import { dateKey } from "./availability";
 import { contactText, phoneHref } from "./contacts";
+import { closurePanelHtml } from "./closure-model";
 import { notesHtml, notesPrintHtml } from "./game-notes-model";
 import type { ContactNumbers } from "./contacts";
-import { formatLongDate, formatPrinted, localDateKey, timeRange } from "./format";
+import { formatLongDate, formatPrinted, formatTime, localDateKey, timeRange } from "./format";
 import { divisionNeed, openPlaces, POSITIONS, POSITION_LABEL, umpiresNeeded } from "./staffing";
 import type { Position } from "./staffing";
-import type { Assignment, DivisionOption, Game, GameNote, GameStatus, LocationOption } from "./types";
+import type { Assignment, DivisionOption, FieldClosure, Game, GameNote, GameStatus, LocationOption, RunningLate } from "./types";
 import { escapeHtml } from "../ui";
 
 // The field board: one day's games by field, with who is umpiring each, and a
@@ -50,6 +51,7 @@ export type BoardField = {
   locationId: string;
   name: string;
   address: string | null;
+  directions: string | null; // parking and directions (general)
   league: boolean;         // a field this league runs (not an away field)
   games: BoardGame[];
 };
@@ -176,6 +178,7 @@ export function buildDayBoard(input: BoardInput, dayKey: string): DayBoard {
         locationId: game.location_id,
         name: location?.name ?? "Unknown field",
         address: location?.address ?? null,
+        directions: location?.directions ?? null,
         league: Boolean(location?.is_league_field),
         games: [],
       };
@@ -352,9 +355,10 @@ export function summaryText(summary: BoardSummary): string {
 const STATUS_LABEL: Partial<Record<GameStatus, string>> = { draft: "Draft", canceled: "Canceled", completed: "Completed" };
 
 // Call and Text links for one number (phones start a call or a text from them).
-function callLinks(name: string, number: string, label: string): string {
+// ("Text" only when they agreed to texts; otherwise the number is for calls only)
+function callLinks(name: string, number: string, label: string, textOk: boolean): string {
   const href = phoneHref(number);
-  return `<span class="board-contact">${label ? `<span class="board-contact-label">${label}</span> ` : ""}<a class="board-call" href="tel:${escapeHtml(href)}" aria-label="Call ${escapeHtml(name)} at ${escapeHtml(number)}">Call</a> <a class="board-call" href="sms:${escapeHtml(href)}" aria-label="Text ${escapeHtml(name)} at ${escapeHtml(number)}">Text</a> <span class="board-phone">${escapeHtml(number)}</span></span>`;
+  return `<span class="board-contact">${label ? `<span class="board-contact-label">${label}</span> ` : ""}<a class="board-call" href="tel:${escapeHtml(href)}" aria-label="Call ${escapeHtml(name)} at ${escapeHtml(number)}">Call</a>${textOk ? ` <a class="board-call" href="sms:${escapeHtml(href)}" aria-label="Text ${escapeHtml(name)} at ${escapeHtml(number)}">Text</a>` : ""} <span class="board-phone">${escapeHtml(number)}</span>${textOk ? "" : ` <span class="board-note">(calls only)</span>`}</span>`;
 }
 
 // How to reach an umpire: their own number, and for a youth umpire a parent's too.
@@ -362,13 +366,22 @@ function contactHtml(name: string, contact: ContactNumbers | undefined): string 
   if (!contact) return "";
 
   const parts = [
-    contact.own ? callLinks(name, contact.own, contact.youth ? "Own" : "") : "",
-    contact.youth && contact.parent ? callLinks(name, contact.parent, "Parent") : "",
+    contact.own ? callLinks(name, contact.own, contact.youth ? "Own" : "", Boolean(contact.ownText)) : "",
+    contact.youth && contact.parent ? callLinks(name, contact.parent, "Parent", false) : "",
   ].filter(Boolean);
 
   return parts.length
     ? `<span class="board-contacts">${parts.join(" ")}</span>`
     : `<span class="board-contacts board-note">${escapeHtml(contactText(contact))}</span>`;
+}
+
+export const contactLinksHtml = contactHtml;
+
+// "Running late: about 15 min (told us 8:41 AM)": only until they have arrived.
+function lateHtml(slot: BoardSlot, game: BoardGame, late?: Map<string, RunningLate>): string {
+  const report = slot.umpireId ? late?.get(`${game.id}:${slot.umpireId}`) : undefined;
+  if (!report || slot.here === "arrived" || game.finished) return "";
+  return `<span class="board-tag board-tag-warn">Running late: about ${report.minutes} min (told us ${escapeHtml(formatTime(report.reported_at))})</span>`;
 }
 
 // What is recorded about whether they are here, in words (never color alone).
@@ -389,10 +402,10 @@ function markHtml(slot: BoardSlot, game: BoardGame): string {
   const name = escapeHtml(slot.name ?? "this umpire");
 
   return `
-    <details class="board-mark">
+    <details class="board-mark" data-day="${escapeHtml(localDateKey(game.startsAt))}">
       <summary aria-label="Record attendance for ${name}">Mark</summary>
       <div class="board-mark-body">
-        <label>Arrived at <input type="time" class="board-mark-time" aria-label="Arrival time for ${name}; leave blank for now" /></label>
+        <label>Arrived at <input type="time" class="board-mark-time" aria-label="Arrival time for ${name}; the current time is filled in" /></label>
         <button type="button" class="secondary-button" data-mark="arrived" ${data}>Arrived</button>
         <button type="button" class="secondary-button" data-mark="no_show" ${data}>No-show</button>
         ${slot.here === "arrived" || slot.here === "no_show"
@@ -402,11 +415,13 @@ function markHtml(slot: BoardSlot, game: BoardGame): string {
     </details>`;
 }
 
-function slotHtml(slot: BoardSlot, game: BoardGame, contacts?: Map<string, ContactNumbers>): string {
+function slotHtml(slot: BoardSlot, game: BoardGame, contacts?: Map<string, ContactNumbers>, late?: Map<string, RunningLate>): string {
   const position = `<span class="board-pos">${escapeHtml(POSITION_LABEL[slot.position])}</span>`;
 
   if (slot.state === "open") {
-    return `<li class="board-ump board-ump-open">${position} <strong>${game.finished ? "No umpire recorded" : "Needs an umpire"}</strong></li>`;
+    return `<li class="board-ump board-ump-open">${position} <strong>${game.finished ? "No umpire recorded" : "Needs an umpire"}</strong>
+      ${game.finished ? "" : `<button type="button" class="secondary-button board-find" data-find-game="${escapeHtml(game.id)}" data-find-position="${escapeHtml(slot.position)}">Find an umpire</button>`}
+      <div class="board-find-panel" data-find-panel="${escapeHtml(game.id)}:${escapeHtml(slot.position)}" hidden></div></li>`;
   }
 
   const tag = slot.state === "confirmed"
@@ -419,11 +434,11 @@ function slotHtml(slot: BoardSlot, game: BoardGame, contacts?: Map<string, Conta
     markHtml(slot, game),
   ].filter(Boolean).join("\n");
 
-  return `<li class="board-ump board-ump-${slot.state}">${position} ${escapeHtml(slot.name ?? "")} ${game.finished && slot.state === "assigned" ? "" : tag}${slot.selfAssigned ? ` <span class="board-note">(took it themselves)</span>` : ""} ${hereHtml(slot, game)}
+  return `<li class="board-ump board-ump-${slot.state}">${position} ${escapeHtml(slot.name ?? "")} ${game.finished && slot.state === "assigned" ? "" : tag}${slot.selfAssigned ? ` <span class="board-note">(took it themselves)</span>` : ""} ${hereHtml(slot, game)} ${lateHtml(slot, game, late)}
     ${actions ? `<div class="board-ump-actions">${actions}</div>` : ""}</li>`;
 }
 
-function gameHtml(game: BoardGame, contacts?: Map<string, ContactNumbers>, notes?: Map<string, GameNote[]>): string {
+function gameHtml(game: BoardGame, contacts?: Map<string, ContactNumbers>, notes?: Map<string, GameNote[]>, late?: Map<string, RunningLate>): string {
   const badges = [
     STATUS_LABEL[game.status] ? `<span class="board-badge board-badge-${game.status}">${STATUS_LABEL[game.status]}</span>` : "",
     game.gameType !== "regular" ? `<span class="board-badge">${escapeHtml(game.gameType)}</span>` : "",
@@ -439,13 +454,15 @@ function gameHtml(game: BoardGame, contacts?: Map<string, ContactNumbers>, notes
           ${badges}
         </div>
         ${game.notes ? `<p class="board-note">${escapeHtml(game.notes)}</p>` : ""}
-        ${game.slots.length ? `<ul class="board-umps">${game.slots.map((slot) => slotHtml(slot, game, contacts)).join("")}</ul>` : ""}
+        ${game.slots.length ? `<ul class="board-umps">${game.slots.map((slot) => slotHtml(slot, game, contacts, late)).join("")}</ul>` : ""}
         ${notesHtml(game.id, notes?.get(game.id) ?? [], { canRemove: true })}
       </div>
     </li>`;
 }
 
-function fieldHtml(field: BoardField, contacts?: Map<string, ContactNumbers>, notes?: Map<string, GameNote[]>): string {
+function fieldHtml(field: BoardField, contacts?: Map<string, ContactNumbers>, notes?: Map<string, GameNote[]>, extras?: BoardExtras): string {
+  const closed = (extras?.closures ?? []).filter((closure) => closure.location_id === field.locationId && !closure.reopened_at);
+  const access = extras?.access?.get(field.locationId);
   const maps = field.address
     ? ` <a class="board-map" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(field.address)}" target="_blank" rel="noopener">${escapeHtml(field.address)}</a>`
     : "";
@@ -454,28 +471,42 @@ function fieldHtml(field: BoardField, contacts?: Map<string, ContactNumbers>, no
     <section class="board-field" data-board-field="${escapeHtml(field.locationId)}">
       <h3>${escapeHtml(field.name)}
         <span class="field-kind ${field.league ? "field-kind-league" : "field-kind-away"}">${field.league ? "League field" : "Away field"}</span>
+        ${closed.length ? `<span class="field-kind field-kind-closed">Closed: ${escapeHtml(closed[closed.length - 1].reason)}</span>` : ""}
       </h3>
       ${maps ? `<p class="board-address">${maps}</p>` : ""}
-      <ol class="board-games">${field.games.map((game) => gameHtml(game, contacts, notes)).join("")}</ol>
+      ${field.directions ? `<p class="board-directions"><strong>Parking and directions:</strong> ${escapeHtml(field.directions)}</p>` : ""}
+      ${access ? `<p class="board-access"><strong>Access details:</strong> ${escapeHtml(access)} <span class="board-note">(administrators, and the umpires on a game here from 24 hours before until it ends)</span></p>` : ""}
+      <ol class="board-games">${field.games.map((game) => gameHtml(game, contacts, notes, extras?.late)).join("")}</ol>
     </section>`;
 }
 
-export function dayBoardHtml(board: DayBoard, contacts?: Map<string, ContactNumbers>, notes?: Map<string, GameNote[]>): string {
+// Things the board shows beyond the games themselves (administrators only).
+export type BoardExtras = {
+  late?: Map<string, RunningLate>;     // who said they are running late, by "gameId:umpireId"
+  access?: Map<string, string>;        // access details (a gate code) by field
+  closures?: FieldClosure[];           // rainouts that overlap this day
+};
+
+export function dayBoardHtml(board: DayBoard, contacts?: Map<string, ContactNumbers>, notes?: Map<string, GameNote[]>, extras?: BoardExtras): string {
   const league = board.fields.filter((field) => field.league);
   const away = board.fields.filter((field) => !field.league);
 
   return `
-    ${league.map((field) => fieldHtml(field, contacts, notes)).join("")}
+    ${extras?.closures ? closurePanelHtml(board, extras.closures) : ""}
+    ${league.map((field) => fieldHtml(field, contacts, notes, extras)).join("")}
     ${board.emptyLeagueFields.length
       ? `<p class="board-empty-fields">No games at: ${board.emptyLeagueFields.map(escapeHtml).join(", ")}.</p>`
       : ""}
     ${away.length
-      ? `<h2 class="board-away-title">Games at other fields</h2>${away.map((field) => fieldHtml(field, contacts, notes)).join("")}`
+      ? `<h2 class="board-away-title">Games at other fields</h2>${away.map((field) => fieldHtml(field, contacts, notes, extras)).join("")}`
       : ""}
   `;
 }
 
 // The day on paper: a table for each field.
+// Notes marked "administrators only" never go on paper (a sheet can be left at a field).
+const printable = (notes: Map<string, GameNote[]> | undefined, gameId: string) => (notes?.get(gameId) ?? []).filter((note) => !note.admin_only);
+
 export function dayBoardPrintHtml(board: DayBoard, now: Date, notes?: Map<string, GameNote[]>): string {
   const rows = (field: BoardField) => field.games.map((game) => {
     const umps = game.slots.length
@@ -488,7 +519,7 @@ export function dayBoardPrintHtml(board: DayBoard, now: Date, notes?: Map<string
       <td>${escapeHtml(game.division)}</td>
       <td><strong>${escapeHtml(game.home)}</strong> vs <strong>${escapeHtml(game.away)}</strong>${status}</td>
       <td>${umps}</td>
-    </tr>${(notes?.get(game.id) ?? []).length ? `<tr><td></td><td colspan="3">${notesPrintHtml(notes!.get(game.id)!)}</td></tr>` : ""}`;
+    </tr>${printable(notes, game.id).length ? `<tr><td></td><td colspan="3">${notesPrintHtml(printable(notes, game.id))}</td></tr>` : ""}`;
   }).join("");
 
   const section = (field: BoardField) => `

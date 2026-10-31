@@ -79,6 +79,8 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 46. [Game day: attendance, checking in, and calling umpires](#46-game-day-attendance-checking-in-and-calling-umpires)
 47. [The demo clock: a pretend time for testing and demonstrations](#47-the-demo-clock-a-pretend-time-for-testing-and-demonstrations)
 48. [Notes on a game](#48-notes-on-a-game)
+49. [Automatic sign-out](#49-automatic-sign-out)
+50. [Game day extras: rainouts, running late, finding an umpire, field notes, and your day](#50-game-day-extras-rainouts-running-late-finding-an-umpire-field-notes-and-your-day)
 
 ---
 
@@ -201,6 +203,8 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `day_of_extras_check.sql` | The game day extras work and are private where they should be (closing and reopening a field; running-late reports; access details only for administrators and umpires on the game within 24 hours; administrators-only notes; partner names only) | `Failures: 0` |
+| `idle_logout_check.sql` | The automatic sign-out settings work (they exist and can be read by anyone signed in; nobody can change them from the app; only a whole number of minutes from 0 to 480 is accepted) | `Failures: 0` |
 | `game_notes_check.sql` | Game notes work (administrators and the umpires on a game can add them; others cannot; notes can be read only by administrators and the umpires on that game; only administrators can remove them; nobody can write or edit the table directly; limits; the demo clock's pretend time) | `Failures: 0` |
 | `demo_clock_check.sql` | The demo clock works and is safe (with it off, a pretend time changes nothing; with it on, check-in and attendance use it; nobody can switch it on from the app) | `Failures: 0` |
 | `attendance_check.sql` | Attendance works (an umpire can check in from 1 hour before the game until it ends, and not otherwise; an administrator can record, correct and clear it; nobody can write it directly; moving umpires between places keeps it; the history records it) | `Failures: 0` |
@@ -447,6 +451,8 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\day_of_extras_check.sql` | Tests the game day extras, building its own league, fields, games, umpires and accounts (your data is not changed) | No (always rolls back) |
+| `supabase\tests\idle_logout_check.sql` | Tests the automatic sign-out settings, changing them inside its own run (your real settings are not changed) | No (always rolls back) |
 | `supabase\tests\game_notes_check.sql` | Tests game notes (builds its own league, games, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\demo_clock_check.sql` | Tests the demo clock, switching it off and on inside its own run (your real setting is not changed) | No (always rolls back) |
 | `supabase\tests\attendance_check.sql` | Tests attendance and check-in (builds its own league, games, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
@@ -553,10 +559,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `game-notes.ts`, `game-notes-model.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `game-notes.ts`, `game-notes-model.ts`, `closure-model.ts`, `call-around-model.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `idle-logic.ts`, `idle-logout.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -1336,12 +1342,13 @@ On the **Field board** (section 44), each umpire's line now says where they stan
 
 The line under the date counts them: *1 not here yet*, *2 no-shows*. A game that is already over never shows *Not here yet*.
 
-**Recording attendance:** press **Mark** beside an umpire, then **Arrived** (it uses the time in the box, or **now** if the box is blank), **No-show**, or **Clear** (which appears once something is recorded). A time must be on the day of the game and cannot be in the future. You can correct it later, even after the game. Every change is added to the assignment history, with who made it.
+**Recording attendance:** press **Mark** beside an umpire, then **Arrived**, **No-show**, or **Clear**. For a game that is **today**, the time box starts as the **time it is now** (the pretend time, if the demo clock is on); leave it as it is to record *now*, or change it to record an earlier arrival. For a game on **another day** the box starts blank. **Clear** appears once something is recorded. A time must be on the day of the game and cannot be in the future. You can correct it later, even after the game. Every change is added to the assignment history, with who made it.
 
 ### Calling or texting an umpire
 
 Under each umpire is **Call** and **Text** with their number, so if one is late you can reach them from the board. On a phone the buttons start a call or a text; on a computer they may open a calling app or do nothing.
 
+- **Text** appears only for people who **agreed to text messages** (a setting on their own account); a parent's number is for **calls only**. Otherwise you see *(calls only)* next to the number.
 - The numbers are the same ones you can already see on the printed schedule: the account's number, otherwise the one on the umpire's record. A **youth umpire** shows their **own** number and a **parent's** (the emergency contact), each with its own Call and Text.
 - *no phone on file* means there is no number to use.
 - Only people who can see the Field board (super admins, umpire chiefs and schedulers) see them.
@@ -1407,8 +1414,10 @@ These are separate from the schedule's own **notes** field on a game (the one yo
 | | Add a note | Read the notes | Remove a note |
 |---|---|---|---|
 | **Super admin, umpire chief, scheduler** | Any game | Any game | Yes |
-| **An umpire on the game** | That game only | All the notes on that game | No |
+| **An umpire on the game** | That game only | The notes on that game (except **administrators-only** ones written by others) | No |
 | **Another umpire, or any other account** | No | No | No |
+
+**Administrators-only notes:** when writing a note, tick **Only administrators can read this note**. Then only administrators and the person who wrote it can read it, and it is **never printed**. Use it for anything sensitive. Please **do not put medical details** in any note: for an injury, say only that one happened (use initials) and tell an administrator.
 
 Nobody can **edit** a note. It is a record: remove it (an administrator) and add a corrected one.
 
@@ -1429,3 +1438,101 @@ There is no separate substitution feature. If a substitute is known **before the
 - With the **demo clock** on (section 47), a note is stamped with the pretend time.
 - This update also fixes a slip on the Field board: after it had been redrawn a few times, one click could be handled several times (for example recording an arrival twice). It is now handled once.
 - **Database change:** `20261102100000_add_game_notes.sql` (needs the demo clock one, `20261101100000`, applied first). **Check script:** `game_notes_check.sql` (section 6).
+
+## 49. Automatic sign-out
+
+If nobody touches the app for a while, it **signs the person out**, so a computer or phone left open does not leave someone's account open.
+
+### What people see
+
+- A minute before the limit, a box appears: *Are you still there? You will be signed out in 48 seconds because the app has not been used for 30 minutes.* with a big **Stay signed in** button. Using the app in any way also counts.
+- When the time runs out they are signed out, and the sign-in page says *You were signed out because the app was not used for 30 minutes.* (once).
+- Any click, key press, touch or scroll counts as using it, in any tab of that browser. It uses the **real** time, never the demo clock's pretend time.
+
+### The time allowed is a setting
+
+There are **two**, because an administrator's account can see much more than an umpire's:
+
+| Setting | For | Starts at |
+|---|---|---|
+| `idle_logout_minutes` | **Administrators**: anyone with a role beyond umpiring | **30 minutes** (for demonstrations) |
+| `idle_logout_minutes_umpire` | **Umpire-only** accounts | **30 minutes** |
+
+Each is a whole number of minutes from **1 to 480**, or **0** for *never sign out automatically*. If a setting is missing or is not a sensible number, the app uses **30**, so it can never end up switched off by accident. The database refuses any other value.
+
+**To change one** (Supabase SQL Editor, in the project you want to change; nobody can change these from the app):
+
+```
+update public.app_settings set value = '10' where key = 'idle_logout_minutes';
+update public.app_settings set value = '0'  where key = 'idle_logout_minutes_umpire';
+```
+
+People who are already signed in pick up the change the next time they load the app. No new release is needed.
+
+### What to set later
+
+- **Administrators: about 10 minutes.** They can see other people's details and the whole schedule.
+- **Umpires: much longer, or 0.** An umpire at a field with the phone in a pocket should not have to sign in again just to check in to a game. This is the reason there are two settings.
+
+### Good to know
+
+- A person with any role beyond umpiring counts as an administrator, even if they are also an umpire (the stricter time applies).
+- If a computer goes to sleep and wakes up after the limit, the person is signed out when it wakes.
+- **Database change:** `20261103100000_add_idle_logout_settings.sql`. **Check script:** `idle_logout_check.sql` (section 6).
+
+## 50. Game day extras: rainouts, running late, finding an umpire, field notes, and your day
+
+### Rainouts: closing a field (administrators)
+
+On the **Field board**, open **Rainout: close a field**.
+
+1. Choose the **field** (only fields with games left to cancel are listed, with how many).
+2. Optionally enter a **From** and **To** time. **Blank means the whole day.** Only games that **start** in that time are canceled.
+3. Choose a **reason** (Rain, Wet field, Unsafe conditions, Other) and add details if you like (they are needed for Other).
+4. A line shows exactly what will happen: *This will cancel 2 games (9:00 AM, 12:00 PM) and tell 3 umpires.* Press **Cancel these games** and confirm.
+
+Each game is **canceled**, gets a **note** saying why (*Canceled: Rain*), and its umpires are sent a **message** (see the Outbox). Games already played or canceled are left alone. The field shows **Closed: Rain** and the closing is listed under **Closed today**.
+
+If the weather clears, press **Reopen**: the games it canceled go **back to what they were**, the umpires are told, and the closing is marked reopened. A game you changed by hand in the meantime is left alone. A closing can be at most 7 days.
+
+### Running late (umpires)
+
+On the **Game day** card, while check-in is open, an umpire can open **I'm running late**, choose about how many minutes (5 to 60), and press **Tell the administrators**. The administrators get a message, and the Field board shows **Running late: about 15 min (told us 8:41 AM)** on that umpire until they arrive. **I'm not late after all** takes it back. It records only the minutes the umpire chose: **nothing about where anyone is**.
+
+### Find an umpire: the call-around list (administrators)
+
+For a game with an open place, press **Find an umpire** under it. The list shows the umpires who could take that place, **best first**:
+
+1. said they can umpire at that time, and are free;
+2. entered no availability, and are free;
+3. entered other times;
+4. already on another game at that time;
+5. marked themselves unavailable.
+
+Left out: anyone not active, already on the game, or not allowed by the age rules. Each row has **Call** (and **Text** for those who agreed to texts), and a youth umpire shows **their own number and a parent's**. Press **Assign** when someone says yes. **Nothing is saved about who you called.**
+
+### Field notes: directions and access details
+
+In **Locations**, each field has two boxes:
+
+| Box | Who can read it |
+|---|---|
+| **Parking and directions** | Anyone who can see the schedule. It shows on the board and on the umpire's Game day card |
+| **Access details** (a gate code, a lock box) | **Administrators**, and the **umpires on a game at that field from 24 hours before it starts until it ends**. It is kept in a separate protected place, and it is **never printed** or put in a message |
+
+### An umpire's day (the Game day card)
+
+The card now also shows: **parking and directions**; the **gate or access** details (only when the umpire may have them); and **who else is on the game**, by **name and place only** (no phone numbers: contact goes through the administrators). Plus the running-late control, notes and check-in.
+
+### What is private
+
+| | Who can see it |
+|---|---|
+| Access details | Administrators; umpires on a game there, 24 hours before until it ends |
+| Administrators-only notes | Administrators; the person who wrote it |
+| Running-late reports | Administrators; the umpire who made it |
+| Rainouts | Administrators (the umpires are told by message) |
+| Another umpire's phone number | Nobody but administrators |
+| A youth umpire's numbers | Administrators only (own number, and a parent's for calls) |
+
+**Database change:** `20261104100000_add_game_day_extras.sql` (needs the demo clock and game notes ones applied first). **Check script:** `day_of_extras_check.sql` (section 6).

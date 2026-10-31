@@ -30,11 +30,35 @@ export type GameNote = {
   author_name: string;
   body: string;
   created_at: string;
+  admin_only?: boolean; // only administrators (and the writer) can read it
+};
+
+// A rainout: every game at a field in a time window was canceled, with a reason.
+export type FieldClosure = {
+  id: string;
+  location_id: string;
+  closes_from: string;
+  closes_to: string;
+  reason: string;
+  created_by_name: string;
+  created_at: string;
+  reopened_at: string | null;
+  reopened_by_name: string | null;
+  games: number; // how many games it canceled
+};
+
+// "I'm running about 15 minutes late"
+export type RunningLate = {
+  game_id: string;
+  umpire_id: string;
+  minutes: number;
+  reported_at: string;
 };
 
 export type LocationOption = NamedOption & {
   address: string | null;
   is_league_field?: boolean; // a field this league runs, as opposed to one our teams travel to
+  directions?: string | null; // parking and directions (general; anyone who can see the field list can read it)
 };
 export type DivisionOption = NamedOption & {
   league_id: string;

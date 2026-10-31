@@ -2717,9 +2717,11 @@ input[type="radio"] {
 }
 
 .note-meta {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: 100%;
   color: #3d4a42;
   font-size: 0.88rem;
+  overflow-wrap: anywhere;
 }
 
 .note-body {
@@ -2798,6 +2800,308 @@ input[type="radio"] {
   }
 
   .note-remove {
+    min-height: 44px;
+  }
+}
+
+/* ---- The warning before an automatic sign-out ---- */
+.idle-warning {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  z-index: 60;
+  width: min(92vw, 460px);
+  padding: 16px 18px;
+  color: #5c3300;
+  background: #fff1d6;
+  border: 2px solid #8a4b00;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgb(0 0 0 / 35%);
+  transform: translateX(-50%);
+}
+
+.idle-warning[hidden] {
+  display: none;
+}
+
+.idle-warning p {
+  margin: 0 0 8px;
+}
+
+.idle-warning-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.idle-warning button {
+  width: 100%;
+  min-height: 48px;
+  margin: 4px 0 0;
+}
+
+@media print {
+  .idle-warning {
+    display: none !important;
+  }
+}
+
+/* ---- Game day extras: rainouts, call-around, field notes, day view ---- */
+.field-help {
+  margin: 2px 0 10px;
+  color: #3d4a42;
+  font-size: 0.85rem;
+}
+
+.field-kind-closed {
+  color: #7a1717;
+  background: #f6d4d4;
+}
+
+.board-directions,
+.board-access {
+  margin: 2px 0 6px;
+  font-size: 0.92rem;
+}
+
+.board-access {
+  padding: 4px 8px;
+  background: #fff1d6;
+  border-left: 4px solid #8a4b00;
+  border-radius: 4px;
+  color: #5c3300;
+}
+
+/* the rainout panel */
+.board-closure {
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  background: #fbf7ee;
+  border: 1px solid #d8cdb0;
+  border-radius: 10px;
+}
+
+.board-closure > summary {
+  min-height: 36px;
+  padding: 6px 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.closure-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 14px;
+  margin-top: 6px;
+}
+
+.closure-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.closure-form select,
+.closure-form input {
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+}
+
+.closure-help,
+.closure-none {
+  flex: 1 1 100%;
+  margin: 0;
+  color: #3d4a42;
+  font-size: 0.88rem;
+}
+
+.closure-preview {
+  flex: 1 1 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+.closure-form button {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+}
+
+.closure-list-title {
+  margin: 12px 0 4px;
+  font-size: 1rem;
+}
+
+.closure-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.closure-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 6px 0;
+  border-top: 1px solid #e6dfc9;
+}
+
+.closure-reopened {
+  color: #3d4a42;
+}
+
+.closure-item button {
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+}
+
+/* find an umpire (the call-around list) */
+.board-find {
+  width: auto;
+  min-height: 36px;
+  margin: 0 0 0 8px;
+  padding: 4px 12px;
+}
+
+.board-find-panel {
+  flex: 1 1 100%;
+  margin-top: 6px;
+}
+
+.callaround {
+  padding: 8px 10px;
+  background: #f4f7f5;
+  border: 1px solid #d6ddd8;
+  border-radius: 8px;
+}
+
+.callaround-help {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+
+.callaround-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.callaround-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-top: 1px solid #d6ddd8;
+}
+
+.callaround-who {
+  flex: 1 1 100%;
+}
+
+.callaround-assign {
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+}
+
+/* an umpire's day: where to go, who is with them, running late */
+.gd-with,
+.gd-directions,
+.gd-access {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.gd-access {
+  margin-top: 2px;
+  padding: 4px 8px;
+  color: #5c3300;
+  background: #fff1d6;
+  border-left: 4px solid #8a4b00;
+  border-radius: 4px;
+}
+
+.gd-late {
+  margin-top: 8px;
+}
+
+.gd-late > summary {
+  min-height: 44px;
+  padding: 10px 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gd-late-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.gd-late-body label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.gd-late-body select {
+  width: auto;
+  min-height: 44px;
+  margin: 0 0 0 6px;
+}
+
+.gd-late-body button {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+}
+
+/* notes */
+.note-private {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+  font-weight: 600;
+}
+
+.note-private input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .board-find {
+    min-height: 44px;
+  }
+
+  .closure-form {
+    align-items: stretch;
+  }
+
+  .closure-form label {
+    flex: 1 1 100%;
+  }
+
+  .closure-form select,
+  .closure-form input {
+    width: 100%;
+  }
+
+  .closure-form button {
+    width: 100%;
+  }
+
+  .closure-form select,
+  .closure-form input {
     min-height: 44px;
   }
 }

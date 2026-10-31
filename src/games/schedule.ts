@@ -22,6 +22,7 @@ export type Lookups = {
   teamName: (teamId: string) => string;
   fieldName: (locationId: string) => string;
   fieldAddress: (locationId: string) => string;
+  fieldDirections: (locationId: string) => string;
   divisionName: (divisionId: string) => string;
   umpireName: (umpireId: string) => string;
   // how many umpires this game needs (its own setting, or its division's)
@@ -38,6 +39,7 @@ export function lookupsFor(context: GamesContext): Lookups {
     teamName: (id) => teams.get(id) ?? "A team",
     fieldName: (id) => fields.get(id)?.name ?? "",
     fieldAddress: (id) => fields.get(id)?.address ?? "",
+    fieldDirections: (id) => fields.get(id)?.directions ?? "",
     divisionName: (id) => divisions.get(id) ?? "",
     umpireName: (id) => context.umpireNames.get(id) ?? "Unknown umpire",
     umpiresNeeded: (game) =>
@@ -57,6 +59,7 @@ export type ScheduleGame = {
   division: string;
   field: string;
   address: string;
+  directions: string; // parking and directions for the field (general), or ""
   home: string;
   away: string;
   umpires: Record<Position, string | null>; // the umpire in each place (null: nobody)
@@ -121,6 +124,7 @@ export function buildScheduleGames(
         division: look.divisionName(game.division_id),
         field: look.fieldName(game.location_id),
         address: look.fieldAddress(game.location_id),
+        directions: look.fieldDirections(game.location_id),
         home: sideText(game, "home", look),
         away: sideText(game, "away", look),
         umpires: {

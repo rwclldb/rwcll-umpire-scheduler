@@ -8,6 +8,8 @@ import { renderLeagueSetup } from "./league_setup";
 import { renderRoleManager } from "./roles";
 import { renderBoardPage } from "./games/board";
 import { mountDemoClock, removeDemoClock } from "./demo-clock";
+import { hasAdministratorRole } from "./idle-logic";
+import { startIdleLogout, stopIdleLogout, takeIdleNotice } from "./idle-logout";
 import { logoHtml } from "./logo";
 import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
@@ -87,6 +89,8 @@ function showMessage(message: string, kind: "error" | "success" = "error") {
 
 function renderAuthForm() {
   removeDemoClock();
+  stopIdleLogout();
+  const idleNotice = takeIdleNotice();
   app!.innerHTML = `
     <main class="page">
       <section class="auth-card">
@@ -107,6 +111,8 @@ function renderAuthForm() {
             Create account
           </button>
         </div>
+
+        ${idleNotice ? `<p class="message" role="status">${escapeHtml(idleNotice)}</p>` : ""}
 
         <h2>${currentView === "signup" ? "Create your account" : "Welcome back"}</h2>
         <p class="form-intro">
@@ -412,6 +418,8 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
         onSignOut: () => void signOut(),
       });
       void mountDemoClock();   // (only appears where the database has the demo clock switched on)
+      // sign out after a period of no activity (the time is a setting in the database)
+      void startIdleLogout({ isAdministrator: hasAdministratorRole(roleIds), signOut: () => void signOut() });
       return;
     }
   }
@@ -422,6 +430,7 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
 
 function renderAccountStatus(profile: Profile, roles = "") {
   removeDemoClock();
+  stopIdleLogout();
   const details: Record<AccountStatus, { title: string; text: string }> = {
     pending: {
       title: "Awaiting approval",

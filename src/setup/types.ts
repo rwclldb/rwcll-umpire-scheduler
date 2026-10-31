@@ -29,6 +29,7 @@ export type DivisionRecord = SetupRecord & {
 export type LocationRecord = SetupRecord & {
   address: string | null;
   notes: string | null;
+  directions?: string | null; // parking and directions (general)
   // a field this league runs (true), or one our teams travel to (false)
   is_league_field: boolean;
 };
