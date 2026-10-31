@@ -3,8 +3,9 @@ import { dateKey } from "./availability";
 import { arrivedText, checkInState } from "./attendance";
 import type { CheckInState } from "./attendance";
 import { formatTime, localDateKey } from "./format";
+import { notesHtml } from "./game-notes-model";
 import type { UmpireGame } from "./schedule";
-import type { Assignment } from "./types";
+import type { Assignment, GameNote } from "./types";
 
 // The "Game day" card on an umpire's Home page: today's games, with a button to
 // check in once the game is within an hour of starting. (This file works out and
@@ -66,7 +67,7 @@ function actionHtml(entry: GameDayEntry): string {
   }
 }
 
-export function gameDayHtml(entries: GameDayEntry[]): string {
+export function gameDayHtml(entries: GameDayEntry[], notes?: Map<string, GameNote[]>): string {
   if (entries.length === 0) return "";
 
   return `
@@ -88,6 +89,7 @@ export function gameDayHtml(entries: GameDayEntry[]): string {
                 <span>${escapeHtml(game.position)} at ${escapeHtml(game.field)}${map}</span>
               </div>
               <div class="gd-action">${actionHtml(entry)}</div>
+              <div class="gd-notes">${notesHtml(game.id, notes?.get(game.id) ?? [], { canRemove: false })}</div>
             </li>`;
         }).join("")}
       </ul>

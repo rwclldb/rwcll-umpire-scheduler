@@ -23,6 +23,15 @@ export type Game = {
 };
 
 export type NamedOption = { id: string; name: string; is_active: boolean };
+// A day-of note on a game (a short log: who wrote it, and when).
+export type GameNote = {
+  id: string;
+  game_id: string;
+  author_name: string;
+  body: string;
+  created_at: string;
+};
+
 export type LocationOption = NamedOption & {
   address: string | null;
   is_league_field?: boolean; // a field this league runs, as opposed to one our teams travel to

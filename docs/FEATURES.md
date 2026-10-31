@@ -103,6 +103,13 @@ test on the league's own database.
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire), for reaching someone who is late
 - Attendance stays with an umpire when they are moved to another place on a game
 
+**Game notes** 🆕
+
+- A short log of notes on each game (who wrote each, and when), for day-of things like a changed field, a gate code, or who actually worked a game
+- Administrators can add a note to any game and remove notes; an umpire can add a note to, and read all the notes on, a game they are assigned to
+- Notes show on the Field board, on the printed day sheet, and on the umpire's Game day card
+- Substitutions are handled by changing the assignment before the printout, or by a note afterwards
+
 **Demo clock** 🆕
 
 - For testing and demonstrations: a small **Demo clock** box lets anyone set a **pretend date and time** (kept in that browser only), so a Saturday game can be tried on a Thursday

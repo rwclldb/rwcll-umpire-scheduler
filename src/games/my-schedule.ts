@@ -1,7 +1,8 @@
 import { supabase } from "../supabase";
 import { escapeHtml } from "../ui";
-import { loadContext, loadUmpireGames } from "./data";
+import { loadContext, loadGameNotes, loadUmpireGames } from "./data";
 import { renderAvailabilityEditor } from "./availability-editor";
+import { wireNotes } from "./game-notes";
 import { wireGameDay } from "./game-day";
 import { gameDayEntries, gameDayHtml } from "./game-day-model";
 import { renderOpenGames } from "./open-games";
@@ -70,8 +71,11 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
   // today's games, with a check-in button when one is within an hour of starting
   const gameDay = gameDayEntries(items, games.assignments, me.id as string, appNow());
 
+  // the notes on those games (an umpire can read the notes on their own games)
+  const dayNotes = gameDay.length ? (await loadGameNotes(gameDay.map((entry) => entry.game.id))).notes : undefined;
+
   container.innerHTML = `
-    <div id="my-game-day">${gameDayHtml(gameDay)}</div>
+    <div id="my-game-day">${gameDayHtml(gameDay, dayNotes)}</div>
     <section class="my-schedule">
       <h2>My schedule</h2>
       ${notice ? `<p class="message success" role="status">${escapeHtml(notice)}</p>` : ""}
@@ -88,6 +92,9 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
   `;
 
   wireGameDay(container.querySelector<HTMLElement>("#my-game-day")!, gameDay, (message) => {
+    void renderMySchedule(container, message);
+  });
+  wireNotes(container.querySelector<HTMLElement>("#my-game-day")!, (message) => {
     void renderMySchedule(container, message);
   });
 
