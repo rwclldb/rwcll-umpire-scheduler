@@ -1,11 +1,12 @@
 import { arrivedText } from "./attendance";
 import { dateKey } from "./availability";
 import { contactText, phoneHref } from "./contacts";
+import { notesHtml, notesPrintHtml } from "./game-notes-model";
 import type { ContactNumbers } from "./contacts";
 import { formatLongDate, formatPrinted, localDateKey, timeRange } from "./format";
 import { divisionNeed, openPlaces, POSITIONS, POSITION_LABEL, umpiresNeeded } from "./staffing";
 import type { Position } from "./staffing";
-import type { Assignment, DivisionOption, Game, GameStatus, LocationOption } from "./types";
+import type { Assignment, DivisionOption, Game, GameNote, GameStatus, LocationOption } from "./types";
 import { escapeHtml } from "../ui";
 
 // The field board: one day's games by field, with who is umpiring each, and a
@@ -422,7 +423,7 @@ function slotHtml(slot: BoardSlot, game: BoardGame, contacts?: Map<string, Conta
     ${actions ? `<div class="board-ump-actions">${actions}</div>` : ""}</li>`;
 }
 
-function gameHtml(game: BoardGame, contacts?: Map<string, ContactNumbers>): string {
+function gameHtml(game: BoardGame, contacts?: Map<string, ContactNumbers>, notes?: Map<string, GameNote[]>): string {
   const badges = [
     STATUS_LABEL[game.status] ? `<span class="board-badge board-badge-${game.status}">${STATUS_LABEL[game.status]}</span>` : "",
     game.gameType !== "regular" ? `<span class="board-badge">${escapeHtml(game.gameType)}</span>` : "",
@@ -439,11 +440,12 @@ function gameHtml(game: BoardGame, contacts?: Map<string, ContactNumbers>): stri
         </div>
         ${game.notes ? `<p class="board-note">${escapeHtml(game.notes)}</p>` : ""}
         ${game.slots.length ? `<ul class="board-umps">${game.slots.map((slot) => slotHtml(slot, game, contacts)).join("")}</ul>` : ""}
+        ${notesHtml(game.id, notes?.get(game.id) ?? [], { canRemove: true })}
       </div>
     </li>`;
 }
 
-function fieldHtml(field: BoardField, contacts?: Map<string, ContactNumbers>): string {
+function fieldHtml(field: BoardField, contacts?: Map<string, ContactNumbers>, notes?: Map<string, GameNote[]>): string {
   const maps = field.address
     ? ` <a class="board-map" href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(field.address)}" target="_blank" rel="noopener">${escapeHtml(field.address)}</a>`
     : "";
@@ -454,27 +456,27 @@ function fieldHtml(field: BoardField, contacts?: Map<string, ContactNumbers>): s
         <span class="field-kind ${field.league ? "field-kind-league" : "field-kind-away"}">${field.league ? "League field" : "Away field"}</span>
       </h3>
       ${maps ? `<p class="board-address">${maps}</p>` : ""}
-      <ol class="board-games">${field.games.map((game) => gameHtml(game, contacts)).join("")}</ol>
+      <ol class="board-games">${field.games.map((game) => gameHtml(game, contacts, notes)).join("")}</ol>
     </section>`;
 }
 
-export function dayBoardHtml(board: DayBoard, contacts?: Map<string, ContactNumbers>): string {
+export function dayBoardHtml(board: DayBoard, contacts?: Map<string, ContactNumbers>, notes?: Map<string, GameNote[]>): string {
   const league = board.fields.filter((field) => field.league);
   const away = board.fields.filter((field) => !field.league);
 
   return `
-    ${league.map((field) => fieldHtml(field, contacts)).join("")}
+    ${league.map((field) => fieldHtml(field, contacts, notes)).join("")}
     ${board.emptyLeagueFields.length
       ? `<p class="board-empty-fields">No games at: ${board.emptyLeagueFields.map(escapeHtml).join(", ")}.</p>`
       : ""}
     ${away.length
-      ? `<h2 class="board-away-title">Games at other fields</h2>${away.map((field) => fieldHtml(field, contacts)).join("")}`
+      ? `<h2 class="board-away-title">Games at other fields</h2>${away.map((field) => fieldHtml(field, contacts, notes)).join("")}`
       : ""}
   `;
 }
 
 // The day on paper: a table for each field.
-export function dayBoardPrintHtml(board: DayBoard, now: Date): string {
+export function dayBoardPrintHtml(board: DayBoard, now: Date, notes?: Map<string, GameNote[]>): string {
   const rows = (field: BoardField) => field.games.map((game) => {
     const umps = game.slots.length
       ? game.slots.map((slot) => `<div>${escapeHtml(POSITION_LABEL[slot.position])}: ${slot.state === "open" ? `<span class="print-open">OPEN</span>` : escapeHtml(slot.name ?? "")}${slot.state === "assigned" && !game.finished ? " (not confirmed)" : ""}</div>`).join("")
@@ -486,7 +488,7 @@ export function dayBoardPrintHtml(board: DayBoard, now: Date): string {
       <td>${escapeHtml(game.division)}</td>
       <td><strong>${escapeHtml(game.home)}</strong> vs <strong>${escapeHtml(game.away)}</strong>${status}</td>
       <td>${umps}</td>
-    </tr>`;
+    </tr>${(notes?.get(game.id) ?? []).length ? `<tr><td></td><td colspan="3">${notesPrintHtml(notes!.get(game.id)!)}</td></tr>` : ""}`;
   }).join("");
 
   const section = (field: BoardField) => `

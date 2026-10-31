@@ -78,6 +78,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 45. [The league logo](#45-the-league-logo)
 46. [Game day: attendance, checking in, and calling umpires](#46-game-day-attendance-checking-in-and-calling-umpires)
 47. [The demo clock: a pretend time for testing and demonstrations](#47-the-demo-clock-a-pretend-time-for-testing-and-demonstrations)
+48. [Notes on a game](#48-notes-on-a-game)
 
 ---
 
@@ -200,6 +201,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `game_notes_check.sql` | Game notes work (administrators and the umpires on a game can add them; others cannot; notes can be read only by administrators and the umpires on that game; only administrators can remove them; nobody can write or edit the table directly; limits; the demo clock's pretend time) | `Failures: 0` |
 | `demo_clock_check.sql` | The demo clock works and is safe (with it off, a pretend time changes nothing; with it on, check-in and attendance use it; nobody can switch it on from the app) | `Failures: 0` |
 | `attendance_check.sql` | Attendance works (an umpire can check in from 1 hour before the game until it ends, and not otherwise; an administrator can record, correct and clear it; nobody can write it directly; moving umpires between places keeps it; the history records it) | `Failures: 0` |
 | `league_field_check.sql` | The league-field marker on fields works (a new field defaults to an away field; administrators can change it; an ordinary account and a signed-out visitor cannot) | `Failures: 0` |
@@ -445,6 +447,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\game_notes_check.sql` | Tests game notes (builds its own league, games, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\demo_clock_check.sql` | Tests the demo clock, switching it off and on inside its own run (your real setting is not changed) | No (always rolls back) |
 | `supabase\tests\attendance_check.sql` | Tests attendance and check-in (builds its own league, games, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
 | `supabase\tests\league_field_check.sql` | Tests the league-field marker on locations (your data is not changed) | No (always rolls back) |
@@ -550,10 +553,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `game-notes.ts`, `game-notes-model.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -1392,3 +1395,37 @@ Each **browser** has its own pretend time (it is kept in that browser only). So 
 - Anything saved while pretending (such as an arrival) keeps the pretend time on it, so it looks odd later. Use it on test data.
 
 **Check script:** `demo_clock_check.sql` (section 6). **Database change:** `20261101100000_add_demo_clock.sql`.
+
+## 48. Notes on a game
+
+A **note** is a short message attached to one game, for day-of things the schedule does not say: *use Field B today*, *the gate code is 4821*, *Jordan umpired the plate because Emily was sick*. A game can have several; each shows **who wrote it and when**.
+
+These are separate from the schedule's own **notes** field on a game (the one you fill in when you edit a game), which stays as it was.
+
+### Who can do what
+
+| | Add a note | Read the notes | Remove a note |
+|---|---|---|---|
+| **Super admin, umpire chief, scheduler** | Any game | Any game | Yes |
+| **An umpire on the game** | That game only | All the notes on that game | No |
+| **Another umpire, or any other account** | No | No | No |
+
+Nobody can **edit** a note. It is a record: remove it (an administrator) and add a corrected one.
+
+### Where you see and write them
+
+- **Field board** (administrators): the notes are listed under each game, with an **Add a note** box and a **Remove** button on each note. They are also included on **Print this day**.
+- **Game day card** (umpires): on the Home page, under each of today's games. An umpire can read the notes and **Add a note**. (An umpire sees notes on the card for today's games and games whose check-in is open; notes for a game days away show when its day comes.)
+
+To add one, open **Add a note**, write it, and press **Save note**. A note can be up to **1000 characters**, a game can have up to **100**, and a note of only spaces is not accepted.
+
+### Substitutions
+
+There is no separate substitution feature. If a substitute is known **before the printout**, change the assignment as usual and the new person is on the list. If it happens **after the printout**, add a note on the game saying who actually worked it, and an administrator can update the assignments later from the note.
+
+### Good to know
+
+- Everyone on the game, and the administrators, can read every note on it, so keep notes to the game.
+- With the **demo clock** on (section 47), a note is stamped with the pretend time.
+- This update also fixes a slip on the Field board: after it had been redrawn a few times, one click could be handled several times (for example recording an arrival twice). It is now handled once.
+- **Database change:** `20261102100000_add_game_notes.sql` (needs the demo clock one, `20261101100000`, applied first). **Check script:** `game_notes_check.sql` (section 6).

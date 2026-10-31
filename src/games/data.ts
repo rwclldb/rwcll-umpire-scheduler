@@ -7,6 +7,7 @@ import type { ContactNumbers } from "./contacts";
 import { appNow } from "../clock";
 import type {
   Assignment,
+  GameNote,
   DivisionOption,
   Game,
   GamesContext,
@@ -224,6 +225,39 @@ export async function loadGamesBetween(fromIso: string, toIso: string): Promise<
   }
 
   return { games: games.rows, assignments, error: null };
+}
+
+// The day-of notes on these games, oldest first, by game. People can only read
+// the notes on games they may see (administrators: all; an umpire: their own
+// games), so this is simply whatever they are allowed to read.
+export async function loadGameNotes(gameIds: string[]): Promise<{
+  notes: Map<string, GameNote[]>;
+  error: string | null;
+}> {
+  const notes = new Map<string, GameNote[]>();
+  const ids = [...new Set(gameIds)];
+
+  for (let start = 0; start < ids.length; start += 100) {
+    const group = ids.slice(start, start + 100);
+    const page = await fetchAll<GameNote>((from, to) =>
+      supabase
+        .from("game_notes")
+        .select("id, game_id, author_name, body, created_at")
+        .in("game_id", group)
+        .order("created_at")
+        .range(from, to)
+    );
+
+    if (page.error) return { notes: new Map(), error: page.error };
+
+    for (const note of page.rows) {
+      const list = notes.get(note.game_id) ?? [];
+      list.push(note);
+      notes.set(note.game_id, list);
+    }
+  }
+
+  return { notes, error: null };
 }
 
 // An entry of availability, as the editing screen shows it: a time the umpire

@@ -47,8 +47,9 @@ whenever the league's needs change.
   here; its database change is waiting for its first run on your own test database.
 - Phase 10 (game day) has begun. Stage **10a** (the field board and calendar) is built and in
   use. Stage **10b-1** (attendance and check-in, and Call and Text links) is built and tested
-  here; its database change is waiting for its first run on your own test database. Next are
-  10b-2 (a note on each game), 10c (reports) and 10d (day-of extras).
+  here; its database change is waiting for its first run on your own test database. Stage **10b-2** (notes on a
+  game) is built and tested here, with its own database change waiting for a first run. Next are
+  10c (reports) and 10d (day-of extras).
 - Sending real email (Phase 7) is postponed until you are ready, and Phase 9 (families and
   youth safeguards) waits for the board's answers.
 
@@ -198,14 +199,14 @@ whenever the league's needs change.
   **No-show** shown on the board and counted in its summary; changes kept in the history
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire)
 
-**10b-2. Game notes** ⬜
+**10b-2. Game notes** ✅ *(built and tested; the database change has not yet had its first run on your database)*
 
 - A **note on each game** for day-of things the schedule does not say. **Admins and umpires can
-  both write notes**
-- Substitutions need no separate feature for now: if a substitute is known **before the
-  printout**, an administrator changes the assignment and the new person is on the list; if it
-  happens **after the printout**, an administrator updates the system later from the game note.
-  (A "who actually worked" field can be added later if it is wanted.)
+  both write notes** (an umpire on that game); only administrators can remove them
+- Shown on the field board, the printed day sheet and the umpire's Game day card
+- Substitutions need no separate feature: a substitute known **before the printout** is handled
+  by changing the assignment; after the printout, an administrator updates the system later from
+  the game note. (A "who actually worked" field can be added later if it is wanted.)
 
 **10c. Reports** ⬜
 

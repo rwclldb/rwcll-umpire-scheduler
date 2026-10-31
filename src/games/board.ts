@@ -10,7 +10,8 @@ import {
   summaryText,
 } from "./board-model";
 import type { DayCount } from "./board-model";
-import { loadContactNumbers, loadContext, loadGamesBetween } from "./data";
+import { loadContactNumbers, loadContext, loadGameNotes, loadGamesBetween } from "./data";
+import { wireNotes } from "./game-notes";
 import { localDateKey } from "./format";
 import { printHtml } from "./print";
 import type { Assignment, Game, GamesContext } from "./types";
@@ -26,6 +27,11 @@ const KEEP_MS = 60_000;   // data is kept for a minute, so stepping between days
 type MonthData = { at: number; games: Game[]; assignments: Assignment[] };
 const months = new Map<string, MonthData>();
 let contextKept: { at: number; context: GamesContext } | null = null;
+
+// Each time the board is drawn it adds its buttons' handlers to the same
+// container, so the handlers of the previous drawing are cancelled first
+// (otherwise one click would be handled once for every earlier drawing).
+const handlers = new WeakMap<HTMLElement, AbortController>();
 
 // A message to show once after the board is redrawn (for example "Arrival recorded.")
 let flash = "";
@@ -73,6 +79,10 @@ export async function renderBoardPage(
   const dayKey = chosenDay(sub, todayKey);
   const day = parseDateKey(dayKey) as Date;
   let calendar = { year: day.getFullYear(), month: day.getMonth() };
+
+  handlers.get(container)?.abort();
+  const controller = new AbortController();
+  handlers.set(container, controller);
 
   container.innerHTML = `
     <main class="page">
@@ -123,6 +133,24 @@ export async function renderBoardPage(
   if (loadedContext.error || !loadedContext.context || loadedMonth.error || !loadedMonth.data) {
     console.error("Field board failed:", loadedContext.error ?? loadedMonth.error);
     fail("The field board could not be loaded. Refresh and try again.");
+
+    // The page has no day to show, but its buttons must still work (above all Refresh).
+    container.addEventListener("click", (event) => {
+      const target = event.target as HTMLElement;
+      const step = target.closest<HTMLElement>("[data-board-step]");
+      if (step) return navigate(`board/${shiftDay(dayKey, Number(step.dataset.boardStep))}`);
+      if (target.closest("#board-today")) return navigate(`board/${todayKey}`);
+      if (target.closest("#board-refresh")) {
+        months.clear();
+        contextKept = null;
+        void renderBoardPage(container, navigate, sub);
+      }
+    }, { signal: controller.signal });
+
+    get<HTMLInputElement>("board-date").addEventListener("change", (event) => {
+      const value = (event.target as HTMLInputElement).value;
+      if (value) navigate(`board/${value}`);
+    });
     return;
   }
 
@@ -146,8 +174,12 @@ export async function renderBoardPage(
   )];
   const contacts = umpireIds.length ? (await loadContactNumbers(umpireIds)).contacts : undefined;
 
+  // ---- the day-of notes on these games
+  const gameIds = board.fields.flatMap((field) => field.games.map((game) => game.id));
+  const notes = gameIds.length ? (await loadGameNotes(gameIds)).notes : undefined;
+
   // ---- the day
-  let dayHtml = dayBoardHtml(board, contacts);
+  let dayHtml = dayBoardHtml(board, contacts, notes);
   if (board.summary.games === 0 && board.summary.canceled === 0) {
     // offer the nearest days that do have games (within the month shown)
     const counts = monthCounts(loadedMonth.data.games, loadedMonth.data.assignments, context.divisions, now);
@@ -208,7 +240,7 @@ export async function renderBoardPage(
     }
 
     if (target.closest("#board-print")) {
-      printHtml(dayBoardPrintHtml(board, new Date()));
+      printHtml(dayBoardPrintHtml(board, new Date(), notes));
       return;
     }
 
@@ -217,7 +249,13 @@ export async function renderBoardPage(
       contextKept = null;
       void renderBoardPage(container, navigate, sub);
     }
-  });
+  }, { signal: controller.signal });
+
+  // The notes: add and remove
+  wireNotes(container, (notice) => {
+    flash = notice;
+    void renderBoardPage(container, navigate, sub);
+  }, controller.signal);
 
   // An administrator records an arrival, a no-show, or clears it.
   const recordMark = async (button: HTMLButtonElement) => {
