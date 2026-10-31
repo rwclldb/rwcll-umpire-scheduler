@@ -10,7 +10,12 @@ import {
   summaryText,
 } from "./board-model";
 import type { DayCount } from "./board-model";
-import { loadContactNumbers, loadContext, loadGameNotes, loadGamesBetween } from "./data";
+import { callAroundHtml, callAroundList } from "./call-around-model";
+import { closurePreview, closureWindow, gamesToCancel, reasonText } from "./closure-model";
+import { loadAccessDetails, loadAvailability, loadClosures, loadContactNumbers, loadContext, loadGameNotes, loadGamesBetween, loadRunningLate } from "./data";
+import { POSITIONS, POSITION_LABEL } from "./staffing";
+import type { BoardExtras } from "./board-model";
+import type { Position } from "./types";
 import { wireNotes } from "./game-notes";
 import { localDateKey } from "./format";
 import { printHtml } from "./print";
@@ -178,8 +183,20 @@ export async function renderBoardPage(
   const gameIds = board.fields.flatMap((field) => field.games.map((game) => game.id));
   const notes = gameIds.length ? (await loadGameNotes(gameIds)).notes : undefined;
 
+  // ---- the extras: access details, rainouts, and who has said they are running late
+  const dayStart = new Date(`${dayKey}T00:00:00`);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  const [access, closed, late] = await Promise.all([
+    loadAccessDetails(board.fields.map((field) => field.locationId)),
+    loadClosures(dayStart.toISOString(), dayEnd.toISOString()),
+    loadRunningLate(gameIds),
+  ]);
+  const extras: BoardExtras = { access, closures: closed.closures, late };
+
   // ---- the day
-  let dayHtml = dayBoardHtml(board, contacts, notes);
+  let dayHtml = dayBoardHtml(board, contacts, notes, extras);
   if (board.summary.games === 0 && board.summary.canceled === 0) {
     // offer the nearest days that do have games (within the month shown)
     const counts = monthCounts(loadedMonth.data.games, loadedMonth.data.assignments, context.divisions, now);
@@ -217,6 +234,43 @@ export async function renderBoardPage(
   container.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
 
+    // When "Mark" is opened, the arrival time starts as the time it is now (the
+    // pretend time, if the demo clock is in use) for a game that is today. It is
+    // sent as "now" unless it is changed. For a game on another day it stays blank.
+    // (This happens in the same click that opens the panel, so it can never
+    // overwrite something already typed.)
+    const markSummary = target.closest<HTMLElement>("details.board-mark > summary");
+    if (markSummary) {
+      const details = markSummary.parentElement as HTMLDetailsElement;
+      const input = details.querySelector<HTMLInputElement>(".board-mark-time");
+      if (!details.open && input) {
+        const now = appNow();
+        input.value = details.dataset.day === dateKey(now)
+          ? `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+          : "";
+        input.dataset.default = input.value;
+      }
+      return;
+    }
+
+    const reopen = target.closest<HTMLButtonElement>("[data-reopen]");
+    if (reopen) {
+      void reopenField(reopen);
+      return;
+    }
+
+    const find = target.closest<HTMLButtonElement>("[data-find-game]");
+    if (find) {
+      void openFind(find);
+      return;
+    }
+
+    const assign = target.closest<HTMLButtonElement>("[data-assign-umpire]");
+    if (assign) {
+      void assignUmpire(assign);
+      return;
+    }
+
     const step = target.closest<HTMLElement>("[data-board-step]");
     if (step) return navigate(`board/${shiftDay(dayKey, Number(step.dataset.boardStep))}`);
 
@@ -251,6 +305,162 @@ export async function renderBoardPage(
     }
   }, { signal: controller.signal });
 
+  // ---- Rainout: close a field
+  const say = (text: string, type: "error" | "success" = "error") => {
+    const message = get<HTMLElement>("board-message");
+    message.textContent = text;
+    message.className = `message ${type}`;
+  };
+
+  // what the rainout form would do right now
+  const closureNow = () => {
+    const form = container.querySelector<HTMLFormElement>("#closure-form");
+    if (!form) return null;
+
+    const field = board.fields.find((item) => item.locationId === form.querySelector<HTMLSelectElement>("#closure-field")!.value);
+    const window = closureWindow(dayKey, form.querySelector<HTMLInputElement>("#closure-from")!.value, form.querySelector<HTMLInputElement>("#closure-to")!.value);
+    const games = field && window ? gamesToCancel(field, window.from.getTime(), window.to.getTime()) : [];
+
+    return { form, field, window, games };
+  };
+
+  const updateClosurePreview = () => {
+    const now = closureNow();
+    const preview = container.querySelector<HTMLElement>("#closure-preview");
+    if (!now || !preview) return;
+    preview.textContent = now.window ? closurePreview(now.games) : "The end time must be after the start time.";
+  };
+
+  container.addEventListener("change", (event) => {
+    if ((event.target as HTMLElement).closest("#closure-form")) updateClosurePreview();
+  }, { signal: controller.signal });
+  container.addEventListener("input", (event) => {
+    if ((event.target as HTMLElement).closest("#closure-form")) updateClosurePreview();
+  }, { signal: controller.signal });
+  container.addEventListener("toggle", (event) => {
+    if ((event.target as HTMLElement).id === "board-closure-box") updateClosurePreview();
+  }, { capture: true, signal: controller.signal });
+
+  container.addEventListener("submit", (event) => {
+    if (!(event.target as HTMLElement).closest("#closure-form")) return;
+    event.preventDefault();
+
+    const now = closureNow();
+    if (!now || !now.field) return;
+    if (!now.window) return say("The end time must be after the start time.");
+
+    const choice = now.form.querySelector<HTMLSelectElement>("#closure-reason")!.value;
+    const reason = reasonText(choice, now.form.querySelector<HTMLInputElement>("#closure-details")!.value);
+    if (!reason) return say("Give a reason (details are needed when the reason is Other).");
+    if (now.games.length === 0) return say("No games would be canceled in that time.");
+
+    if (!window.confirm(`${now.field.name}: ${closurePreview(now.games)}\n\nReason: ${reason}\n\nCancel them?`)) return;
+
+    now.form.querySelectorAll("button").forEach((item) => { (item as HTMLButtonElement).disabled = true; });
+
+    void (async () => {
+      const { data, error } = await supabase.rpc("close_field", {
+        p_location_id: now.field!.locationId,
+        p_from: now.window!.from.toISOString(),
+        p_to: now.window!.to.toISOString(),
+        p_reason: reason,
+        ...(demoNowIso() ? { p_now: demoNowIso() } : {}),
+      });
+
+      if (error) {
+        now.form.querySelectorAll("button").forEach((item) => { (item as HTMLButtonElement).disabled = false; });
+        return say(`Could not close the field. ${error.message}`);
+      }
+
+      months.clear();
+      flash = `Closed ${now.field!.name}: ${data} ${Number(data) === 1 ? "game" : "games"} canceled and the umpires told.`;
+      void renderBoardPage(container, navigate, sub);
+    })();
+  }, { signal: controller.signal });
+
+  const reopenField = async (button: HTMLButtonElement) => {
+    if (!window.confirm("Reopen this field? The games it canceled will be put back, and the umpires told.")) return;
+
+    button.disabled = true;
+    const { data, error } = await supabase.rpc("reopen_closure", {
+      p_closure_id: button.dataset.reopen,
+      ...(demoNowIso() ? { p_now: demoNowIso() } : {}),
+    });
+
+    if (error) {
+      button.disabled = false;
+      return say(`Could not reopen it. ${error.message}`);
+    }
+
+    months.clear();
+    flash = `Reopened: ${data} ${Number(data) === 1 ? "game" : "games"} put back and the umpires told.`;
+    void renderBoardPage(container, navigate, sub);
+  };
+
+  // ---- Call-around: who could take an open place
+  const openFind = async (button: HTMLButtonElement) => {
+    const gameId = button.dataset.findGame as string;
+    const position = button.dataset.findPosition as Position;
+    const panel = container.querySelector<HTMLElement>(`[data-find-panel="${gameId}:${position}"]`)!;
+
+    if (!panel.hidden) {
+      panel.hidden = true;
+      return;
+    }
+
+    panel.hidden = false;
+    panel.innerHTML = `<p class="callaround-help">Looking for umpires&hellip;</p>`;
+
+    const game = loadedMonth.data!.games.find((item) => item.id === gameId);
+    const eligibility = await supabase.rpc("game_umpire_eligibility", { p_game_id: gameId });
+
+    if (!game || eligibility.error) {
+      panel.innerHTML = `<p class="message error">Could not look for umpires. ${escapeHtml(eligibility.error?.message ?? "")}</p>`;
+      return;
+    }
+
+    const problems = new Map(
+      ((eligibility.data ?? []) as { umpire_id: string; problem: string | null }[]).map((row): [string, string | null] => [row.umpire_id, row.problem])
+    );
+
+    const candidates = callAroundList({
+      game,
+      umpires: context.umpires,
+      games: loadedMonth.data!.games,
+      assignments: loadedMonth.data!.assignments,
+      availability: await loadAvailability(),
+      problems,
+    });
+
+    const numbers = candidates.length ? (await loadContactNumbers(candidates.map((candidate) => candidate.umpireId))).contacts : new Map();
+    panel.innerHTML = callAroundHtml(gameId, position, candidates, numbers);
+  };
+
+  const assignUmpire = async (button: HTMLButtonElement) => {
+    const gameId = button.dataset.assignGame as string;
+    const position = button.dataset.assignPosition as Position;
+    const umpireId = button.dataset.assignUmpire as string;
+
+    // every place as it is now, with this umpire in the open one
+    const places: Record<string, string | null> = {};
+    for (const place of POSITIONS) places[place] = null;
+    for (const row of loadedMonth.data!.assignments.filter((item) => item.game_id === gameId)) places[row.position] = row.umpire_id;
+    places[position] = umpireId;
+
+    container.querySelectorAll<HTMLButtonElement>("[data-assign-umpire]").forEach((item) => { item.disabled = true; });
+
+    const { error } = await supabase.rpc("set_game_umpires", { p_game_id: gameId, p_umpires: places });
+
+    if (error) {
+      container.querySelectorAll<HTMLButtonElement>("[data-assign-umpire]").forEach((item) => { item.disabled = false; });
+      return say(`Could not assign them. ${error.message}`);
+    }
+
+    months.clear();
+    flash = `Assigned ${context.umpireNames.get(umpireId) ?? "the umpire"} to the ${POSITION_LABEL[position]} place.`;
+    void renderBoardPage(container, navigate, sub);
+  };
+
   // The notes: add and remove
   wireNotes(container, (notice) => {
     flash = notice;
@@ -270,8 +480,10 @@ export async function renderBoardPage(
     // an arrival time (blank means now): the typed time, on the day of that game
     let arrivedAt: string | null = null;
     if (kind === "arrived") {
-      const typed = button.closest(".board-mark-body")?.querySelector<HTMLInputElement>(".board-mark-time")?.value;
-      if (typed) {
+      const input = button.closest(".board-mark-body")?.querySelector<HTMLInputElement>(".board-mark-time");
+      const typed = input?.value;
+      // (a time that was left as it was filled in means "now", so the database uses its own now)
+      if (typed && typed !== input?.dataset.default) {
         const game = board.fields.flatMap((field) => field.games).find((item) => item.id === gameId);
         const when = new Date(`${game ? localDateKey(game.startsAt) : dayKey}T${typed}:00`);
         if (Number.isNaN(when.getTime())) return say("That time is not valid.");

@@ -50,6 +50,7 @@ export function renderLocationForm(location: LocationRecord | null): string {
   const name = location?.name ?? "";
   const address = location?.address ?? "";
   const notes = location?.notes ?? "";
+  const directions = location?.directions ?? "";
   const active = location?.is_active ?? true;
   // most new fields are ones this league runs
   const leagueField = location?.is_league_field ?? true;
@@ -66,6 +67,20 @@ export function renderLocationForm(location: LocationRecord | null): string {
       <label for="location-address">Address (optional)</label>
       <input id="location-address" name="address" maxlength="200"
         value="${escapeHtml(address)}" />
+
+      <label for="location-directions">Parking and directions (optional)</label>
+      <textarea id="location-directions" name="directions"
+        rows="3" maxlength="1000">${escapeHtml(directions)}</textarea>
+      <p class="field-help">Anyone who can see the schedule can read this.</p>
+
+      <label for="location-access">Access details (optional)</label>
+      <textarea id="location-access" name="access"
+        rows="2" maxlength="500" ${location ? "disabled" : ""}
+        placeholder="For example: gate code 1234"></textarea>
+      <p class="field-help">
+        A gate code or lock combination. Only administrators, and the umpires on a
+        game here from 24 hours before until it ends, can read this. It is never printed.
+      </p>
 
       <label for="location-notes">Notes (optional)</label>
       <textarea id="location-notes" name="notes"
@@ -127,6 +142,25 @@ export function wireLocationForm(container: HTMLElement): void {
       void reloadSetup(container);
     });
 
+  // The access details are kept apart (only administrators can read them), so
+  // when editing a field they are fetched separately and filled in.
+  const accessBox = form.querySelector<HTMLTextAreaElement>('[name="access"]');
+  if (accessBox && state.editingLocationId) {
+    void supabase
+      .from("location_access_notes")
+      .select("body")
+      .eq("location_id", state.editingLocationId)
+      .maybeSingle()
+      .then(({ data, error }: { data: unknown; error: { message: string } | null }) => {
+        if (error) {
+          accessBox.placeholder = "The access details could not be loaded, so they will be left as they are.";
+          return;
+        }
+        accessBox.value = (data as { body?: string } | null)?.body ?? "";
+        accessBox.disabled = false;
+      });
+  }
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
@@ -138,6 +172,12 @@ export function wireLocationForm(container: HTMLElement): void {
     const name = String(data.get("name") ?? "").trim();
     const address = String(data.get("address") ?? "").trim();
     const notes = String(data.get("notes") ?? "").trim();
+    const directions = String(data.get("directions") ?? "").trim();
+    const accessBox = form.querySelector<HTMLTextAreaElement>('[name="access"]');
+    const access = accessBox?.value.trim() ?? "";
+    // (the access details of an existing field are loaded first; if that did not
+    // work they are left as they are, never blanked)
+    const accessReady = Boolean(accessBox) && !accessBox!.disabled;
     const isActive = form.querySelector<HTMLInputElement>(
       '[name="is_active"]',
     )?.checked ?? false;
@@ -165,14 +205,16 @@ export function wireLocationForm(container: HTMLElement): void {
       name,
       address: address || null,
       notes: notes || null,
+      directions: directions || null,
       is_active: isActive,
       is_league_field: isLeagueField,
     };
 
-    const result = state.editingLocationId
+    const editingId = state.editingLocationId;
+    const result = editingId
       ? await supabase.from("locations")
-          .update(values).eq("id", state.editingLocationId)
-      : await supabase.from("locations").insert(values);
+          .update(values).eq("id", editingId)
+      : await supabase.from("locations").insert(values).select("id").single();
 
     if (result.error) {
       if (message) {
@@ -188,6 +230,16 @@ export function wireLocationForm(container: HTMLElement): void {
       return;
     }
 
+    // the access details are kept apart from the rest (only administrators can read them)
+    let accessError = "";
+    if (accessReady) {
+      const locationId = editingId ?? (result.data as { id: string } | null)?.id;
+      if (locationId) {
+        const saved = await supabase.rpc("set_location_access_details", { p_location_id: locationId, p_body: access });
+        if (saved.error) accessError = ` The access details were not saved: ${saved.error.message}`;
+      }
+    }
+
     state.editingLocationId = null;
     await reloadSetup(container);
 
@@ -195,8 +247,8 @@ export function wireLocationForm(container: HTMLElement): void {
       "#league-setup-message",
     );
     if (successMessage) {
-      successMessage.textContent = "Location saved successfully.";
-      successMessage.className = "message success";
+      successMessage.textContent = `Location saved successfully.${accessError}`;
+      successMessage.className = accessError ? "message error" : "message success";
     }
   });
 }

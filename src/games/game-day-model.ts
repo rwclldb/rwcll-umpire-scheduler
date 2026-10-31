@@ -5,7 +5,8 @@ import type { CheckInState } from "./attendance";
 import { formatTime, localDateKey } from "./format";
 import { notesHtml } from "./game-notes-model";
 import type { UmpireGame } from "./schedule";
-import type { Assignment, GameNote } from "./types";
+import { POSITION_LABEL } from "./staffing";
+import type { Assignment, GameNote, Position, RunningLate } from "./types";
 
 // The "Game day" card on an umpire's Home page: today's games, with a button to
 // check in once the game is within an hour of starting. (This file works out and
@@ -48,6 +49,38 @@ export function msUntilNextOpening(entries: GameDayEntry[], now: Date): number |
   return waits.length ? Math.min(...waits) : null;
 }
 
+// What the card shows beyond the game itself.
+export type GameDayExtras = {
+  umpireId?: string;
+  partners?: Map<string, { position: string; name: string }[]>;   // the other umpires on each game (names only)
+  access?: Map<string, string>;                                     // access details, where the umpire may have them
+  late?: Map<string, RunningLate>;                                  // "gameId:umpireId"
+};
+
+export const LATE_CHOICES = [5, 10, 15, 20, 30, 45, 60];
+
+// "I'm running late": shown while check-in is open (within an hour of the start, until the game ends)
+function lateHtml(entry: GameDayEntry, extras?: GameDayExtras): string {
+  if (entry.state.kind !== "open") return "";
+
+  const report = extras?.umpireId ? extras.late?.get(`${entry.game.id}:${extras.umpireId}`) : undefined;
+  const id = escapeHtml(entry.game.id);
+
+  return `
+    <details class="gd-late"${report ? " open" : ""}>
+      <summary>${report ? `Running late (about ${report.minutes} min)` : "I'm running late"}</summary>
+      <div class="gd-late-body">
+        <label>About how many minutes?
+          <select class="gd-late-minutes">
+            ${LATE_CHOICES.map((minutes) => `<option value="${minutes}"${report?.minutes === minutes ? " selected" : ""}>${minutes}</option>`).join("")}
+          </select>
+        </label>
+        <button type="button" class="primary-button" data-late-send="${id}">${report ? "Update" : "Tell the administrators"}</button>
+        ${report ? `<button type="button" class="secondary-button" data-late-clear="${id}">I'm not late after all</button>` : ""}
+      </div>
+    </details>`;
+}
+
 function actionHtml(entry: GameDayEntry): string {
   const { state, game } = entry;
 
@@ -67,7 +100,7 @@ function actionHtml(entry: GameDayEntry): string {
   }
 }
 
-export function gameDayHtml(entries: GameDayEntry[], notes?: Map<string, GameNote[]>): string {
+export function gameDayHtml(entries: GameDayEntry[], notes?: Map<string, GameNote[]>, extras?: GameDayExtras): string {
   if (entries.length === 0) return "";
 
   return `
@@ -87,8 +120,13 @@ export function gameDayHtml(entries: GameDayEntry[], notes?: Map<string, GameNot
                 <strong>${escapeHtml(game.time)}</strong>
                 <span>${escapeHtml(game.division)} &middot; ${escapeHtml(game.home)} vs ${escapeHtml(game.away)}</span>
                 <span>${escapeHtml(game.position)} at ${escapeHtml(game.field)}${map}</span>
+                ${(extras?.partners?.get(game.id) ?? []).length
+                  ? `<span class="gd-with"><strong>With:</strong> ${(extras!.partners!.get(game.id)!).map((partner) => `${escapeHtml(partner.name)} (${escapeHtml(POSITION_LABEL[partner.position as Position] ?? partner.position)})`).join(", ")}</span>`
+                  : ""}
+                ${game.directions ? `<span class="gd-directions"><strong>Parking and directions:</strong> ${escapeHtml(game.directions)}</span>` : ""}
+                ${extras?.access?.get(game.id) ? `<span class="gd-access"><strong>Gate or access:</strong> ${escapeHtml(extras.access.get(game.id)!)}</span>` : ""}
               </div>
-              <div class="gd-action">${actionHtml(entry)}</div>
+              <div class="gd-action">${actionHtml(entry)}${lateHtml(entry, extras)}</div>
               <div class="gd-notes">${notesHtml(game.id, notes?.get(game.id) ?? [], { canRemove: false })}</div>
             </li>`;
         }).join("")}

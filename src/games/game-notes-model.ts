@@ -24,7 +24,7 @@ export function notesHtml(
       <ul class="notes-list">
         ${notes.map((note) => `
           <li class="note" data-note="${escapeHtml(note.id)}">
-            <span class="note-meta"><strong>${escapeHtml(note.author_name)}</strong> &middot; ${escapeHtml(noteWhen(note.created_at))}</span>
+            <span class="note-meta"><strong>${escapeHtml(note.author_name)}</strong> &middot; ${escapeHtml(noteWhen(note.created_at))}${note.admin_only ? ` <span class="board-tag board-tag-warn note-private-tag">Administrators only</span>` : ""}</span>
             <span class="note-body">${escapeHtml(note.body)}</span>
             ${options.canRemove
               ? `<button type="button" class="secondary-button note-remove" data-note-remove="${escapeHtml(note.id)}" aria-label="Remove the note by ${escapeHtml(note.author_name)}">Remove</button>`
@@ -43,7 +43,15 @@ export function notesHtml(
             <textarea class="note-text" rows="3" maxlength="${NOTE_MAX_LENGTH}" required
               placeholder="For example: the field is closed, use Field B"></textarea>
           </label>
-          <p class="note-help">Everyone on this game, and the administrators, can read it.</p>
+          <label class="note-private">
+            <input type="checkbox" class="note-admin-only" />
+            Only administrators can read this note
+          </label>
+          <p class="note-help">
+            Everyone on this game, and the administrators, can read a note unless you tick the box.
+            Please do not write medical details: for an injury, say only that one happened (use
+            initials, not a full name) and tell an administrator.
+          </p>
           <div class="note-actions">
             <button type="submit" class="primary-button">Save note</button>
           </div>

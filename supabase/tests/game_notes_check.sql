@@ -433,7 +433,7 @@ begin
     perform set_config('request.jwt.claim.sub', t_admin::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', t_admin, 'role', 'authenticated')::text, true);
     set local role authenticated;
-    perform public.add_game_note(g2, 'with the demo clock off', at1);
+    perform public.add_game_note(g2, 'with the demo clock off', p_now := at1);
     reset role;
     if (select created_at from public.game_notes where game_id = g2 and body = 'with the demo clock off') = now() then report := array_append(report, ('PASS  C1  with the demo clock off, a pretend time is ignored (the note is stamped with the real time)')::text); else report := array_append(report, ('FAIL  C1  a pretend time was used with the demo clock off')::text); failures := failures + 1; end if;
   exception when others then
@@ -449,7 +449,7 @@ begin
     perform set_config('request.jwt.claim.sub', t_admin::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', t_admin, 'role', 'authenticated')::text, true);
     set local role authenticated;
-    perform public.add_game_note(g2, 'with the demo clock on', at1);
+    perform public.add_game_note(g2, 'with the demo clock on', p_now := at1);
     reset role;
     if (select created_at from public.game_notes where game_id = g2 and body = 'with the demo clock on') = at1 then report := array_append(report, ('PASS  C2  with the demo clock on, the note is stamped with the pretend time')::text); else report := array_append(report, ('FAIL  C2  the pretend time was not used')::text); failures := failures + 1; end if;
   exception when others then

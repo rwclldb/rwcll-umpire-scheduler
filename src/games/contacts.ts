@@ -9,6 +9,9 @@ export type ContactNumbers = {
   own: string | null; // the umpire's own number (the account's, else the record's)
   parent: string | null; // a youth umpire's emergency contact, normally a parent or guardian
   youth: boolean;
+  // They agreed to text messages (on the account whose number this is). A
+  // parent's number is for calls only: there is no record of consent to text it.
+  ownText?: boolean;
 };
 
 // "650-555-1234", or for a youth umpire "Own 650-555-1111 · Parent 408-555-2222".
@@ -33,7 +36,8 @@ export function contactText(contact: ContactNumbers | undefined): string {
 export function combineContacts(
   umpires: { id: string; profile_id: string | null; phone: string | null; classification: string }[],
   accountPhones: Map<string, string | null>,
-  parentPhones: Map<string, string | null>
+  parentPhones: Map<string, string | null>,
+  textAgreed: Map<string, boolean> = new Map()
 ): Map<string, ContactNumbers> {
   const result = new Map<string, ContactNumbers>();
 
@@ -41,8 +45,12 @@ export function combineContacts(
     const account = umpire.profile_id ? accountPhones.get(umpire.profile_id) : null;
     const youth = umpire.classification === "youth";
 
+    // (consent belongs to the account, so it only counts for the account's own number)
+    const ownText = Boolean(clean(account) && umpire.profile_id && textAgreed.get(umpire.profile_id));
+
     result.set(umpire.id, {
       own: clean(account) ?? clean(umpire.phone),
+      ownText,
       parent: youth ? clean(parentPhones.get(umpire.id)) : null,
       youth,
     });

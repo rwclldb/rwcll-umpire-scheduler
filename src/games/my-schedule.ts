@@ -1,10 +1,11 @@
 import { supabase } from "../supabase";
 import { escapeHtml } from "../ui";
-import { loadContext, loadGameNotes, loadUmpireGames } from "./data";
+import { loadContext, loadGameAccess, loadGameNotes, loadPartners, loadRunningLate, loadUmpireGames } from "./data";
 import { renderAvailabilityEditor } from "./availability-editor";
 import { wireNotes } from "./game-notes";
 import { wireGameDay } from "./game-day";
 import { gameDayEntries, gameDayHtml } from "./game-day-model";
+import type { GameDayExtras } from "./game-day-model";
 import { renderOpenGames } from "./open-games";
 import { renderScheduleView } from "./umpire-schedule";
 import { buildUmpireSchedule, lookupsFor } from "./schedule";
@@ -74,8 +75,24 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
   // the notes on those games (an umpire can read the notes on their own games)
   const dayNotes = gameDay.length ? (await loadGameNotes(gameDay.map((entry) => entry.game.id))).notes : undefined;
 
+  // who else is on those games (names), where to go, how to get in (the database
+  // only gives the access details from 24 hours before until the game ends), and
+  // whether they have said they are running late
+  const dayIds = gameDay.map((entry) => entry.game.id);
+  const dayExtras: GameDayExtras = { umpireId: me.id as string };
+  if (dayIds.length) {
+    const [partners, late, access] = await Promise.all([
+      loadPartners(dayIds),
+      loadRunningLate(dayIds),
+      Promise.all(dayIds.map(async (id) => [id, await loadGameAccess(id)] as const)),
+    ]);
+    dayExtras.partners = partners;
+    dayExtras.late = late;
+    dayExtras.access = new Map(access.filter((pair): pair is readonly [string, string] => pair[1] !== null));
+  }
+
   container.innerHTML = `
-    <div id="my-game-day">${gameDayHtml(gameDay, dayNotes)}</div>
+    <div id="my-game-day">${gameDayHtml(gameDay, dayNotes, dayExtras)}</div>
     <section class="my-schedule">
       <h2>My schedule</h2>
       ${notice ? `<p class="message success" role="status">${escapeHtml(notice)}</p>` : ""}

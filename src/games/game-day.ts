@@ -11,8 +11,54 @@ export function wireGameDay(
 ): void {
   const message = container.querySelector<HTMLElement>("#game-day-message");
 
+  const say = (text: string) => {
+    if (!message) return;
+    message.textContent = text;
+    message.className = "message error";
+  };
+
   container.addEventListener("click", (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-checkin]");
+    const target = event.target as HTMLElement;
+
+    // "I'm running late" and "I'm not late after all"
+    const send = target.closest<HTMLButtonElement>("[data-late-send]");
+    const clear = target.closest<HTMLButtonElement>("[data-late-clear]");
+    if (send || clear) {
+      const button = (send ?? clear)!;
+      button.disabled = true;
+
+      void (async () => {
+        const pretend = demoNowIso();
+
+        if (send) {
+          const minutes = Number(send.closest(".gd-late-body")?.querySelector<HTMLSelectElement>(".gd-late-minutes")?.value);
+          const { error } = await supabase.rpc("report_running_late", {
+            p_game_id: send.dataset.lateSend,
+            p_minutes: minutes,
+            ...(pretend ? { p_now: pretend } : {}),
+          });
+
+          if (error) {
+            button.disabled = false;
+            return say(`Could not tell them. ${error.message}`);
+          }
+
+          return refresh(`Thank you. The administrators know you are running about ${minutes} minutes late.`);
+        }
+
+        const { error } = await supabase.rpc("clear_running_late", { p_game_id: clear!.dataset.lateClear });
+        if (error) {
+          button.disabled = false;
+          return say(`Could not do that. ${error.message}`);
+        }
+
+        refresh("Okay. You are no longer marked as running late.");
+      })();
+
+      return;
+    }
+
+    const button = target.closest<HTMLButtonElement>("[data-checkin]");
     if (!button) return;
 
     button.disabled = true;

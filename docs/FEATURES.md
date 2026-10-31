@@ -103,6 +103,22 @@ test on the league's own database.
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire), for reaching someone who is late
 - Attendance stays with an umpire when they are moved to another place on a game
 
+**Game day extras** 🆕
+
+- **Rainouts:** close a field for a day or part of it; its games are canceled with a note, the umpires are told, and it can be **reopened** to put everything back
+- **Running late:** an umpire says about how many minutes late (no location is used); the administrators are told and the board shows it
+- **Find an umpire:** a call-around list for an open place, best first, with Call (and Text for those who agreed), a parent's number for youth, and an **Assign** button; nothing is saved about who was called
+- **Field notes:** parking and directions for everyone, and **access details** (a gate code) only for administrators and the umpires on a game there from 24 hours before until it ends
+- **An umpire's day:** directions, access details, and who else is on the game (names only) on the Game day card
+- **Administrators-only notes**, for sensitive things; never printed
+- **Text** links appear only for people who agreed to text messages; a parent's number is for calls only
+
+**Automatic sign-out** 🆕
+
+- A person is signed out after a period of no activity, with a one-minute warning and a **Stay signed in** button, and a message on the sign-in page afterwards
+- The time is a setting in the database, separately for **administrators** and for **umpire-only** accounts (both start at 30 minutes; 0 means never); changing it needs no new release
+- On the Field board, the **Mark** arrival time box starts as the time it is now (the pretend time when the demo clock is on)
+
 **Game notes** 🆕
 
 - A short log of notes on each game (who wrote each, and when), for day-of things like a changed field, a gate code, or who actually worked a game

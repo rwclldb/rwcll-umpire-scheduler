@@ -32,6 +32,7 @@ export function wireNotes(
       const { error } = await supabase.rpc("add_game_note", {
         p_game_id: form.dataset.game,
         p_body: body,
+        p_admin_only: form.querySelector<HTMLInputElement>(".note-admin-only")?.checked ?? false,
         ...(pretend ? { p_now: pretend } : {}),
       });
 
