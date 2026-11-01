@@ -44,6 +44,7 @@ whenever the league's needs change.
   can't umpire, and a month calendar. It is built and tested here; its database change is
   waiting for its first run on your own test database.
 - Stage **10d** (rainouts, running late, call-around list, field notes, the umpire's day, and administrators-only notes) is built and tested here; its database change is waiting for a first run. **Stage 10c (reports) is built and tested here too, which completes Phase 10**; its database change is waiting for a first run.
+- **Phase 12 (payments):** pay rates, payees, earnings and a monthly payroll are built and tested here (their database changes are waiting for a first run). You record payments by hand for now. Next is paying through Stripe (see `STRIPE-SETUP.md`).
 - Phase 7 (sending messages): a first cut is built and tested here, with its database change waiting for a first run; deploying and switching it on is the next step (see `EMAIL-SENDING.md`).
 - A **demo clock** (a pretend date and time, for testing and demonstrations) is built and tested
   here; its database change is waiting for its first run on your own test database.
@@ -240,34 +241,37 @@ whenever the league's needs change.
 
 - Track umpire certifications and training
 
-### Phase 12: Payments ⬜ *(late; needs research first)*
+### Phase 12: Payments 🟡 *(rates, earnings and payroll built; paying through Stripe comes next)*
 
-The league pays its **youth umpires**; adult umpires are generally not paid, but
-the system should allow it. This phase depends on confirmed assignments (5b-1),
-check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
+The league pays its **youth umpires** (about **monthly**); adult umpires are not paid today, but the system has the slots.
+**Chosen:** **Stripe Connect** (Express accounts), paying a **parent or guardian** for each youth umpire (see below).
+**Out of scope for now:** W-9s, tax forms and work-permit rules (league management handles them; added later if needed).
 
-**12-0. Find out how it is done today** ⏳ *(before any building)*
-- How, how much, how often and by whom umpires are paid now; what records exist
-- What the league's treasurer, accountant, insurer and Little League district advise
-  about paying minors and how umpires are classified (see "Questions waiting")
+**What I verified about Stripe** *(please recheck prices at stripe.com/connect/pricing)*
+- **Express and Custom Connect accounts need an account holder aged 18 or older.** Standard accounts allow 13+, but a parent or
+  guardian must own the account for anyone under 18. So a youth umpire is paid **through a parent or guardian**.
+- The league pays Stripe about **$2 per paid account per month, plus 0.25% + $0.25 per payout** (about $2.63 for a $150 payout).
+- Stripe pays out only money already in the **platform balance**, added by **top-up** from the league's bank: **ACH debit takes about
+  5 to 6 business days**, wire or ACH credit about 1 to 3. A failed transfer is not retried, so the system must check the balance first.
 
-**12a. Rates and an earnings ledger** ⬜
-- Rates by place, division and game type; a treasurer's screen to set them
-- Each confirmed game produces what the umpire is owed (youth, or adults when enabled)
-- Payment history and reports per umpire, game and season, with spreadsheet downloads
-- The treasurer pays however the league pays today, and records it here
+**12-0. How it is done today** ✅ *(mostly answered)*
+- Paid monthly or so; a home plate **youth** umpire **$50**, a **youth field** umpire **$25**; rates **by division**; **adults not paid** (slots kept);
+  **admins set the rates**
 
-**12b. Check-in as the trigger** ⬜ *(shared with Phase 10)*
-- A confirmed check-in is what makes a game payable
+**12a. Rates and an earnings ledger**
+- ✅ **Pay rates**: by division, place and youth/adult; dated; logged; set by the **treasurer and super admins** (the Payments tab)
+- ✅ **The earnings ledger**: what each umpire is owed for each game worked, with adjustments (a substitute, a bonus, a correction), voids, and a log of every step
+- ✅ **Payees**: a youth umpire is paid through a parent or guardian's account (siblings share one); adults are paid to themselves
+- ✅ **Monthly payroll**: a draft for the period, approved by the treasurer or any super admin, then each payment recorded (check, bank transfer, cash); a spreadsheet download
+- ⬜ Reports per umpire, game and season; umpires seeing their own earnings
 
-**12c. Paying through a service** ⬜
-- Choose the payment service after the research above. Candidates looked at so far:
-  Stripe Connect, PayPal Payouts, ArbiterPay, or continuing to pay by check or bank
-  transfer from the ledger
-- Practice first with fake money, then pay a batch only after the treasurer approves it,
-  and only later automatically
-- Youth umpires paid through a parent or guardian, as the chosen service requires
-- Tax paperwork as the league's advisor directs
+**12b. What makes a game payable** ✅ A **recorded arrival** (the umpire's check-in, or an administrator marking it) on a game that was played and not canceled
+
+**12c. Paying through Stripe** ⬜
+- **Decided:** a **parent or guardian's** Stripe account for each family (siblings share one); **any super admin or the treasurer** approves a batch
+- A parent presses **Set up payments**, which opens Stripe's own page; the payee already chosen in the app is the account that gets set up
+- Test mode first, with pretend money; then, after approval, the money is sent (the app checks the Stripe balance first), and each payment is marked paid by Stripe
+- Needs your Stripe account with Connect switched on (see `STRIPE-SETUP.md`); parents need a sign-in to the app. Phase 9 (linking parents to their children, and parent access) will build on the payee link
 
 ### Phase 13: Scheduling help ⬜
 
