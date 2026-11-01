@@ -3105,3 +3105,173 @@ input[type="radio"] {
     min-height: 44px;
   }
 }
+
+/* ---- Reports ---- */
+.report-privacy {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  color: #14171a;
+  background: #eef3f0;
+  border-left: 4px solid #1b6b3a;
+  border-radius: 6px;
+}
+
+.report-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px;
+  font-weight: 600;
+}
+
+.report-filter select {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+}
+
+.report {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #d6ddd8;
+  border-left: 5px solid #1b6b3a;
+  border-radius: 8px;
+}
+
+.report[hidden] {
+  display: none;
+}
+
+.report-outside {
+  border-left-color: #8a4b00;
+}
+
+.report h3 {
+  margin: 0 0 2px;
+  font-size: 1.05rem;
+}
+
+.report-meta {
+  margin: 0 0 6px;
+  color: #3d4a42;
+  font-size: 0.88rem;
+}
+
+.report-text {
+  display: block;
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.report-followups {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.report-followups li {
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  background: #f4f7f5;
+  border-radius: 6px;
+}
+
+.report-followup-form label {
+  display: block;
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.report-followup-form textarea {
+  width: 100%;
+  margin: 2px 0 6px;
+}
+
+.report-followup-form button,
+.report-actions button,
+.report-delete {
+  width: auto;
+  min-height: 40px;
+  margin: 0 8px 0 0;
+}
+
+.report-retention {
+  margin: 8px 0 4px;
+  color: #3d4a42;
+  font-size: 0.85rem;
+}
+
+.report-log > summary {
+  min-height: 36px;
+  padding: 6px 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-log-body ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.report-none,
+.report-guidance {
+  margin: 4px 0 8px;
+  color: #3d4a42;
+  font-size: 0.92rem;
+}
+
+.report-form-box {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: #fbf7ee;
+  border: 1px solid #d8cdb0;
+  border-radius: 10px;
+}
+
+.report-form-box > summary {
+  min-height: 36px;
+  padding: 6px 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.outside-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.outside-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.outside-form select,
+.outside-form input,
+.outside-form textarea {
+  width: 100%;
+  margin: 0;
+}
+
+.report-form-actions button,
+.outside-form > button {
+  width: auto;
+  min-height: 44px;
+  margin: 0 8px 0 0;
+}
+
+.my-reports {
+  margin: 20px 0;
+}
+
+.my-reports-sent {
+  margin: 12px 0 6px;
+  font-size: 1rem;
+}

@@ -7,6 +7,7 @@ import { renderUmpireDirectory } from "./umpires";
 import { renderLeagueSetup } from "./league_setup";
 import { renderRoleManager } from "./roles";
 import { renderBoardPage } from "./games/board";
+import { renderReportsPage } from "./games/reports";
 import { mountDemoClock, removeDemoClock } from "./demo-clock";
 import { hasAdministratorRole } from "./idle-logic";
 import { startIdleLogout, stopIdleLogout, takeIdleNotice } from "./idle-logout";
@@ -871,6 +872,15 @@ function pagesFor(
       id: "board",
       label: "Field board",
       render: (container, navigate, sub) => renderBoardPage(container, navigate, sub),
+    });
+  }
+
+  // Reports: only the umpire chief and super admins (the database enforces it too)
+  if (flags.isSuperAdmin || flags.isUmpireChief) {
+    pages.push({
+      id: "reports",
+      label: "Reports",
+      render: (container) => renderReportsPage(container, flags.isSuperAdmin),
     });
   }
 

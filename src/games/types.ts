@@ -55,6 +55,36 @@ export type RunningLate = {
   reported_at: string;
 };
 
+// ---- reports (readable only by the umpire chief and super admins; an umpire reads their own post-game reports) ----
+export type ReportFollowup = { id: string; report_id: string; author_name: string; body: string; created_at: string };
+
+export type GameReport = {
+  id: string;
+  game_id: string;
+  season_id: string;
+  umpire_id: string;
+  author_name: string;
+  category: "ejection" | "protest" | "conduct" | "incident" | "other";
+  body: string;
+  created_at: string;
+};
+
+export type OutsideReport = {
+  id: string;
+  umpire_id: string;
+  game_id: string | null;
+  season_id: string;
+  source_name: string;
+  source_role: "coach" | "manager" | "parent" | "league_official" | "spectator" | "other";
+  received_on: string;
+  body: string;
+  entered_by_name: string;
+  created_at: string;
+  edited_at: string | null;
+};
+
+export type ReportAuditRow = { id: string; report_kind: "game" | "outside"; report_id: string; action: string; actor_name: string; acted_at: string };
+
 export type LocationOption = NamedOption & {
   address: string | null;
   is_league_field?: boolean; // a field this league runs, as opposed to one our teams travel to
@@ -71,7 +101,7 @@ export type TeamOption = NamedOption & {
   season_id: string;
   division_id: string | null;
 };
-export type SeasonOption = NamedOption & { starts_on: string | null };
+export type SeasonOption = NamedOption & { starts_on: string | null; ends_on?: string | null };
 
 // Where an umpire stands. A game with 1 umpire uses the plate, with 2 the plate
 // and the field, with 3 the plate, first and third base, and with 4 the plate

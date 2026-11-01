@@ -103,6 +103,15 @@ test on the league's own database.
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire), for reaching someone who is late
 - Attendance stays with an umpire when they are moved to another place on a game
 
+**Reports** 🆕
+
+- **Post-game reports:** an umpire writes one about a game they worked (from the start until 14 days after), reads their own, and adds follow-ups, but cannot change it after sending
+- **Reports from outside:** the umpire chief and super admins record what a coach, parent or official said about an umpire; **the umpire it is about cannot see it**
+- Only the umpire chief and super admins read reports; only super admins delete; nothing is printed or emailed (they are only told a report was filed)
+- A **change log** of who created, edited, followed up on or deleted each report (never the text)
+- Reports are **deleted automatically a year after their season ends**
+- Forms remind people to stick to facts, use initials for children, leave out medical details, and report child-safety concerns to the league's safety officer
+
 **Game day extras** 🆕
 
 - **Rainouts:** close a field for a day or part of it; its games are canceled with a note, the umpires are told, and it can be **reopened** to put everything back
