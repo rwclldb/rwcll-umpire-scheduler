@@ -43,7 +43,7 @@ whenever the league's needs change.
 - Availability now also has repeating times (ending with their season), dates an umpire
   can't umpire, and a month calendar. It is built and tested here; its database change is
   waiting for its first run on your own test database.
-- Stage **10d** (rainouts, running late, call-around list, field notes, the umpire's day, and administrators-only notes) is built and tested here; its database change is waiting for a first run. That finishes Phase 10 except **10c, reports**, which needs a few privacy decisions first.
+- Stage **10d** (rainouts, running late, call-around list, field notes, the umpire's day, and administrators-only notes) is built and tested here; its database change is waiting for a first run. **Stage 10c (reports) is built and tested here too, which completes Phase 10**; its database change is waiting for a first run.
 - A **demo clock** (a pretend date and time, for testing and demonstrations) is built and tested
   here; its database change is waiting for its first run on your own test database.
 - Phase 10 (game day) has begun. Stage **10a** (the field board and calendar) is built and in
@@ -166,7 +166,8 @@ whenever the league's needs change.
 
 ### Phase 7: Notifications and sending email ⬜
 
-- Choose and set up the email service (Google Workspace or a similar service)
+- ✅ The email service is set up for **Supabase's own emails** (sign-up confirmation, password reset, invitations), sending from umpiresched@rwcll.org
+- Still to do: a **sender** for the messages the app queues in the Outbox (assignments, rainouts, running late, report notices, reminders), with a **safe mode** for the test database (only approved addresses), and Google's daily sending limit in mind
 - Send invitations, assignments and reminders for real, instead of queuing them
 - Send the reminder about unconfirmed assignments on a schedule, not only when an
   administrator opens the Games page
@@ -209,11 +210,11 @@ whenever the league's needs change.
   by changing the assignment; after the printout, an administrator updates the system later from
   the game note. (A "who actually worked" field can be added later if it is wanted.)
 
-**10c. Reports** ⬜
+**10c. Reports** ✅ *(built and tested; the database change has not yet had its first run on your database)*
 
-- **Post-game reports** from umpires
-- **Reports from outside** (coaches, parents, the board) that administrators add to an umpire's record
-- Reports can be read by the umpire chief and super admins only
+- **Post-game reports** from umpires (readable by the umpire chief and super admins; the author reads their own and adds follow-ups, but cannot edit)
+- **Reports from outside** (coaches, parents, the board), entered only by the umpire chief and super admins; **the umpire it is about cannot see it**
+- A change log, super-admin-only deletion, and **automatic deletion a year after the season ends**
 
 **10d. Day-of extras** ✅ *(built and tested; the database change has not yet had its first run on your database)*
 
@@ -305,6 +306,7 @@ check-in (Phase 10), hosting (Phase 8) and parent links (Phase 9).
 - **Phone numbers on printouts:** an option, for administrators; for a youth umpire,
   both their own and a parent's number (the emergency contact on their record, until
   parents have accounts of their own).
+- **Reports privacy (Phase 10):** only the umpire chief and super admins read reports; schedulers, other administrators and the feedback reviewer role cannot. An umpire cannot see reports about themselves. Only the umpire chief and super admins enter outside reports. Reports are deleted automatically a year after their season ends. Defaults: the author of a post-game report reads it and adds follow-ups but cannot edit it; only super admins delete; every change is logged (never the text); nothing is printed or emailed with its content; forms remind people about facts, initials for children, no medical details, and the league's safety officer.
 - **Day-of extras privacy (Phase 10):** access details (gate codes) are readable by administrators and by the umpires on a game at that field from 24 hours before until it ends. In the call-around list a youth umpire shows their own number and a parent's. Game notes can be marked administrators only. Text links appear only for people who agreed to texts; a parent's number is for calls only.
 - **Game notes and substitutions (Phase 10):** admins and umpires can both write notes on a game.
   A substitute known before the printout is handled by changing the assignment; after the

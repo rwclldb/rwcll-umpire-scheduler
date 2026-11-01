@@ -81,6 +81,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 48. [Notes on a game](#48-notes-on-a-game)
 49. [Automatic sign-out](#49-automatic-sign-out)
 50. [Game day extras: rainouts, running late, finding an umpire, field notes, and your day](#50-game-day-extras-rainouts-running-late-finding-an-umpire-field-notes-and-your-day)
+51. [Reports: post-game reports and reports from outside](#51-reports-post-game-reports-and-reports-from-outside)
 
 ---
 
@@ -203,6 +204,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `reports_check.sql` | Reports work and are private (an umpire writes post-game reports and reads only their own; only the umpire chief and super admins read everything and add reports from outside; the umpire can never see a report about themselves; only super admins delete; the change log; automatic deletion a year after a season ends) | `Failures: 0` |
 | `day_of_extras_check.sql` | The game day extras work and are private where they should be (closing and reopening a field; running-late reports; access details only for administrators and umpires on the game within 24 hours; administrators-only notes; partner names only) | `Failures: 0` |
 | `idle_logout_check.sql` | The automatic sign-out settings work (they exist and can be read by anyone signed in; nobody can change them from the app; only a whole number of minutes from 0 to 480 is accepted) | `Failures: 0` |
 | `game_notes_check.sql` | Game notes work (administrators and the umpires on a game can add them; others cannot; notes can be read only by administrators and the umpires on that game; only administrators can remove them; nobody can write or edit the table directly; limits; the demo clock's pretend time) | `Failures: 0` |
@@ -451,6 +453,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\reports_check.sql` | Tests reports, building its own seasons, games, umpires and accounts including a chief and a scheduler (your data is not changed) | No (always rolls back) |
 | `supabase\tests\day_of_extras_check.sql` | Tests the game day extras, building its own league, fields, games, umpires and accounts (your data is not changed) | No (always rolls back) |
 | `supabase\tests\idle_logout_check.sql` | Tests the automatic sign-out settings, changing them inside its own run (your real settings are not changed) | No (always rolls back) |
 | `supabase\tests\game_notes_check.sql` | Tests game notes (builds its own league, games, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
@@ -559,10 +562,10 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `reports_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
-| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `game-notes.ts`, `game-notes-model.ts`, `closure-model.ts`, `call-around-model.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `idle-logic.ts`, `idle-logout.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
+| `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `game-notes.ts`, `game-notes-model.ts`, `closure-model.ts`, `call-around-model.ts`, `reports-model.ts`, `reports.ts`, `reports-umpire.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `idle-logic.ts`, `idle-logout.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
 | `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
@@ -1536,3 +1539,48 @@ The card now also shows: **parking and directions**; the **gate or access** deta
 | A youth umpire's numbers | Administrators only (own number, and a parent's for calls) |
 
 **Database change:** `20261104100000_add_game_day_extras.sql` (needs the demo clock and game notes ones applied first). **Check script:** `day_of_extras_check.sql` (section 6).
+
+## 51. Reports: post-game reports and reports from outside
+
+There are two kinds of report, and **they are some of the most private information in the app**: they are about named people and often mention children.
+
+### Who can see what
+
+| | Post-game report | Report from outside (about an umpire) |
+|---|---|---|
+| **Umpire chief, super admins** | Read all, add follow-ups | Read, **add**, edit, add follow-ups |
+| **The umpire who wrote it** | Reads their own, adds follow-ups, **cannot edit it** | n/a |
+| **The umpire it is about** | n/a | **Cannot see it, or that it exists** |
+| **Schedulers, other administrators, other roles** | **No** | **No** |
+| **Delete** | **Super admins only** | **Super admins only** |
+
+Nothing is printed. Nothing is emailed with its content: the umpire chief and super admins are only told *a report was filed*.
+
+### Post-game reports (umpires)
+
+On the umpire's **Home** page, under **Post-game reports**, open **Write a post-game report**:
+
+1. Choose the **game**. You can write about a game from **the moment it starts until 14 days after it ends**, if you were assigned to it (not a canceled one).
+2. Choose what it is about: an ejection, a protest, conduct, an incident or injury, or something else.
+3. Write **what happened**, up to 4000 characters. The form reminds you to stick to **facts, use initials for children, and leave out medical details**, and that **child-safety concerns must also go to the league's safety officer** (this app is not the way to report those).
+4. Press **Send report**. You can write at most 5 reports per game; add a follow-up to one instead.
+
+Under **What you have sent** you can read your reports and add **follow-ups**. You **cannot change a report after sending it**.
+
+### The Reports page (umpire chief and super admins)
+
+The **Reports** tab lists post-game reports and reports from outside, with a filter to show one umpire's. Each report shows when it will be deleted, a **Follow-up** box, and a **Change log** (who created, edited, followed up on or deleted it, and when, **never the text**).
+
+**Add a report from outside:** open **Add a report from outside**, choose the umpire, the **season** (it decides when the report is deleted), optionally the game, who reported it and their role (coach, manager, parent, league official, spectator, other), the date received, and what was reported. **The umpire it is about cannot see it.** Use **Edit** on a report to correct it (the change is logged).
+
+**Delete:** only super admins see **Delete this report**. It asks first, removes the report and its follow-ups, and the change log keeps a note of who deleted it.
+
+### Automatic deletion
+
+Each report belongs to a **season**, and is deleted **a year after that season's end date**. The deletion runs whenever the umpire chief or a super admin opens the Reports page (the page says how many were deleted), and each deletion is noted in the change log as *Deleted automatically*. A season with **no end date** is never deleted automatically, and each report from it says so; set the end date in **League Setup** so reports can be deleted on time. (Once real scheduled jobs are set up in Phase 7 this can also run on its own every night.)
+
+### Good to know
+
+- The **change log** itself holds no report text and is kept after a report is deleted.
+- A report about a game cannot be left behind if the game is deleted: the database stops the game being deleted while reports exist.
+- **Database change:** `20261105100000_add_reports.sql` (needs the demo clock one, `20261101100000`, applied first). **Check script:** `reports_check.sql` (section 6).

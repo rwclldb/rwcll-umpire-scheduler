@@ -9,6 +9,10 @@ import type {
   Assignment,
   FieldClosure,
   GameNote,
+  GameReport,
+  OutsideReport,
+  ReportAuditRow,
+  ReportFollowup,
   RunningLate,
   DivisionOption,
   Game,
@@ -59,7 +63,7 @@ export async function loadContext(): Promise<{
   error: string | null;
 }> {
   const [seasons, divisions, teams, locations, umpires, leagues] = await Promise.all([
-    supabase.from("seasons").select("id, name, is_active, starts_on"),
+    supabase.from("seasons").select("id, name, is_active, starts_on, ends_on"),
     supabase.from("divisions").select("id, name, is_active, league_id, umpires_per_game, tournament_umpires, youngest_ll_age, oldest_ll_age").order("name"),
     fetchAll<TeamOption>((from, to) =>
       supabase
@@ -340,13 +344,90 @@ export async function loadPartners(gameIds: string[]): Promise<Map<string, { pos
   const { data, error } = await supabase.rpc("game_partners", { p_game_ids: [...new Set(gameIds)] });
   if (error) return result;
 
-  for (const row of (data ?? []) as { game_id: string; position: string; umpire_name: string }[]) {
+  for (const row of (data ?? []) as { game_id: string; place: string; umpire_name: string }[]) {
     const list = result.get(row.game_id) ?? [];
-    list.push({ position: row.position, name: row.umpire_name });
+    list.push({ position: row.place, name: row.umpire_name });
     result.set(row.game_id, list);
   }
 
   return result;
+}
+
+// ---- reports ----
+// What RLS lets the signed-in person read: the umpire chief and super admins read
+// every post-game report; an umpire reads only their own.
+export async function loadGameReports(): Promise<{ reports: GameReport[]; followups: Map<string, ReportFollowup[]>; error: string | null }> {
+  const followups = new Map<string, ReportFollowup[]>();
+
+  const reports = await fetchAll<GameReport>((from, to) =>
+    supabase
+      .from("game_reports")
+      .select("id, game_id, season_id, umpire_id, author_name, category, body, created_at")
+      .order("created_at", { ascending: false })
+      .range(from, to)
+  );
+  if (reports.error) return { reports: [], followups, error: reports.error };
+
+  const ids = reports.rows.map((row) => row.id);
+  for (let start = 0; start < ids.length; start += 100) {
+    const page = await supabase
+      .from("game_report_followups")
+      .select("id, report_id, author_name, body, created_at")
+      .in("report_id", ids.slice(start, start + 100))
+      .order("created_at");
+    if (page.error) return { reports: [], followups: new Map(), error: page.error.message };
+
+    for (const row of (page.data ?? []) as ReportFollowup[]) {
+      const list = followups.get(row.report_id) ?? [];
+      list.push(row);
+      followups.set(row.report_id, list);
+    }
+  }
+
+  return { reports: reports.rows, followups, error: null };
+}
+
+// Reports from outside: only the umpire chief and super admins can read these
+// (an umpire gets nothing back, whatever they ask for).
+export async function loadOutsideReports(): Promise<{ reports: OutsideReport[]; followups: Map<string, ReportFollowup[]>; error: string | null }> {
+  const followups = new Map<string, ReportFollowup[]>();
+
+  const reports = await fetchAll<OutsideReport>((from, to) =>
+    supabase
+      .from("outside_reports")
+      .select("id, umpire_id, game_id, season_id, source_name, source_role, received_on, body, entered_by_name, created_at, edited_at")
+      .order("received_on", { ascending: false })
+      .range(from, to)
+  );
+  if (reports.error) return { reports: [], followups, error: reports.error };
+
+  const ids = reports.rows.map((row) => row.id);
+  for (let start = 0; start < ids.length; start += 100) {
+    const page = await supabase
+      .from("outside_report_followups")
+      .select("id, report_id, author_name, body, created_at")
+      .in("report_id", ids.slice(start, start + 100))
+      .order("created_at");
+    if (page.error) return { reports: [], followups: new Map(), error: page.error.message };
+
+    for (const row of (page.data ?? []) as ReportFollowup[]) {
+      const list = followups.get(row.report_id) ?? [];
+      list.push(row);
+      followups.set(row.report_id, list);
+    }
+  }
+
+  return { reports: reports.rows, followups, error: null };
+}
+
+export async function loadReportAudit(reportId: string): Promise<ReportAuditRow[]> {
+  const { data, error } = await supabase
+    .from("report_audit")
+    .select("id, report_kind, report_id, action, actor_name, acted_at")
+    .eq("report_id", reportId)
+    .order("acted_at");
+
+  return error ? [] : ((data ?? []) as ReportAuditRow[]);
 }
 
 // An entry of availability, as the editing screen shows it: a time the umpire

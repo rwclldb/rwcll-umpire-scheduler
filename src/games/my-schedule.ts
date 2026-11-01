@@ -3,6 +3,7 @@ import { escapeHtml } from "../ui";
 import { loadContext, loadGameAccess, loadGameNotes, loadPartners, loadRunningLate, loadUmpireGames } from "./data";
 import { renderAvailabilityEditor } from "./availability-editor";
 import { wireNotes } from "./game-notes";
+import { renderMyReports } from "./reports-umpire";
 import { wireGameDay } from "./game-day";
 import { gameDayEntries, gameDayHtml } from "./game-day-model";
 import type { GameDayExtras } from "./game-day-model";
@@ -104,6 +105,7 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
       </p>
       <div id="my-schedule-view"></div>
     </section>
+    <div id="my-reports"></div>
     <div id="my-availability"></div>
     <div id="my-open-games"></div>
   `;
@@ -133,6 +135,12 @@ export async function renderMySchedule(container: HTMLElement, notice = ""): Pro
   });
 
   // When this umpire can umpire.
+  void renderMyReports(container.querySelector<HTMLElement>("#my-reports")!, {
+    items,
+    umpireName: (me.display_name as string) || "Me",
+    refresh: (message) => void renderMySchedule(container, message),
+  });
+
   void renderAvailabilityEditor(container.querySelector<HTMLElement>("#my-availability")!, {
     umpireId: me.id as string,
     own: true,
