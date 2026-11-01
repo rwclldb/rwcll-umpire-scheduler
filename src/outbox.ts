@@ -11,6 +11,8 @@ type OutboxRow = {
   sent_via: string | null;
   created_at: string;
   sent_at: string | null;
+  attempts?: number | null;
+  last_error?: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -41,7 +43,7 @@ export async function renderOutbox(container: HTMLElement): Promise<void> {
 
   const { data, error } = await supabase
     .from("email_outbox")
-    .select("id, kind, to_email, subject, body, status, sent_via, created_at, sent_at")
+    .select("id, kind, to_email, subject, body, status, sent_via, created_at, sent_at, attempts, last_error")
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -55,6 +57,11 @@ export async function renderOutbox(container: HTMLElement): Promise<void> {
     return;
   }
 
+  // Is automatic sending on? (the sending settings; if they cannot be read, treat it as off)
+  const settings = await supabase.from("sending_settings").select("key, value").in("key", ["email_mode"]);
+  const modeValue = settings.error ? "off" : (((settings.data ?? []) as { key: string; value: string }[]).find((row) => row.key === "email_mode")?.value ?? "off");
+  const mode = modeValue === "live" || modeValue === "safe" ? modeValue : "off";
+
   const rows = (data ?? []) as OutboxRow[];
   const waiting = rows.filter(
     (row) => row.status === "queued" || row.status === "failed",
@@ -63,12 +70,25 @@ export async function renderOutbox(container: HTMLElement): Promise<void> {
 
   container.innerHTML = `
     <section class="outbox" id="outbox-root">
-      <p class="directory-description">
-        Email sending is not set up yet, so messages wait here. Open a
-        message, copy it, send it yourself, then press
-        <strong>Mark as sent</strong>. When automatic sending is switched
-        on later, waiting messages will go out by themselves.
-      </p>
+      ${mode === "live"
+        ? `<p class="directory-description outbox-mode outbox-mode-live">
+            <strong>Automatic sending is ON.</strong> Waiting messages go out
+            within a few minutes. A message that cannot be sent shows why, and
+            you can try it again. Messages older than a few days are not sent.
+          </p>`
+        : mode === "safe"
+          ? `<p class="directory-description outbox-mode outbox-mode-safe">
+              <strong>SAFE MODE.</strong> Automatic sending only emails the
+              addresses on the safe list. Every other message is set aside
+              (it shows as Skipped), so nobody else receives anything. Use
+              <strong>Try again</strong> after switching to live.
+            </p>`
+          : `<p class="directory-description outbox-mode outbox-mode-off">
+              Automatic sending is off (not set up yet), so messages wait
+              here. Open a message, copy it, send it yourself, then press
+              <strong>Mark as sent</strong>. When automatic sending is switched
+              on, waiting messages go out by themselves.
+            </p>`}
 
       <label for="outbox-filter">Show</label>
       <div class="role-add">
@@ -82,6 +102,8 @@ export async function renderOutbox(container: HTMLElement): Promise<void> {
         </select>
         <button id="outbox-refresh" class="secondary-button"
           type="button">Refresh</button>
+        <button id="outbox-test" class="secondary-button"
+          type="button">Send me a test message</button>
       </div>
 
       <p id="outbox-message" class="message" role="status"
@@ -94,12 +116,16 @@ export async function renderOutbox(container: HTMLElement): Promise<void> {
               <span class="role-account-email">To: ${escapeHtml(row.to_email)}</span>
               <span class="role-account-contact">
                 ${escapeHtml(KIND_LABEL[row.kind] ?? row.kind)}
-                &middot; ${escapeHtml(STATUS_LABEL[row.status] ?? row.status)}
+                &middot; ${escapeHtml(row.status === "queued" && (row.attempts ?? 0) > 0 && row.last_error ? "Will try again" : (STATUS_LABEL[row.status] ?? row.status))}
                 &middot; ${escapeHtml(row.created_at.slice(0, 10))}
                 ${row.sent_at
                   ? `&middot; sent ${escapeHtml(row.sent_at.slice(0, 10))}${row.sent_via === "manual" ? " by hand" : ""}`
                   : ""}
               </span>
+
+              ${row.last_error && row.status !== "sent"
+                ? `<span class="outbox-problem">${row.status === "skipped" ? "Why it was not sent" : "Problem"}: ${escapeHtml(row.last_error)}${(row.attempts ?? 0) > 1 ? ` (tried ${escapeHtml(String(row.attempts))} times)` : ""}</span>`
+                : ""}
 
               <details class="outbox-body">
                 <summary>Show message</summary>
@@ -107,6 +133,13 @@ export async function renderOutbox(container: HTMLElement): Promise<void> {
                 <button type="button" class="secondary-button"
                   data-copy="${escapeHtml(row.id)}">Copy message</button>
               </details>
+
+              ${row.status === "failed" || row.status === "skipped"
+                ? `<div class="account-actions">
+                    <button type="button" class="secondary-button"
+                      data-retry="${escapeHtml(row.id)}">Try again</button>
+                  </div>`
+                : ""}
 
               ${row.status === "queued" || row.status === "failed"
                 ? `<div class="account-actions">
@@ -171,6 +204,37 @@ export async function renderOutbox(container: HTMLElement): Promise<void> {
           box.select();
           show("Press Ctrl+C to copy the selected message.", "success");
         }
+      })();
+      return;
+    }
+
+    const retry = target.closest<HTMLButtonElement>("[data-retry]");
+    if (retry) {
+      retry.disabled = true;
+      void (async () => {
+        const { error: rpcError } = await supabase.rpc("retry_outbox_message", { p_id: retry.dataset.retry });
+        if (rpcError) {
+          show(`Could not try again: ${rpcError.message}`, "error");
+          retry.disabled = false;
+          return;
+        }
+        await reloadWithMessage("It is waiting to be sent again.");
+      })();
+      return;
+    }
+
+    if (target.closest("#outbox-test")) {
+      void (async () => {
+        const { error: rpcError } = await supabase.rpc("queue_test_email");
+        if (rpcError) {
+          show(`Could not queue the test message: ${rpcError.message}`, "error");
+          return;
+        }
+        await reloadWithMessage(
+          mode === "off"
+            ? "A test message is waiting below. Automatic sending is off, so copy it and send it yourself."
+            : "A test message is queued. It should arrive within a few minutes.",
+        );
       })();
       return;
     }

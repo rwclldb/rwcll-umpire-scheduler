@@ -44,6 +44,7 @@ whenever the league's needs change.
   can't umpire, and a month calendar. It is built and tested here; its database change is
   waiting for its first run on your own test database.
 - Stage **10d** (rainouts, running late, call-around list, field notes, the umpire's day, and administrators-only notes) is built and tested here; its database change is waiting for a first run. **Stage 10c (reports) is built and tested here too, which completes Phase 10**; its database change is waiting for a first run.
+- Phase 7 (sending messages): a first cut is built and tested here, with its database change waiting for a first run; deploying and switching it on is the next step (see `EMAIL-SENDING.md`).
 - A **demo clock** (a pretend date and time, for testing and demonstrations) is built and tested
   here; its database change is waiting for its first run on your own test database.
 - Phase 10 (game day) has begun. Stage **10a** (the field board and calendar) is built and in
@@ -164,14 +165,20 @@ whenever the league's needs change.
 - Repeating times (days of the week plus times) that end automatically when their season does,
   and dates an umpire can't umpire, which override everything else; a month calendar shows it all
 
-### Phase 7: Notifications and sending email ⬜
+### Phase 7: Notifications and sending email 🟡 *(first cut built and tested here; you still deploy and test it)*
 
-- ✅ The email service is set up for **Supabase's own emails** (sign-up confirmation, password reset, invitations), sending from umpiresched@rwcll.org
-- Still to do: a **sender** for the messages the app queues in the Outbox (assignments, rainouts, running late, report notices, reminders), with a **safe mode** for the test database (only approved addresses), and Google's daily sending limit in mind
-- Send invitations, assignments and reminders for real, instead of queuing them
-- Send the reminder about unconfirmed assignments on a schedule, not only when an
-  administrator opens the Games page
-- Text-message reminders, for people who have agreed to them
+- ✅ Email for **Supabase's own emails** (sign-up confirmation, password reset, invitations) is set up, from umpiresched@rwcll.org
+- ✅ A **sender** for the messages the app queues in the Outbox (assignments, rainouts, running late, report notices, reminders),
+  through the same Google mailbox: built (a Supabase Edge Function), with retries, a daily limit, an age limit, and **off by default**
+- ✅ A **safe mode** for the test database (only approved addresses, or redirect everything to one address)
+- ✅ The Outbox shows the mode and why a message failed or was set aside, with **Try again** and a test message
+- ✅ **Invitations, assignments and reminders** are sent by the sender instead of only queued, once it is switched on
+- ✅ **Scheduled jobs**: the unconfirmed-assignment warning and the self-assigned summary now run daily by themselves, a new
+  **day-before reminder** for each umpire runs hourly, and the report deletion runs nightly
+- ✅ **Text-message reminders** for people who agreed to texts: built, off, written for Twilio
+- ⬜ **Left for you** (see `EMAIL-SENDING.md`): deploy the sender and set its secrets, try safe mode on the test project, schedule the jobs,
+  then go live. For texts: choose a service and complete its carrier registration
+- ⬜ Later ideas: an administrator **announcement** to all umpires, a daily digest instead of many emails, quiet hours, a reply-handling address
 
 ### Phase 8: Hosting and mobile ⬜
 

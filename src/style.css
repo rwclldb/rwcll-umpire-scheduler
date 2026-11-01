@@ -3275,3 +3275,29 @@ input[type="radio"] {
   margin: 12px 0 6px;
   font-size: 1rem;
 }
+
+/* ---- The Outbox: sending mode and problems ---- */
+.outbox-mode {
+  padding: 10px 12px;
+  border-left: 4px solid #6f7a73;
+  border-radius: 6px;
+  background: #f4f7f5;
+}
+
+.outbox-mode-live {
+  border-left-color: #1b6b3a;
+  background: #eaf4ed;
+}
+
+.outbox-mode-safe {
+  color: #5c3300;
+  border-left-color: #8a4b00;
+  background: #fff1d6;
+}
+
+.outbox-problem {
+  display: block;
+  margin: 4px 0 6px;
+  color: #7a1717;
+  font-size: 0.9rem;
+}
