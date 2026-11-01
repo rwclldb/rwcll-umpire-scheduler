@@ -103,6 +103,15 @@ test on the league's own database.
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire), for reaching someone who is late
 - Attendance stays with an umpire when they are moved to another place on a game
 
+**Sending messages for real** 🆕
+
+- A **sender** emails the messages waiting in the Outbox through the league's Google mailbox, every 5 minutes, with retries that wait longer each time
+- **Off by default.** A **safe mode** emails only a list of addresses you choose (marked [TEST]), or redirects everyone else's messages to you; a typo can never switch sending on
+- Safeguards: messages older than a few days are never sent (no backlog when switching on), a daily limit, and a one-line stop
+- The Outbox shows the mode, why a message failed or was set aside, **Try again**, and **Send me a test message**
+- **Reminders:** the day before a game each umpire is reminded (and asked to confirm if they have not); the unconfirmed-assignment warning and self-assigned summary now run daily by themselves
+- **Text-message reminders** for umpires who agreed to texts (built, off, needs a texting service)
+
 **Reports** 🆕
 
 - **Post-game reports:** an umpire writes one about a game they worked (from the start until 14 days after), reads their own, and adds follow-ups, but cannot change it after sending

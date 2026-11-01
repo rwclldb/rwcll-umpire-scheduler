@@ -1865,46 +1865,59 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
     </section>
   `;let a=e.querySelector(`#registrations`);if(!a)return;let o=(e,t)=>{let n=a.querySelector(`#registrations-message`);n&&(n.textContent=e,n.className=`message ${t}`)},s=async t=>{await Od(e);let n=e.querySelector(`#registrations-message`);n&&(n.textContent=t,n.className=`message success`)},c=e=>({select:a.querySelector(`[data-reg-class="${CSS.escape(e)}"]`),date:a.querySelector(`[data-reg-birth="${CSS.escape(e)}"]`),hint:a.querySelector(`[data-reg-hint="${CSS.escape(e)}"]`)}),l=e=>{let{select:t,date:n,hint:r}=c(e);t&&n&&r&&(r.textContent=Dd(n.value,t.value))},u=e=>{let t=e.target;if(!(t instanceof HTMLElement))return;let n=t.dataset.regClass??t.dataset.regBirth;n&&l(n)};a.addEventListener(`input`,u),a.addEventListener(`change`,u),a.querySelector(`#refresh-registrations`)?.addEventListener(`click`,()=>{Od(e)}),a.addEventListener(`click`,e=>{let t=e.target;if(!(t instanceof Element))return;let n=t.closest(`[data-approve]`);if(n){let e=n.dataset.approve??``,{select:t,date:r}=c(e),a=t?.value??``,l=r?.value??``,u=i.find(t=>t.id===e)?.display_name||`this person`;if(a===`youth`&&!l){o(`Enter a birth date to approve a youth umpire.`,`error`);return}if(l){let e=ja(l);if(e===null||e<0){o(`Enter a valid birth date that is not in the future.`,`error`);return}if(e<13){o(`Umpires under 13 cannot be approved here. They need a parent account and consent first.`,`error`);return}if(a===`adult`&&e<18){o(`This person is under 18, so approve them as a youth umpire.`,`error`);return}if(a===`youth`&&e>=18){o(`This person is 18 or older, so approve them as an adult umpire.`,`error`);return}}n.disabled=!0,(async()=>{let{error:t}=await B.rpc(`approve_umpire_registration`,{p_profile_id:e,p_classification:a,p_birth_date:l||null});t?(o(`Could not approve: ${t.message}`,`error`),n.disabled=!1):await s(`Approved ${u} as ${a===`youth`?`a youth`:`an adult`} umpire.`)})();return}let r=t.closest(`[data-reject]`);if(r){let e=r.dataset.reject??``,t=i.find(t=>t.id===e)?.display_name||`this person`;if(!window.confirm(`Reject the registration from ${t}? They will not get access.`))return;r.disabled=!0,(async()=>{let{error:n}=await B.rpc(`reject_umpire_registration`,{p_profile_id:e});n?(o(`Could not reject: ${n.message}`,`error`),r.disabled=!1):await s(`Rejected the registration from ${t}.`)})()}})}var kd={queued:`Waiting`,sent:`Sent`,failed:`Failed`,skipped:`Skipped`},Ad={invitation:`Invitation`,assignment:`Assignment`,schedule_change:`Schedule change`,reminder:`Reminder`,broadcast:`Announcement`,other:`Message`},jd=!1;async function Md(e){e.innerHTML=`
     <p class="directory-description">Loading the outbox&hellip;</p>
-  `;let{data:t,error:n}=await B.from(`email_outbox`).select(`id, kind, to_email, subject, body, status, sent_via, created_at, sent_at`).order(`created_at`,{ascending:!1}).limit(200);if(n){e.innerHTML=`
+  `;let{data:t,error:n}=await B.from(`email_outbox`).select(`id, kind, to_email, subject, body, status, sent_via, created_at, sent_at, attempts, last_error`).order(`created_at`,{ascending:!1}).limit(200);if(n){e.innerHTML=`
       <p class="message error">
         Unable to load the outbox. Refresh and try again.
       </p>
-    `,console.error(`Outbox load failed:`,n.message);return}let r=t??[],i=r.filter(e=>e.status===`queued`||e.status===`failed`),a=jd?r:i;e.innerHTML=`
+    `,console.error(`Outbox load failed:`,n.message);return}let r=await B.from(`sending_settings`).select(`key, value`).in(`key`,[`email_mode`]),i=r.error?`off`:(r.data??[]).find(e=>e.key===`email_mode`)?.value??`off`,a=i===`live`||i===`safe`?i:`off`,o=t??[],s=o.filter(e=>e.status===`queued`||e.status===`failed`),c=jd?o:s;e.innerHTML=`
     <section class="outbox" id="outbox-root">
-      <p class="directory-description">
-        Email sending is not set up yet, so messages wait here. Open a
-        message, copy it, send it yourself, then press
-        <strong>Mark as sent</strong>. When automatic sending is switched
-        on later, waiting messages will go out by themselves.
-      </p>
+      ${a===`live`?`<p class="directory-description outbox-mode outbox-mode-live">
+            <strong>Automatic sending is ON.</strong> Waiting messages go out
+            within a few minutes. A message that cannot be sent shows why, and
+            you can try it again. Messages older than a few days are not sent.
+          </p>`:a===`safe`?`<p class="directory-description outbox-mode outbox-mode-safe">
+              <strong>SAFE MODE.</strong> Automatic sending only emails the
+              addresses on the safe list. Every other message is set aside
+              (it shows as Skipped), so nobody else receives anything. Use
+              <strong>Try again</strong> after switching to live.
+            </p>`:`<p class="directory-description outbox-mode outbox-mode-off">
+              Automatic sending is off (not set up yet), so messages wait
+              here. Open a message, copy it, send it yourself, then press
+              <strong>Mark as sent</strong>. When automatic sending is switched
+              on, waiting messages go out by themselves.
+            </p>`}
 
       <label for="outbox-filter">Show</label>
       <div class="role-add">
         <select id="outbox-filter">
           <option value="waiting" ${jd?``:`selected`}>
-            Waiting only (${i.length})
+            Waiting only (${s.length})
           </option>
           <option value="all" ${jd?`selected`:``}>
-            Everything (${r.length})
+            Everything (${o.length})
           </option>
         </select>
         <button id="outbox-refresh" class="secondary-button"
           type="button">Refresh</button>
+        <button id="outbox-test" class="secondary-button"
+          type="button">Send me a test message</button>
       </div>
 
       <p id="outbox-message" class="message" role="status"
         aria-live="polite"></p>
 
-      ${a.length?`<ul class="role-list">${a.map(e=>`
+      ${c.length?`<ul class="role-list">${c.map(e=>`
             <li class="role-account" data-message-id="${U(e.id)}">
               <span class="role-account-name">${U(e.subject)}</span>
               <span class="role-account-email">To: ${U(e.to_email)}</span>
               <span class="role-account-contact">
                 ${U(Ad[e.kind]??e.kind)}
-                &middot; ${U(kd[e.status]??e.status)}
+                &middot; ${U(e.status===`queued`&&(e.attempts??0)>0&&e.last_error?`Will try again`:kd[e.status]??e.status)}
                 &middot; ${U(e.created_at.slice(0,10))}
                 ${e.sent_at?`&middot; sent ${U(e.sent_at.slice(0,10))}${e.sent_via===`manual`?` by hand`:``}`:``}
               </span>
+
+              ${e.last_error&&e.status!==`sent`?`<span class="outbox-problem">${e.status===`skipped`?`Why it was not sent`:`Problem`}: ${U(e.last_error)}${(e.attempts??0)>1?` (tried ${U(String(e.attempts))} times)`:``}</span>`:``}
 
               <details class="outbox-body">
                 <summary>Show message</summary>
@@ -1912,6 +1925,11 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
                 <button type="button" class="secondary-button"
                   data-copy="${U(e.id)}">Copy message</button>
               </details>
+
+              ${e.status===`failed`||e.status===`skipped`?`<div class="account-actions">
+                    <button type="button" class="secondary-button"
+                      data-retry="${U(e.id)}">Try again</button>
+                  </div>`:``}
 
               ${e.status===`queued`||e.status===`failed`?`<div class="account-actions">
                     <button type="button" class="primary-button"
@@ -1924,7 +1942,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
             ${jd?`The outbox is empty.`:`No messages are waiting to be sent.`}
           </p>`}
     </section>
-  `;let o=e.querySelector(`#outbox-root`);if(!o)return;let s=(e,t)=>{let n=o.querySelector(`#outbox-message`);n&&(n.textContent=e,n.className=`message ${t}`)},c=async t=>{await Md(e);let n=e.querySelector(`#outbox-message`);n&&(n.textContent=t,n.className=`message success`)};o.querySelector(`#outbox-refresh`)?.addEventListener(`click`,()=>{Md(e)}),o.querySelector(`#outbox-filter`)?.addEventListener(`change`,t=>{jd=t.target.value===`all`,Md(e)}),o.addEventListener(`click`,e=>{let t=e.target;if(!(t instanceof Element))return;let n=t.closest(`[data-copy]`);if(n){let e=n.parentElement?.querySelector(`textarea`);if(!e)return;(async()=>{try{await navigator.clipboard.writeText(e.value),s(`Message copied.`,`success`)}catch{e.select(),s(`Press Ctrl+C to copy the selected message.`,`success`)}})();return}let r=t.closest(`[data-sent]`);if(r){let e=r.dataset.sent??``;r.disabled=!0,(async()=>{let{error:t}=await B.rpc(`mark_email_sent`,{p_id:e});t?(s(`Could not update the message: ${t.message}`,`error`),r.disabled=!1):await c(`Marked as sent.`)})();return}let i=t.closest(`[data-skip]`);if(i){let e=i.dataset.skip??``;if(!window.confirm(`Skip this message? It will not be sent, but a record of it is kept.`))return;i.disabled=!0,(async()=>{let{error:t}=await B.rpc(`skip_email`,{p_id:e});t?(s(`Could not update the message: ${t.message}`,`error`),i.disabled=!1):await c(`Skipped.`)})()}})}var Nd=()=>({plate:``,first_base:``,second_base:``,third_base:``,field:``});function Pd(e,t){let{context:n,game:r}=t,i=gl(n.divisions.find(e=>e.id===r.division_id),r.game_type),a=bl(t.assignments).get(r.id)??{},o={...Nd(),...a},s={...o},c=_l(r,()=>i),l=r.umpires_needed===null||r.umpires_needed===void 0?``:String(r.umpires_needed),u=!1,d=null,f=new Map;e.innerHTML=`
+  `;let l=e.querySelector(`#outbox-root`);if(!l)return;let u=(e,t)=>{let n=l.querySelector(`#outbox-message`);n&&(n.textContent=e,n.className=`message ${t}`)},d=async t=>{await Md(e);let n=e.querySelector(`#outbox-message`);n&&(n.textContent=t,n.className=`message success`)};l.querySelector(`#outbox-refresh`)?.addEventListener(`click`,()=>{Md(e)}),l.querySelector(`#outbox-filter`)?.addEventListener(`change`,t=>{jd=t.target.value===`all`,Md(e)}),l.addEventListener(`click`,e=>{let t=e.target;if(!(t instanceof Element))return;let n=t.closest(`[data-copy]`);if(n){let e=n.parentElement?.querySelector(`textarea`);if(!e)return;(async()=>{try{await navigator.clipboard.writeText(e.value),u(`Message copied.`,`success`)}catch{e.select(),u(`Press Ctrl+C to copy the selected message.`,`success`)}})();return}let r=t.closest(`[data-retry]`);if(r){r.disabled=!0,(async()=>{let{error:e}=await B.rpc(`retry_outbox_message`,{p_id:r.dataset.retry});e?(u(`Could not try again: ${e.message}`,`error`),r.disabled=!1):await d(`It is waiting to be sent again.`)})();return}if(t.closest(`#outbox-test`)){(async()=>{let{error:e}=await B.rpc(`queue_test_email`);e?u(`Could not queue the test message: ${e.message}`,`error`):await d(a===`off`?`A test message is waiting below. Automatic sending is off, so copy it and send it yourself.`:`A test message is queued. It should arrive within a few minutes.`)})();return}let i=t.closest(`[data-sent]`);if(i){let e=i.dataset.sent??``;i.disabled=!0,(async()=>{let{error:t}=await B.rpc(`mark_email_sent`,{p_id:e});t?(u(`Could not update the message: ${t.message}`,`error`),i.disabled=!1):await d(`Marked as sent.`)})();return}let o=t.closest(`[data-skip]`);if(o){let e=o.dataset.skip??``;if(!window.confirm(`Skip this message? It will not be sent, but a record of it is kept.`))return;o.disabled=!0,(async()=>{let{error:t}=await B.rpc(`skip_email`,{p_id:e});t?(u(`Could not update the message: ${t.message}`,`error`),o.disabled=!1):await d(`Skipped.`)})()}})}var Nd=()=>({plate:``,first_base:``,second_base:``,third_base:``,field:``});function Pd(e,t){let{context:n,game:r}=t,i=gl(n.divisions.find(e=>e.id===r.division_id),r.game_type),a=bl(t.assignments).get(r.id)??{},o={...Nd(),...a},s={...o},c=_l(r,()=>i),l=r.umpires_needed===null||r.umpires_needed===void 0?``:String(r.umpires_needed),u=!1,d=null,f=new Map;e.innerHTML=`
     <form id="assign-form" class="create-umpire-form game-form assign-panel" novalidate>
       <h3>Umpires for this game</h3>
       <p class="season-dates"><strong>${U(t.title)}</strong><br>${U(t.detail)}</p>

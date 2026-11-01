@@ -82,6 +82,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 49. [Automatic sign-out](#49-automatic-sign-out)
 50. [Game day extras: rainouts, running late, finding an umpire, field notes, and your day](#50-game-day-extras-rainouts-running-late-finding-an-umpire-field-notes-and-your-day)
 51. [Reports: post-game reports and reports from outside](#51-reports-post-game-reports-and-reports-from-outside)
+52. [Sending messages: the sender, safe mode, reminders and texts](#52-sending-messages-the-sender-safe-mode-reminders-and-texts)
 
 ---
 
@@ -204,6 +205,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `email_sending_check.sql` | The sender's database side works and is safe (only the sender can claim and finish messages; retries wait longer each time and give up after 5; the day-before reminders go once, only for scheduled games, and texts only to people who agreed; safe settings accept only valid values; phone numbers become international form) | `Failures: 0` |
 | `reports_check.sql` | Reports work and are private (an umpire writes post-game reports and reads only their own; only the umpire chief and super admins read everything and add reports from outside; the umpire can never see a report about themselves; only super admins delete; the change log; automatic deletion a year after a season ends) | `Failures: 0` |
 | `day_of_extras_check.sql` | The game day extras work and are private where they should be (closing and reopening a field; running-late reports; access details only for administrators and umpires on the game within 24 hours; administrators-only notes; partner names only) | `Failures: 0` |
 | `idle_logout_check.sql` | The automatic sign-out settings work (they exist and can be read by anyone signed in; nobody can change them from the app; only a whole number of minutes from 0 to 480 is accepted) | `Failures: 0` |
@@ -453,6 +455,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\email_sending_check.sql` | Tests the sender's database side. **Nothing is sent**; waiting messages are set aside inside the run and everything is rolled back | No (always rolls back) |
 | `supabase\tests\reports_check.sql` | Tests reports, building its own seasons, games, umpires and accounts including a chief and a scheduler (your data is not changed) | No (always rolls back) |
 | `supabase\tests\day_of_extras_check.sql` | Tests the game day extras, building its own league, fields, games, umpires and accounts (your data is not changed) | No (always rolls back) |
 | `supabase\tests\idle_logout_check.sql` | Tests the automatic sign-out settings, changing them inside its own run (your real settings are not changed) | No (always rolls back) |
@@ -562,7 +565,7 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `reports_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `reports_check.sql`, `email_sending_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `game-notes.ts`, `game-notes-model.ts`, `closure-model.ts`, `call-around-model.ts`, `reports-model.ts`, `reports.ts`, `reports-umpire.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `idle-logic.ts`, `idle-logout.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
@@ -740,8 +743,8 @@ provides the **"From" identity** of the system's messages.
 
 ## 28. The Outbox: email stubs, and how to switch on real sending
 
-Real email sending is **not switched on yet**. So that it can be added later without changing any screen,
-everything that wants to send an email adds the message to an **Outbox** instead.
+Everything that wants to send an email adds the message to an **Outbox**. A **sender** (section 52) can send the
+waiting messages automatically. **Until you switch it on, the Outbox works by hand**, as described below.
 
 **What you can do today** (super admin or umpire chief). A super admin opens **Administration**, then **Outbox**; an umpire chief opens **Outbox (messages waiting to be sent)** on the Umpire Management page. It lists waiting messages. For each one: open it, press **Copy message**, send it yourself from your
 own email, then press **Mark as sent**. **Skip** sets a message aside without sending it. "Everything" shows the
@@ -752,13 +755,10 @@ history. Inviting an umpire now also adds the invitation message to the Outbox.
 | Kind | Examples | Sent by | Switched on by |
 |---|---|---|---|
 | **Sign-in emails** | Confirm your email, reset your password | Supabase Auth | Entering SMTP details in the Supabase dashboard (section 27) |
-| **App messages** | Invitations, game assignments, schedule changes, reminders | The Outbox | A sender that reads the Outbox (to be built when you are ready) |
+| **App messages** | Invitations, game assignments, schedule changes, reminders, report notices | The Outbox, then **the sender** | Deploying the sender and setting `email_mode` (section 52, and `EMAIL-SENDING.md`) |
 
-**How real sending will be switched on later** (nothing here needs to be done now):
-
-1. Choose the route in section 27 and get its SMTP details.
-2. A small scheduled server function reads **waiting** Outbox messages, sends each one through that service, and records the result (`sent` by `smtp`, or `failed` with the reason so it can be retried).
-3. The screens keep working unchanged. The Outbox then becomes a record of what was sent, and "Mark as sent" is only needed if something fails.
+**Automatic sending** is built and is **off until you switch it on**: see section 52. When it is on, the Outbox becomes a
+record of what was sent, with the reason for anything that could not be, and a **Try again** button.
 
 **For whoever builds the next features:** every screen asks for an email through one function (`queueEmail` in `src\email.ts`),
 which calls the database function `queue_email`. Automatic emails triggered inside the database (for example "an assignment
@@ -1582,5 +1582,72 @@ Each report belongs to a **season**, and is deleted **a year after that season's
 ### Good to know
 
 - The **change log** itself holds no report text and is kept after a report is deleted.
+- The **date received** on a report from outside cannot be in the future, judged by **California's date** (the league's time zone). So a little after midnight elsewhere, "today" there may be refused until it is also the next day in California.
 - A report about a game cannot be left behind if the game is deleted: the database stops the game being deleted while reports exist.
 - **Database change:** `20261105100000_add_reports.sql` (needs the demo clock one, `20261101100000`, applied first). **Check script:** `reports_check.sql` (section 6).
+
+## 52. Sending messages: the sender, safe mode, reminders and texts
+
+The app's own messages (invitations, assignments, schedule changes, rainouts, running-late alerts, report notices,
+reminders) wait in the **Outbox**. A **sender** takes them from there every 5 minutes and sends them through the
+Google mailbox. **Setting it up is a step-by-step job: see `EMAIL-SENDING.md`.** This section explains how it behaves.
+
+### Three modes (a setting you change in the SQL Editor)
+
+| `email_mode` | What happens |
+|---|---|
+| **off** (the default) | Nothing is sent. Messages wait in the Outbox, and you can still send them by hand |
+| **safe** | Only the addresses on the **safe list** are emailed (subject starts **[TEST]**). Everyone else's message is set aside (shown as **Skipped**, with the reason). Optionally, everyone else's can be **redirected to you** to see what they would have received |
+| **live** | Messages go to whoever they are for |
+
+A typo in the mode counts as **off**, never on. The **Outbox** screen shows the current mode at the top.
+**To stop everything instantly:** `update public.sending_settings set value = 'off' where key in ('email_mode', 'sms_mode');`
+
+### The other settings (`sending_settings`)
+
+| Setting | Meaning | Starts at |
+|---|---|---|
+| `email_safe_allowlist` | addresses allowed in safe mode (separate with commas or spaces) | empty |
+| `email_safe_redirect` | in safe mode, send everyone else's message here instead | empty |
+| `email_daily_limit` | the most emails in any 24 hours (Google also limits this) | 400 |
+| `email_max_age_hours` | a message waiting longer than this is **not sent** | 72 |
+| `email_from_name`, `email_reply_to` | the sender's name, and where replies go | RWCLL Umpires, none |
+| `app_url` | the address of the app, added to reminders | empty |
+| `sms_mode`, `sms_safe_allowlist`, `sms_max_age_hours` | the same, for text messages | off, empty, 6 |
+
+**The age limit is a safety:** switching sending on can never release a backlog of old messages (old test messages, a
+long-ago assignment). They are set aside as *Too old to send*.
+
+### What you see in the Outbox
+
+- **Waiting**, or **Will try again** with the problem and how many tries (a temporary problem: it waits 5 minutes, then 30, 2 hours, 6 hours).
+- **Failed**, with the reason (for example, an address that does not exist), after 5 tries or at once for a permanent problem.
+- **Skipped**, with *why it was not sent* (safe mode, too old, sending off).
+- **Try again** puts a failed or skipped message back in the queue. **Send me a test message** queues one to your own address.
+
+### Reminders that now run by themselves
+
+| What | When | To whom |
+|---|---|---|
+| **Day-before reminder** | hourly: a **scheduled** game starting in 20 to 28 hours, once per assignment | The umpire. If they have not confirmed, it also asks them to |
+| **Unconfirmed-assignment warning** | daily | The administrators |
+| **Self-assigned games summary** | daily | The administrators |
+| **Report deletion** | nightly | (deletes reports a year after their season ends) |
+
+Drafts, canceled games and games already played are never reminded about. Nobody is reminded twice for the same game.
+
+### Text messages
+
+Built but **off**, and they need a texting service (written for Twilio; US business texting needs a carrier registration
+that takes days and has fees: see `EMAIL-SENDING.md`). Texts go **only** to umpires whose **own account agreed to text
+messages** and has a phone number; a parent's number is never texted. The only text sent is the day-before reminder, and it
+ends with "Reply STOP to opt out". A text older than 6 hours is not sent.
+
+### Safety, in short
+
+Nothing sends while the mode is off; safe mode can only reach your list; old and excess messages are held back; **access
+details (gate codes) and report text are never in any message**; the mailbox password and keys live only in Supabase's
+secrets; and the sender can be stopped with one line of SQL.
+
+**Database change:** `20261106100000_add_email_sending.sql`. **Check script:** `email_sending_check.sql` (section 6).
+**Setup:** `EMAIL-SENDING.md`; the schedule: `schedule_email_jobs.sql`.
