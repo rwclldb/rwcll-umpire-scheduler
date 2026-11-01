@@ -83,6 +83,8 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 50. [Game day extras: rainouts, running late, finding an umpire, field notes, and your day](#50-game-day-extras-rainouts-running-late-finding-an-umpire-field-notes-and-your-day)
 51. [Reports: post-game reports and reports from outside](#51-reports-post-game-reports-and-reports-from-outside)
 52. [Sending messages: the sender, safe mode, reminders and texts](#52-sending-messages-the-sender-safe-mode-reminders-and-texts)
+53. [Payments, part 1: pay rates](#53-payments-part-1-pay-rates)
+54. [Payments, part 2: who is paid, earnings and payroll](#54-payments-part-2-who-is-paid-earnings-and-payroll)
 
 ---
 
@@ -205,6 +207,8 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `payroll_check.sql` | Earnings and payroll work: who is paid (a youth is never their own payee), earnings come only from recorded arrivals on games that were played, amounts are kept as they were, a payroll cannot be approved until everyone has a payee or while a total is negative, payments are recorded, nothing is visible or changeable except by the treasurer and super admins | `Failures: 0` |
+| `pay_rates_check.sql` | Pay rates work (only the treasurer and super admins read and set them; amounts are whole cents up to $1000.00; a save is all or nothing; a rate applies from its start date and the newest started rate wins; every change is logged; nobody writes the tables directly) | `Failures: 0` |
 | `email_sending_check.sql` | The sender's database side works and is safe (only the sender can claim and finish messages; retries wait longer each time and give up after 5; the day-before reminders go once, only for scheduled games, and texts only to people who agreed; safe settings accept only valid values; phone numbers become international form) | `Failures: 0` |
 | `reports_check.sql` | Reports work and are private (an umpire writes post-game reports and reads only their own; only the umpire chief and super admins read everything and add reports from outside; the umpire can never see a report about themselves; only super admins delete; the change log; automatic deletion a year after a season ends) | `Failures: 0` |
 | `day_of_extras_check.sql` | The game day extras work and are private where they should be (closing and reopening a field; running-late reports; access details only for administrators and umpires on the game within 24 hours; administrators-only notes; partner names only) | `Failures: 0` |
@@ -455,6 +459,8 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\payroll_check.sql` | Tests earnings and payroll, building its own divisions, rates, games, umpires, parents and accounts. **Nothing is paid**; everything is rolled back | No (always rolls back) |
+| `supabase\tests\pay_rates_check.sql` | Tests pay rates, building its own divisions and accounts including a treasurer (your rates are not changed) | No (always rolls back) |
 | `supabase\tests\email_sending_check.sql` | Tests the sender's database side. **Nothing is sent**; waiting messages are set aside inside the run and everything is rolled back | No (always rolls back) |
 | `supabase\tests\reports_check.sql` | Tests reports, building its own seasons, games, umpires and accounts including a chief and a scheduler (your data is not changed) | No (always rolls back) |
 | `supabase\tests\day_of_extras_check.sql` | Tests the game day extras, building its own league, fields, games, umpires and accounts (your data is not changed) | No (always rolls back) |
@@ -565,7 +571,7 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `reports_check.sql`, `email_sending_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `reports_check.sql`, `email_sending_check.sql`, `pay_rates_check.sql`, `payroll_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `game-notes.ts`, `game-notes-model.ts`, `closure-model.ts`, `call-around-model.ts`, `reports-model.ts`, `reports.ts`, `reports-umpire.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `idle-logic.ts`, `idle-logout.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
@@ -1651,3 +1657,96 @@ secrets; and the sender can be stopped with one line of SQL.
 
 **Database change:** `20261106100000_add_email_sending.sql`. **Check script:** `email_sending_check.sql` (section 6).
 **Setup:** `EMAIL-SENDING.md`; the schedule: `schedule_email_jobs.sql`.
+
+## 53. Payments, part 1: pay rates
+
+The **Payments** tab is for the **treasurer** and **super admins**. This section covers its first part, **Pay rates**: what each place pays per game.
+What umpires are owed and how they are paid is in section 54; paying through Stripe comes later (see `STRIPE-SETUP.md`).
+
+### Setting rates
+
+1. Open **Payments**. You see two tables: **Youth umpires** and **Adult umpires**. Each has one row per division and one column per
+   place: **Home plate, First base, Second base, Third base, Field**.
+2. Type dollars in a box (`50`, `$25.50`). A box left empty means **no rate** (nothing is owed for that place). Amounts go up to **$1000.00**.
+3. **Copy to all** copies a row to every division of the same kind, which is the quick way to set the same amounts everywhere
+   (for example **$50** for home plate and **$25** for field).
+4. Press **Save rates**. Only what you changed is saved. The page says how many were saved and from when.
+5. **Undo my changes** puts every box back to what is saved.
+
+**Adult rates start empty, which means adults are not paid.** If the league starts paying adults, fill in the Adult table; the
+slots are already there.
+
+### Start dates: a change never rewrites the past
+
+Every rate has a **start date** (the box *New rates start on*, today unless you change it). A rate applies to games **on or after** its
+start date, and the **newest rate that has started wins**. So you can set next season's rates ahead of time, and a change today does
+not alter what an old game was worth. The start date can be up to **60 days ago** (for a season that has already begun) or a year ahead.
+When you change the date, the boxes show what applies on that date (you are warned first if you had typed something).
+
+### Everything is logged
+
+**Recent changes** lists who changed what, from what amount to what amount, and from which date. The log cannot be edited or erased.
+
+### Who can see them
+
+Only super admins and the treasurer. **Schedulers, the umpire chief and umpires cannot see pay rates** (this is money). Nobody can change
+the tables directly: every change goes through one function that checks the amounts and writes the log.
+
+### Good to know
+
+- A save is **all or nothing**: if one amount is invalid, nothing is saved.
+- The bases are only paid if you give them a rate. Your sample data sets only home plate and field.
+- A division's rates are deleted if the division is deleted, but the log of what was set stays.
+- **Database change:** `20261107100000_add_pay_rates.sql`. **Check script:** `pay_rates_check.sql` (section 6).
+
+## 54. Payments, part 2: who is paid, earnings and payroll
+
+The **Payments** tab (the treasurer and super admins) now has four sections: **Pay rates** (section 53), **Who is paid**, **Earnings** and
+**Payroll**. **No money moves from the app yet**: you record each payment as you make it (check, bank transfer, cash). Paying through Stripe is the next step.
+
+### The flow, in one line
+Choose who is **paid** → **work out earnings** from recorded arrivals → add **adjustments** → **create a payroll** for the period → **approve** it →
+**record each payment** as it is made.
+
+### Who is paid
+Each umpire has a **payee**, the account that receives their pay.
+- An **adult** umpire is paid to their own account unless you choose someone else.
+- A **youth** umpire **must have a parent or guardian's account** chosen. (Stripe does not allow a minor to hold a payout account, so a parent is the Stripe account holder.)
+  A youth can never be their own payee.
+- **Brothers and sisters can share one parent** and are paid together as **one family payment**.
+- The list of accounts is offered with parents and guardians first. Umpires who still need a payee are flagged and listed first.
+- Every change of payee is recorded in the activity log (who changed it, from whom to whom): a payee change is how money could be redirected, so it is always visible.
+
+### Earnings
+- An umpire **earns a game when their arrival is recorded**: their own check-in, or marked on the Field board, on a game that was **played and not canceled**.
+  A no-show, someone never marked, and a canceled game earn nothing.
+- The amount is the rate for that place **on the game's date** (Pay rates), and it is **kept as it was**: a later change of rates never changes what was already earned.
+- Press **Work out earnings** (it asks for a period; it starts with last month through today). It only adds what is new, so running it again is safe and nobody is paid twice.
+- If a place has **no rate** (or $0) the arrival earns nothing; the result tells you how many. Set the rate, run it again, and they are picked up (a rate can start up to 60 days back).
+- **Void** an earning (with a reason) if it should not be paid. It is not brought back by running it again. An earning already in a payroll cannot be voided; discard the draft first, or add an adjustment.
+
+### Adjustments (substitutes, bonuses, corrections)
+An adjustment is **plus or minus** an amount for an umpire, with a reason (up to $1000.00 either way). Use it for a **substitute who worked** (or, before the game, simply
+assign them and mark their arrival), a **bonus**, or a **correction** (a minus takes money back). Adjustments wait with the earnings and go into the next payroll.
+
+### Payroll
+1. **Create a payroll**: choose the period (it starts with last month) and an optional note. It collects every unpaid earning dated in the period and every waiting adjustment.
+   Only **one draft can exist at a time**.
+2. The draft shows each **family's payment** and each **umpire's line** (games, earned, adjustments, total). An umpire with **no payee** is flagged.
+3. **Approve**: by the **treasurer or any super admin**. It is refused while any umpire with money owed has **no payee** (it names them), or while a family's total is **negative**.
+   Choosing a payee while the draft exists is picked up when you approve. After approval, nothing in the payroll can be changed.
+4. **Record each payment** as it is made: how (check, bank transfer, cash, other) and a reference such as a check number. When every payment is recorded the payroll shows as **Paid**.
+5. **Download spreadsheet (CSV)** for your records. Names that start with `=`, `+`, `-` or `@` are neutralized so a spreadsheet cannot run them as formulas.
+6. **Discard** a draft to put everything back to waiting (nothing was paid).
+
+### The activity log
+Every step (earnings worked out, voids, adjustments, payee changes, payroll created, approved, discarded, payments recorded) is listed under **Recent activity** with who and when. It cannot be edited or erased.
+
+### Who can see it
+Only super admins and the treasurer. **Schedulers, the umpire chief and umpires cannot see any of it**, and nobody can change the tables directly.
+
+### Good to know
+- A game or an umpire that has earnings **cannot be deleted** (their pay history must stay). Make an umpire **inactive** instead.
+- Umpires cannot yet see **their own** earnings; that can be added.
+- A family whose total is negative gets no payment and blocks approval: correct the adjustments, or discard and recreate.
+- **Database change:** `20261108100000_add_earnings_and_payrolls.sql`. **Check script:** `payroll_check.sql` (section 6). Setup: `STRIPE-SETUP.md`.

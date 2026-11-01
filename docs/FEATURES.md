@@ -103,6 +103,21 @@ test on the league's own database.
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire), for reaching someone who is late
 - Attendance stays with an umpire when they are moved to another place on a game
 
+**Payments, part 2: earnings and payroll** 🆕
+
+- **Who is paid:** each umpire has a payee. Adults are paid to themselves; a **youth umpire is paid through a parent or guardian's account** (Stripe does not allow a minor to hold one), and **brothers and sisters share one parent and are paid as one family**
+- **Earnings** come from **recorded arrivals** on games that were played: the amount is the rate on the game's date and is **kept as it was**; a place with no rate earns nothing and is reported
+- **Adjustments** (plus or minus, with a reason) for substitutes, bonuses and corrections; earnings can be voided with a reason
+- **Payroll:** a draft for the period, totaled per umpire and per family; **approved by the treasurer or any super admin**, refused while anyone has no payee or a total is negative; then each payment is **recorded** as it is made, with a **spreadsheet download**
+- Everything is logged; only the treasurer and super admins can see any of it. Paying through Stripe comes next
+
+**Payments, part 1: pay rates** 🆕
+
+- A **Payments** tab for the **treasurer** and super admins sets **what each place pays per game**, for each **division**, **youth and adult** separately (adult rates start empty, so adults are not paid)
+- Rates are **dated**: a change applies to games on or after its start date, so it never rewrites the past; every change is logged with who made it
+- Amounts are checked (whole cents, up to $1000.00); a save is all or nothing; only the treasurer and super admins can see or change them
+- Nothing is paid yet: working out what umpires are owed, and paying through Stripe, come next
+
 **Sending messages for real** 🆕
 
 - A **sender** emails the messages waiting in the Outbox through the league's Google mailbox, every 5 minutes, with retries that wait longer each time

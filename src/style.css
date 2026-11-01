@@ -3301,3 +3301,221 @@ input[type="radio"] {
   color: #7a1717;
   font-size: 0.9rem;
 }
+
+/* ---- Payments: pay rates ---- */
+.rates-date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+
+.rates-date input {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+}
+
+.payments-card,
+.pay-rates {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.rates-table-wrap {
+  position: relative;   /* so the table's visually hidden header label is clipped with the table */
+  max-width: 100%;
+  margin: 12px 0 18px;
+  overflow-x: auto;
+}
+
+.rates-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.rates-caption {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.rates-table th,
+.rates-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #d6ddd8;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.rates-table thead th {
+  font-size: 0.85rem;
+  color: #3d4a42;
+}
+
+.rate-cell {
+  width: 96px;
+  min-height: 44px;
+  margin: 0;
+  text-align: right;
+}
+
+.rate-cell[aria-invalid="true"] {
+  border-color: #7a1717;
+  outline: 2px solid #7a1717;
+}
+
+.rate-copy {
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.rates-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+.rates-actions button {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+}
+
+.rates-log-title {
+  margin: 14px 0 6px;
+}
+
+.rates-log {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.92rem;
+}
+
+/* ---- Payments: sections, payees, earnings, payroll ---- */
+.pay-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.pay-tab {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 16px;
+  border: 2px solid #1b6b3a;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1b6b3a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pay-tab[aria-pressed="true"] {
+  background: #1b6b3a;
+  color: #ffffff;
+}
+
+.payee-select {
+  min-width: 200px;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 0;
+}
+
+.payee-flag {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #3d4a42;
+}
+
+.payee-flag-missing {
+  color: #7a1717;
+}
+
+.earn-form,
+.adj-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 10px 0 16px;
+}
+
+.earn-form label,
+.adj-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.earn-form input,
+.earn-form select,
+.adj-form input,
+.adj-form select {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+}
+
+.earn-form button,
+.adj-form button {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+}
+
+.money {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.payroll-card {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #c9d2cc;
+  border-radius: 8px;
+  background: #f8faf8;
+}
+
+.payroll-draft {
+  border-color: #8a4b00;
+  background: #fffaf0;
+}
+
+.payroll-card summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.pay-record {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.pay-record select,
+.pay-record input {
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+}
+
+.adj-list li {
+  margin-bottom: 6px;
+}

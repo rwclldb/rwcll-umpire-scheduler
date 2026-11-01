@@ -8,6 +8,7 @@ import { renderLeagueSetup } from "./league_setup";
 import { renderRoleManager } from "./roles";
 import { renderBoardPage } from "./games/board";
 import { renderReportsPage } from "./games/reports";
+import { renderPaymentsPage } from "./payments/payments";
 import { mountDemoClock, removeDemoClock } from "./demo-clock";
 import { hasAdministratorRole } from "./idle-logic";
 import { startIdleLogout, stopIdleLogout, takeIdleNotice } from "./idle-logout";
@@ -403,6 +404,7 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
     const pages = pagesFor(
       {
         isSuperAdmin: roleIds.includes("super_admin"),
+        isTreasurer: roleIds.includes("treasurer"),
         isUmpireChief: roleIds.includes("umpire_chief"),
         isScheduler: roleIds.includes("scheduler"),
         isUmpire:
@@ -831,6 +833,7 @@ function renderUmpireHomePage(
 function pagesFor(
   flags: {
     isSuperAdmin: boolean;
+    isTreasurer: boolean;
     isUmpireChief: boolean;
     isScheduler: boolean;
     isUmpire: boolean;
@@ -881,6 +884,15 @@ function pagesFor(
       id: "reports",
       label: "Reports",
       render: (container) => renderReportsPage(container, flags.isSuperAdmin),
+    });
+  }
+
+  // Payments: the treasurer and super admins (the database enforces it too)
+  if (flags.isSuperAdmin || flags.isTreasurer) {
+    pages.push({
+      id: "payments",
+      label: "Payments",
+      render: (container) => renderPaymentsPage(container),
     });
   }
 
