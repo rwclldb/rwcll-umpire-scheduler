@@ -105,6 +105,11 @@ begin
   insert into public.umpire_private_details (umpire_id, birth_date) values
     (y_a, date '2013-01-15'), (y_b, date '2013-01-20'), (y_c, date '2014-01-10'), (y_d, date '2014-01-12');
 
+  -- These tests are about other rules (positions and divisions by age), not about a parent's consent. Phase 9 says an umpire
+  -- under the consent age cannot be assigned without consent, so, INSIDE this run only (it is rolled back), the consent age is
+  -- set to its lowest value. (If the Phase 9 migration is not applied, this changes nothing.)
+  update public.app_settings set value = '5' where key = 'parent_consent_below_age';
+
   ----------------------------------------------------------------
   -- The division a youth umpire plays in (an administrator assigns)
   ----------------------------------------------------------------

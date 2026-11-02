@@ -6,6 +6,7 @@ type PendingProfile = {
   display_name: string | null;
   email: string | null;
   registration_kind: string;
+  registration_note?: string | null;
   created_at: string;
 };
 
@@ -16,7 +17,12 @@ type UmpireLink = {
 const KIND_LABEL: Record<string, string> = {
   youth_umpire: "Youth umpire",
   adult_umpire: "Adult umpire",
+  parent_guardian: "Parent or guardian",
 };
+
+// The age rules are settings (the database enforces them; these only explain early).
+let minAge = 13;
+let consentBelow = 13;
 
 // What the admin sees under the birth date. The database enforces the same
 // rules when Approve is pressed; this only explains them early.
@@ -31,8 +37,11 @@ function hint(birthDate: string, classification: string): string {
   if (age === null) return "Enter a valid birth date.";
   if (age < 0) return "That birth date is in the future.";
 
-  if (age < 13) {
-    return `Age ${age}. Umpires under 13 cannot be approved here: a parent account and consent are needed first.`;
+  if (age < minAge) {
+    return `Age ${age}. The league's minimum age for umpires is ${minAge}, so they cannot be approved.`;
+  }
+  if (age < consentBelow) {
+    return `Age ${age}. Under ${consentBelow}, they cannot be assigned to games until a linked parent or guardian gives consent (see Families).`;
   }
   if (classification === "youth" && age >= 18) {
     return `Age ${age}. This person is 18 or older, so approve them as an adult umpire.`;
@@ -55,11 +64,15 @@ export async function renderUmpireRegistrations(
     </section>
   `;
 
+  const [ageRule, consentRule] = await Promise.all([supabase.rpc("umpire_min_age"), supabase.rpc("parent_consent_below_age")]);
+  if (typeof ageRule.data === "number") minAge = ageRule.data;
+  if (typeof consentRule.data === "number") consentBelow = consentRule.data;
+
   const profilesResult = await supabase
     .from("profiles")
-    .select("id, display_name, email, registration_kind, created_at")
+    .select("id, display_name, email, registration_kind, registration_note, created_at")
     .eq("account_status", "pending")
-    .in("registration_kind", ["youth_umpire", "adult_umpire"])
+    .in("registration_kind", ["youth_umpire", "adult_umpire", "parent_guardian"])
     .order("created_at");
 
   if (profilesResult.error) {
@@ -94,8 +107,9 @@ export async function renderUmpireRegistrations(
   }
 
   const waiting = pending.filter((profile) =>
-    linked.some((row) => row.profile_id === profile.id)
+    profile.registration_kind !== "parent_guardian" && linked.some((row) => row.profile_id === profile.id)
   );
+  const parentsWaiting = pending.filter((profile) => profile.registration_kind === "parent_guardian");
 
   container.innerHTML = `
     <section class="directory-section" id="registrations">
@@ -161,6 +175,27 @@ export async function renderUmpireRegistrations(
         : `<p class="directory-empty">
             No umpire registrations are waiting for review.
           </p>`}
+
+      <h3>Parent and guardian registrations</h3>
+      <p class="directory-description">
+        Approving gives them the parent role. You then link them to their child in
+        <strong>Families</strong>: nobody can link themselves to a child.
+      </p>
+      ${parentsWaiting.length
+        ? `<ul class="role-list">${parentsWaiting.map((profile) => `
+            <li class="role-account" data-parent-id="${escapeHtml(profile.id)}">
+              <span class="role-account-name">${escapeHtml(profile.display_name || "Name not provided")}</span>
+              <span class="role-account-email">${escapeHtml(profile.email ?? "Email unavailable")}</span>
+              <span class="role-account-contact">
+                Signed up as: Parent or guardian &middot; ${escapeHtml(profile.created_at.slice(0, 10))}
+              </span>
+              <span class="role-account-contact">Says they are the parent of: ${escapeHtml(profile.registration_note || "(nothing written)")}</span>
+              <div class="account-actions">
+                <button type="button" class="primary-button" data-approve-parent="${escapeHtml(profile.id)}">Approve</button>
+                <button type="button" class="secondary-button" data-reject-parent="${escapeHtml(profile.id)}">Reject</button>
+              </div>
+            </li>`).join("")}</ul>`
+        : `<p class="directory-empty">No parent or guardian registrations are waiting for review.</p>`}
     </section>
   `;
 
@@ -223,6 +258,29 @@ export async function renderUmpireRegistrations(
     const target = event.target;
     if (!(target instanceof Element)) return;
 
+    // ----- Parents and guardians -----
+    const approveParent = target.closest<HTMLButtonElement>("[data-approve-parent]");
+    const rejectParent = target.closest<HTMLButtonElement>("[data-reject-parent]");
+    if (approveParent || rejectParent) {
+      const button = (approveParent ?? rejectParent) as HTMLButtonElement;
+      const id = (approveParent ? approveParent.dataset.approveParent : rejectParent?.dataset.rejectParent) ?? "";
+      const name = pending.find((item) => item.id === id)?.display_name || "this person";
+
+      if (rejectParent && !window.confirm(`Reject the registration from ${name}? They will not get access.`)) return;
+      button.disabled = true;
+
+      void (async () => {
+        const { error } = await supabase.rpc(approveParent ? "approve_parent_registration" : "reject_parent_registration", { p_profile_id: id });
+        if (error) {
+          show(`Could not ${approveParent ? "approve" : "reject"}: ${error.message}`, "error");
+          button.disabled = false;
+          return;
+        }
+        await reloadWithMessage(approveParent ? `Approved ${name} as a parent or guardian. Link them to their child in Families.` : `Rejected the registration from ${name}.`);
+      })();
+      return;
+    }
+
     // ----- Approve -----
     const approve = target.closest<HTMLButtonElement>("[data-approve]");
     if (approve) {
@@ -244,12 +302,8 @@ export async function renderUmpireRegistrations(
           show("Enter a valid birth date that is not in the future.", "error");
           return;
         }
-        if (age < 13) {
-          show(
-            "Umpires under 13 cannot be approved here. They need a parent " +
-              "account and consent first.",
-            "error",
-          );
+        if (age < minAge) {
+          show(`The league's minimum age for umpires is ${minAge}, so they cannot be approved.`, "error");
           return;
         }
         if (classification === "adult" && age < 18) {

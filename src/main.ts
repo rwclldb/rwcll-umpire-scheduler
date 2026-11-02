@@ -9,6 +9,8 @@ import { renderRoleManager } from "./roles";
 import { renderBoardPage } from "./games/board";
 import { renderReportsPage } from "./games/reports";
 import { renderPaymentsPage } from "./payments/payments";
+import { renderFamiliesPage } from "./families/families";
+import { renderMyFamilyPage } from "./families/my-family";
 import { mountDemoClock, removeDemoClock } from "./demo-clock";
 import { hasAdministratorRole } from "./idle-logic";
 import { startIdleLogout, stopIdleLogout, takeIdleNotice } from "./idle-logout";
@@ -146,6 +148,23 @@ function renderAuthForm() {
                       value="youth_umpire" />
                     A youth umpire (13 to 17)
                   </label>
+                  <label class="season-checkbox-label">
+                    <input type="radio" name="signupKind"
+                      value="parent_guardian" />
+                    A parent or guardian of a youth umpire
+                  </label>
+                  <div id="parent-note" hidden>
+                    <label for="registration-note">Your child's name, and the division they umpire in</label>
+                    <input id="registration-note" name="registrationNote"
+                      type="text" maxlength="200" autocomplete="off"
+                      placeholder="For example: Alex Kim, Majors" />
+                    <p class="season-dates">
+                      An administrator will check this and link your account to
+                      your child. You will then see your child's games,
+                      earnings and payments (read-only). You cannot link
+                      yourself to a child.
+                    </p>
+                  </div>
                   <div id="age-confirm" hidden>
                     <label class="season-checkbox-label">
                       <input type="checkbox" name="ageConfirm" />
@@ -234,6 +253,12 @@ function renderAuthForm() {
         )?.checked ?? false;
         const box = document.querySelector<HTMLElement>("#age-confirm");
         if (box) box.hidden = !youth;
+
+        const parent = document.querySelector<HTMLInputElement>(
+          'input[name="signupKind"][value="parent_guardian"]'
+        )?.checked ?? false;
+        const parentBox = document.querySelector<HTMLElement>("#parent-note");
+        if (parentBox) parentBox.hidden = !parent;
       });
     });
 }
@@ -276,8 +301,14 @@ async function submitAuthForm() {
 
       const signupKind = String(data.get("signupKind") ?? "");
 
-      if (signupKind !== "adult_umpire" && signupKind !== "youth_umpire") {
-        showMessage("Please choose whether you are an adult or a youth umpire.");
+      if (signupKind !== "adult_umpire" && signupKind !== "youth_umpire" && signupKind !== "parent_guardian") {
+        showMessage("Please choose whether you are an adult umpire, a youth umpire, or a parent or guardian.");
+        return;
+      }
+
+      const registrationNote = String(data.get("registrationNote") ?? "").trim();
+      if (signupKind === "parent_guardian" && !registrationNote) {
+        showMessage("Please write your child's name and division, so an administrator can link you.");
         return;
       }
 
@@ -293,7 +324,11 @@ async function submitAuthForm() {
         email,
         password,
         options: {
-          data: { display_name: displayName, signup_kind: signupKind },
+          data: {
+            display_name: displayName,
+            signup_kind: signupKind,
+            ...(signupKind === "parent_guardian" ? { registration_note: registrationNote } : {})
+          },
           emailRedirectTo: `${window.location.origin}/`
         }
       });
@@ -405,6 +440,7 @@ async function loadProfile(session: Session, alreadyClaimed = false) {
       {
         isSuperAdmin: roleIds.includes("super_admin"),
         isTreasurer: roleIds.includes("treasurer"),
+        isParent: roleIds.includes("parent_guardian"),
         isUmpireChief: roleIds.includes("umpire_chief"),
         isScheduler: roleIds.includes("scheduler"),
         isUmpire:
@@ -834,6 +870,7 @@ function pagesFor(
   flags: {
     isSuperAdmin: boolean;
     isTreasurer: boolean;
+    isParent: boolean;
     isUmpireChief: boolean;
     isScheduler: boolean;
     isUmpire: boolean;
@@ -884,6 +921,24 @@ function pagesFor(
       id: "reports",
       label: "Reports",
       render: (container) => renderReportsPage(container, flags.isSuperAdmin),
+    });
+  }
+
+  // Families: the umpire chief and super admins link parents to youth umpires (the database enforces it too)
+  if (flags.isSuperAdmin || flags.isUmpireChief) {
+    pages.push({
+      id: "families",
+      label: "Families",
+      render: (container) => renderFamiliesPage(container),
+    });
+  }
+
+  // My family: a parent or guardian sees their own children, read-only
+  if (flags.isParent) {
+    pages.push({
+      id: "family",
+      label: "My family",
+      render: (container) => renderMyFamilyPage(container),
     });
   }
 

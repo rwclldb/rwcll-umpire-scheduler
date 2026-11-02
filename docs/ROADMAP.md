@@ -44,6 +44,7 @@ whenever the league's needs change.
   can't umpire, and a month calendar. It is built and tested here; its database change is
   waiting for its first run on your own test database.
 - Stage **10d** (rainouts, running late, call-around list, field notes, the umpire's day, and administrators-only notes) is built and tested here; its database change is waiting for a first run. **Stage 10c (reports) is built and tested here too, which completes Phase 10**; its database change is waiting for a first run.
+- **Phase 9 (families):** parents sign up, are linked to their children by an administrator, see their children read-only, and give consent where the league requires it. Built and tested here; its database change is waiting for a first run.
 - **Phase 12 (payments):** pay rates, payees, earnings and a monthly payroll are built and tested here (their database changes are waiting for a first run). You record payments by hand for now. Next is paying through Stripe (see `STRIPE-SETUP.md`).
 - Phase 7 (sending messages): a first cut is built and tested here, with its database change waiting for a first run; deploying and switching it on is the next step (see `EMAIL-SENDING.md`).
 - A **demo clock** (a pretend date and time, for testing and demonstrations) is built and tested
@@ -186,11 +187,15 @@ whenever the league's needs change.
 - Put the app on the web so everyone can reach it
 - Make it install on a phone like an app
 
-### Phase 9: Families and youth safeguards ⬜
+### Phase 9: Families and youth safeguards ✅ *(first cut built; waiting on the board's answers below)*
 
-- Link parents and guardians to youth umpires
-- Parent consent for umpires under 13 before they can be active
-- Read-only access for parents
+- ✅ **Parents sign up** as parents or guardians (with a note saying whose parent they are) and are **approved** by an umpire chief or super admin
+- ✅ **Linking a parent to a youth umpire**: done only by an umpire chief or super admin (nobody links themselves), up to 4 per umpire, logged
+- ✅ **Parent consent** for younger umpires, as a **rule you set** (a minimum age, and an age below which a linked parent must consent); it blocks assigning and self-assigning; unlinking withdraws it
+- ✅ **Read-only access for parents**: their own children's games, earnings and the payments to them
+- ✅ **Turning 18**: flagged, and one step changes them to an adult (roles, rates, pay, links)
+- ⬜ For the board: keep the 13+ rule, or allow younger with consent? what the consent wording should say; should parents get email copies of notices?
+- ⬜ Later: parents getting copies of assignment and rainout notices, and a parent "set up payments" button (with Stripe)
 
 ### Phase 10: Game day 🔧 ← we are here
 

@@ -76,6 +76,8 @@ nothing in fees, only volunteer time, and is always possible.)
 - **Tax paperwork (1099s, W-9s)** and **work-permit rules**: you said your league management handles these. Nothing is needed
   in the system for now.
 
+**Before parents can be paid:** each parent signs up as a **parent or guardian** in the app, an administrator approves them and links them to their children (the **Families** tab), and the treasurer chooses them as the payee (**Payments, Who is paid**).
+
 ## What umpires and parents will see (so you can explain it)
 
 1. A parent signs in to the app, sees **Set up payments** for their umpire, and presses it.
