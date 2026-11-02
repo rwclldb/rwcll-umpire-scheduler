@@ -103,6 +103,14 @@ test on the league's own database.
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire), for reaching someone who is late
 - Attendance stays with an umpire when they are moved to another place on a game
 
+**Families: parents and guardians** 🆕
+
+- A person can **sign up as a parent or guardian** (saying whose parent they are); an umpire chief or super admin approves them, then **links them to their child**. Nobody can link themselves
+- Parents get a **read-only My family** page: their own children's games, earnings, and the payments made to them, plus the one thing they can change, **consent**
+- **Consent for younger umpires** is a rule you set (minimum age, and the age below which a linked parent must consent). It blocks assigning and self-assigning until given; unlinking a parent withdraws their consent
+- A **Families** screen flags who needs consent, who has turned (or is about to turn) 18, and who has no parent linked, and changes an 18-year-old to an adult in one step
+- Everything is logged. This is also what lets parents be paid for their children
+
 **Payments, part 2: earnings and payroll** 🆕
 
 - **Who is paid:** each umpire has a payee. Adults are paid to themselves; a **youth umpire is paid through a parent or guardian's account** (Stripe does not allow a minor to hold one), and **brothers and sisters share one parent and are paid as one family**

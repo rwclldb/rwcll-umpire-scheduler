@@ -410,8 +410,8 @@ begin
     report := array_append(report, ('FAIL  E2  a 10-year-old was approved')::text);
     failures := failures + 1;
   exception when others then
-    if sqlerrm like '%under 13%' then
-      report := array_append(report, ('PASS  E2  an umpire under 13 cannot be approved this way')::text);
+    if sqlerrm like '%at least 13 years old%' then
+      report := array_append(report, ('PASS  E2  an umpire under the league''s minimum age (13) cannot be approved')::text);
     else
       report := array_append(report, ('FAIL  E2  unexpected message: ' || sqlerrm)::text);
       failures := failures + 1;
