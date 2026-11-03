@@ -103,6 +103,14 @@ test on the league's own database.
 - **Call** and **Text** links with each umpire's number (and a parent's for a youth umpire), for reaching someone who is late
 - Attendance stays with an umpire when they are moved to another place on a game
 
+**Families, part 2** 🆕
+
+- **Younger umpires with consent:** the minimum age is now 10; umpires younger than 13 cannot be assigned until a linked parent consents. An unknown birth date counts as needing consent
+- The **consent wording** is edited by a super admin on the Families screen (it starts as a sample that parents cannot consent to); each consent records the version agreed
+- **Parents are copied on every notice** sent to their child (marked "Copy for ..."), even if the child has no email
+- **Turning 18 happens by itself:** the umpire becomes an adult, their parents are told they will no longer be copied, and the new adult is told to set up their own payment account; the administrators get a summary
+- The administrators are **emailed when a parent withdraws consent**
+
 **Families: parents and guardians** 🆕
 
 - A person can **sign up as a parent or guardian** (saying whose parent they are); an umpire chief or super admin approves them, then **links them to their child**. Nobody can link themselves

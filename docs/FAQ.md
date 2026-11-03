@@ -86,6 +86,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 53. [Payments, part 1: pay rates](#53-payments-part-1-pay-rates)
 54. [Payments, part 2: who is paid, earnings and payroll](#54-payments-part-2-who-is-paid-earnings-and-payroll)
 55. [Families: parents and guardians, consent, and turning 18](#55-families-parents-and-guardians-consent-and-turning-18)
+56. [Families, part 2: younger umpires, parents copied on notices, and turning 18 by itself](#56-families-part-2-younger-umpires-parents-copied-on-notices-and-turning-18-by-itself)
 
 ---
 
@@ -208,6 +209,7 @@ Also called "run the security check", "run the rules check", and so on.
 | `role_rules_check.sql` | The role safeguards work (approved accounts only, youth/adult exclusive, last super admin protected) | `Failures: 0` (a `SKIP` is fine) |
 | `account_details_check.sql` | The account-details rules work (only the account holder can turn text messages on, outside IDs are admin-only and unique, emails are unique) | `Failures: 0` |
 | `further_rules_check.sql` | The youth umpire's own-division rule works (recorded division, or worked out from age; adults unaffected; direct writes and self-assigning too) and the messages to administrators when an umpire takes a game work (straight away within 48 hours, otherwise one summary per day, never twice) | `Failures: 0` |
+| `family_notices_check.sql` | Consent wording (only a super admin edits it; unfinished sample wording cannot be consented to; a parent must have read the current version), parents copied on every notice (not unlinked, unapproved or role-less ones; no double copy to a shared address; none for adults), turning 18 by itself (including on the birthday itself, never a day early) with the three notices, the administrators told when consent is withdrawn | `Failures: 0` |
 | `families_check.sql` | Parents, links, consent and turning 18 work: only an umpire chief or super admin links a parent; consent blocks assigning and self-assigning until a linked parent gives it; unlinking withdraws it; a parent sees only their own children; nothing writes the tables directly | `Failures: 0` |
 | `payroll_check.sql` | Earnings and payroll work: who is paid (a youth is never their own payee), earnings come only from recorded arrivals on games that were played, amounts are kept as they were, a payroll cannot be approved until everyone has a payee or while a total is negative, payments are recorded, nothing is visible or changeable except by the treasurer and super admins | `Failures: 0` |
 | `pay_rates_check.sql` | Pay rates work (only the treasurer and super admins read and set them; amounts are whole cents up to $1000.00; a save is all or nothing; a rate applies from its start date and the newest started rate wins; every change is logged; nobody writes the tables directly) | `Failures: 0` |
@@ -461,6 +463,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | `supabase\tests\account_details_check.sql` | Tests the phone, text-message, outside-ID and unique-email rules | No (always rolls back) |
 | `supabase\tests\email_outbox_check.sql` | Tests the Outbox rules | No (always rolls back) |
 | `supabase\tests\further_rules_check.sql` | Tests the own-division rule and the messages about self-assigned games (builds its own league, divisions, age chart, umpires and sign-in accounts; your data is not changed) | No (always rolls back) |
+| `supabase\tests\family_notices_check.sql` | Tests the consent wording, parent copies and turning 18 by itself. **Nothing is sent**: the messages it queues are rolled back with everything else | No (always rolls back) |
 | `supabase\tests\families_check.sql` | Tests parents, links, consent and turning 18, building its own accounts, umpires of different ages and games (your settings and data are not changed) | No (always rolls back) |
 | `supabase\tests\payroll_check.sql` | Tests earnings and payroll, building its own divisions, rates, games, umpires, parents and accounts. **Nothing is paid**; everything is rolled back | No (always rolls back) |
 | `supabase\tests\pay_rates_check.sql` | Tests pay rates, building its own divisions and accounts including a treasurer (your rates are not changed) | No (always rolls back) |
@@ -574,7 +577,7 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `reports_check.sql`, `email_sending_check.sql`, `pay_rates_check.sql`, `payroll_check.sql`, `families_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `reports_check.sql`, `email_sending_check.sql`, `pay_rates_check.sql`, `payroll_check.sql`, `families_check.sql`, `family_notices_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
 | `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `game-notes.ts`, `game-notes-model.ts`, `closure-model.ts`, `call-around-model.ts`, `reports-model.ts`, `reports.ts`, `reports-umpire.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `idle-logic.ts`, `idle-logout.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
@@ -1775,12 +1778,12 @@ Only super admins and the treasurer. **Schedulers, the umpire chief and umpires 
 ### Age rules and consent (two settings)
 | Setting | Meaning | Starts at |
 |---|---|---|
-| `umpire_min_age` | Nobody younger can be approved | 13 |
+| `umpire_min_age` | Nobody younger can be approved | **10** (it was 13 until section 56) |
 | `parent_consent_below_age` | An umpire younger than this cannot be assigned, or take a game themselves, until a **linked** parent or guardian gives consent | 13 |
 
 You change them in the SQL Editor, for example `update public.app_settings set value = '10' where key = 'umpire_min_age';`. Each must be a whole number from 5 to 18.
-- **With the starting values (13 and 13), consent never comes up**, because nobody under 13 can be approved. This is today's rule.
-- To allow **younger umpires with consent**: lower the first (say 10) and keep the second at 13. Ages 10 to 12 are then approved, but **cannot be assigned** until a linked parent consents.
+- **Since section 56 the minimum is 10 and consent is needed below 13**, so umpires aged 10 to 12 can be approved but need a linked parent's consent. (If you set both back to 13, consent never comes up, because nobody under 13 can be approved.)
+- To allow **younger umpires with consent**: keep the minimum below 13 and the consent age at 13. Ages in between are approved but **cannot be assigned** until a linked parent consents.
 - To require consent for **every youth umpire**: set the second to 18.
 - The Approvals screen and the Families screen explain the current rule in words.
 
@@ -1788,7 +1791,7 @@ You change them in the SQL Editor, for example `update public.app_settings set v
 - A consent counts only while the parent who gave it is **still linked**. **Unlinking withdraws it**, and re-linking does **not** bring it back (they must give it again).
 - An administrator can also withdraw consent. Administrators **cannot give** consent for a parent.
 - Existing assignments are not removed when consent is withdrawn; the Families screen flags the umpire so you can act.
-- **The consent wording is a placeholder.** Your board should read it. It is in `family-model.ts` (`consentText`); changing it means changing the version too.
+- **The consent wording is kept in the database and edited on the Families screen by a super admin** (section 56). It starts as a SAMPLE that nobody can consent to.
 
 ### The Families tab (umpire chief and super admins)
 - **Needs attention:** umpires waiting for consent (and whether any parent is linked), umpires who have **turned 18**, umpires turning 18 within **60 days**, and youth with **no parent linked** (they are paid through a parent).
@@ -1802,10 +1805,50 @@ When a youth umpire turns 18 the Families screen flags them. **Change to adult**
 - a parent payee is **cleared**, so they are paid **to themselves**,
 - their **parents' links end**, and
 - their account's role changes from *youth umpire* to *adult umpire*.
-It is refused until they really are 18 (by their birth date). Earnings already worked out keep the youth amounts.
+It is refused until they really are 18 (by their birth date). Earnings already worked out keep the youth amounts. **This also happens by itself every day** (section 56).
 
 ### Good to know
 - A parent registration does nothing until approved; a rejected one gets no access.
-- Parents do **not** get email copies of their child's assignments and notices yet (a possible next step).
+- Parents **are** copied on their child's notices (section 56).
 - A youth with no account of their own can still have parents linked and consent given.
-- **Database change:** `20261109100000_add_families_and_consent.sql`. **Check script:** `families_check.sql` (section 6).
+- **Database changes:** `20261109100000_add_families_and_consent.sql`, then `20261109110000_fix_assignment_consent_check.sql` (a small fix: without it, administrators could not assign any umpire; apply both, in order). **Check script:** `families_check.sql` (section 6).
+
+## 56. Families, part 2: younger umpires, parents copied on notices, and turning 18 by itself
+
+### Younger umpires, with consent
+- The **minimum age is now 10** (`umpire_min_age`) and **consent is needed below 13** (`parent_consent_below_age`). Both are settings you can change in the SQL Editor
+  (for example `update public.app_settings set value = '12' where key = 'umpire_min_age';`), each a whole number from 5 to 18.
+- An umpire aged 10 to 12 can be approved, but **cannot be assigned, or take a game, until a linked parent or guardian has given consent**.
+- **An umpire whose birth date is not entered counts as needing consent** while the minimum age is below 13 (otherwise leaving the date blank would skip the rule). Enter the birth date in Umpire Management, or a parent can consent.
+- **Under 13 cannot sign themselves up.** The sign-up screen says so and points to the way in: a **parent signs up as a parent**, the league adds the child (with their **birth date**), an administrator links the parent in **Families**, and the parent gives consent in **My family**.
+- The Approvals and Families screens explain the current rule in words.
+
+### The consent wording (edited by a super admin, no programmer needed)
+- It lives in the database. On the **Families** screen a **super admin** sees an editor at the bottom; everyone else sees the wording read-only.
+- **`{child}`** is where the child's name goes, and the wording **must** include it.
+- It starts as a **SAMPLE** with **[[double-bracket placeholders]]** (the league's legal name, who supervises, the insurance and safety-officer details). **While any [[ ]] remains, the database refuses to record consent**, so nobody can agree to unfinished text. The Families screen shows a red warning until you replace them, and a parent sees "The league has not finished the consent wording yet".
+- Each save is a **new version** (like `2026-11-10-1`); old versions are kept. The version a parent read is recorded **with their consent**. A parent who loads the page, and then the wording changes, is told to reload and read it again.
+- **Changing the wording does not ask parents who already consented to consent again.** If your board wants that, say so and it can be added.
+- The seed (test data) adds a clearly labelled **DEMO** wording so you can try consent right away. **Do not use it for real.**
+
+### Parents are copied on notices
+Every message to a youth umpire (assignments, schedule changes, rainouts, running late, the day-before reminder) is also sent to their **linked parents and guardians**, with the subject **"Copy for <name>: ..."** and a line saying it is a copy.
+- It goes **even if the umpire has no email of their own**.
+- **Not copied:** an unlinked parent, a parent whose link ended, an account that is not approved, an account without the parent role, and adult umpires.
+- A parent whose email is the **same** as the child's does not get two.
+- Messages to administrators (such as reports) are never copied to parents. **Gate codes and report text are never in any message.**
+
+### Turning 18 happens by itself
+- **Every morning (about 8:20 AM Pacific)** the database changes every youth umpire who has **turned 18** into an **adult umpire**: new role, adult pay rates, paid to themselves, the parent payee cleared, and the parents' links ended. Someone whose birthday is **today** is changed today; one who is a day short is not.
+- **The parents** are told: the umpire is now an adult, they will **no longer be copied** on their messages or see their games, earnings or payments, and payments are made to them directly.
+- **The new adult** is told: they are now an adult umpire, payments go to **them** instead of a parent, and they **must set up their own payment account (Stripe)**. (The "Set up payments" button arrives with Stripe; the notice says the league will tell them when it is ready.)
+- **The administrators** get one summary of who was changed. The change is in the log as made by "The system". If one conversion fails, the others still go through and the failure is logged.
+- The **Change to adult** button on the Families screen does the same thing by hand, and sends the same notices.
+- **To switch the daily job on:** run `schedule_family_jobs.sql` once in the SQL Editor of each project (it uses the same scheduler as the email jobs). Until then, nothing happens by itself.
+
+### When consent is withdrawn
+The administrators (super admins, the umpire chief and schedulers) are **emailed**: who withdrew consent, and that the child cannot be assigned until consent is given again. Games they are already assigned to are **not** changed, so someone should look at them.
+
+### Good to know
+- **Database changes:** `20261110100000_add_family_notices_and_wording.sql` (needs the families migrations and the email sending migration first). **Check script:** `family_notices_check.sql` (section 6).
+- If a payment is owed to a youth when they turn 18, it is paid to **them** once they have a payment account; their parent is no longer the payee.

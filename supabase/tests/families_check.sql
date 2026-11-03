@@ -34,7 +34,7 @@ declare
   um_y uuid; um_kid uuid; um_kid2 uuid; um_t18 uuid; um_t19 uuid; um_nobd uuid; um_ad uuid; um_r1 uuid; um_r2 uuid;
   g_a uuid; g_b uuid; g_c uuid; g_past uuid; g_far uuid; g_canc uuid;
   lk1 uuid; lk2 uuid; lk3 uuid; lk4 uuid; lk_x uuid; lk_kid uuid; pr_appr uuid; pr_draft uuid;
-  n bigint; b boolean; v integer; j jsonb; txt text;
+  n bigint; b boolean; v integer; j jsonb; txt text; wv text;
 begin
   select p.id into t_admin
   from public.profiles p
@@ -1169,9 +1169,9 @@ begin
     perform set_config('request.jwt.claim.sub', ch_acct::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', ch_acct, 'role', 'authenticated')::text, true);
     set local role authenticated;
-    select count(*) into n from public.families_overview() where umpire_id = um_nobd and age is null and not needs_consent;
+    select count(*) into n from public.families_overview() where umpire_id = um_nobd and age is null and needs_consent;
     reset role;
-    if n = 1 then report := array_append(report, ('PASS  O5  an umpire with no birth date shows no age and needs no consent')::text); else report := array_append(report, ('FAIL  O5  a missing birth date was handled wrongly')::text); failures := failures + 1; end if;
+    if n = 1 then report := array_append(report, ('PASS  O5  an umpire with no birth date shows no age, and needs consent while the minimum age is below 13 (we cannot show they are old enough)')::text); else report := array_append(report, ('FAIL  O5  a missing birth date was handled wrongly')::text); failures := failures + 1; end if;
   exception when others then
     reset role; report := array_append(report, ('FAIL  O5  a missing birth date was handled wrongly: ' || sqlerrm)::text); failures := failures + 1;
   end;
@@ -1333,14 +1333,103 @@ begin
   ----------------------------------------------------------------
   -- 6. Consent: the rules (minimum age 10; consent needed below 13)
   ----------------------------------------------------------------
+  -- C00
+  begin
+    perform set_config('request.jwt.claim.sub', t_admin::text, true);
+    perform set_config('request.jwt.claims', json_build_object('sub', t_admin, 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    perform public.set_consent_wording('I am the parent or legal guardian of {child}. I give permission for {child} to umpire games for the league, and I understand I can withdraw this at any time.');
+    reset role;
+    if true then report := array_append(report, ('PASS  C00  (setup: a super admin saves finished consent wording, so consent can be given)')::text); else report := array_append(report, ('FAIL  C00  the wording was not saved')::text); failures := failures + 1; end if;
+  exception when others then
+    reset role; report := array_append(report, ('FAIL  C00  the wording was not saved: ' || sqlerrm)::text); failures := failures + 1;
+  end;
+
+  reset role;
+  select version into wv from public.consent_wordings order by seq desc limit 1;
+
   -- C0
   begin
     reset role;
     null;
     reset role;
-    if public.umpire_needs_consent(um_kid) and not public.umpire_needs_consent(um_y) and not public.umpire_needs_consent(um_t18) and not public.umpire_needs_consent(um_nobd) and not public.umpire_needs_consent(um_ad) then report := array_append(report, ('PASS  C0  consent is needed for the 11-year-old only (not 16, 18, no birth date, or an adult)')::text); else report := array_append(report, ('FAIL  C0  the consent rule was wrong')::text); failures := failures + 1; end if;
+    if public.umpire_needs_consent(um_kid) and not public.umpire_needs_consent(um_y) and not public.umpire_needs_consent(um_t18) and public.umpire_needs_consent(um_nobd) and not public.umpire_needs_consent(um_ad) then report := array_append(report, ('PASS  C0  consent is needed for the 11-year-old and for the youth with no birth date (minimum age 10), but not for a 16-year-old, an 18-year-old or an adult')::text); else report := array_append(report, ('FAIL  C0  the consent rule was wrong')::text); failures := failures + 1; end if;
   exception when others then
     reset role; report := array_append(report, ('FAIL  C0  the consent rule was wrong: ' || sqlerrm)::text); failures := failures + 1;
+  end;
+
+  -- C0a
+  begin
+    perform set_config('request.jwt.claim.sub', t_admin::text, true);
+    perform set_config('request.jwt.claims', json_build_object('sub', t_admin, 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    select public.assignment_blocked_by_consent(um_kid) into b;
+    reset role;
+    if b then report := array_append(report, ('PASS  C0a  the rule an administrator''s assignment runs says the 11-year-old is blocked (this is the call that was refused before the fix)')::text); else report := array_append(report, ('FAIL  C0a  the administrator''s rule could not run')::text); failures := failures + 1; end if;
+  exception when others then
+    reset role; report := array_append(report, ('FAIL  C0a  the administrator''s rule could not run: ' || sqlerrm)::text); failures := failures + 1;
+  end;
+
+  -- C0b
+  begin
+    perform set_config('request.jwt.claim.sub', t_admin::text, true);
+    perform set_config('request.jwt.claims', json_build_object('sub', t_admin, 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    select public.assignment_blocked_by_consent(um_y) into b;
+    reset role;
+    if not b then report := array_append(report, ('PASS  C0b  ...and says a 16-year-old is not')::text); else report := array_append(report, ('FAIL  C0b  the rule blocked someone it should not')::text); failures := failures + 1; end if;
+  exception when others then
+    reset role; report := array_append(report, ('FAIL  C0b  the rule blocked someone it should not: ' || sqlerrm)::text); failures := failures + 1;
+  end;
+
+  -- C0c
+  begin
+    perform set_config('request.jwt.claim.sub', par1::text, true);
+    perform set_config('request.jwt.claims', json_build_object('sub', par1, 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    select public.assignment_blocked_by_consent(um_kid) into b;
+    reset role;
+    if not b then report := array_append(report, ('PASS  C0c  to anyone who is not an administrator it always says ''no'', so it reveals nothing about any child')::text); else report := array_append(report, ('FAIL  C0c  the rule revealed something to a non-administrator')::text); failures := failures + 1; end if;
+  exception when others then
+    reset role; report := array_append(report, ('FAIL  C0c  the rule revealed something to a non-administrator: ' || sqlerrm)::text); failures := failures + 1;
+  end;
+
+  -- C0d
+  begin
+    perform set_config('request.jwt.claim.sub', x_acct::text, true);
+    perform set_config('request.jwt.claims', json_build_object('sub', x_acct, 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    select public.assignment_blocked_by_consent(um_kid) into b;
+    reset role;
+    if not b then report := array_append(report, ('PASS  C0d  ...including an ordinary account')::text); else report := array_append(report, ('FAIL  C0d  the rule revealed something to an ordinary account')::text); failures := failures + 1; end if;
+  exception when others then
+    reset role; report := array_append(report, ('FAIL  C0d  the rule revealed something to an ordinary account: ' || sqlerrm)::text); failures := failures + 1;
+  end;
+
+  -- C0e
+  begin
+    perform set_config('request.jwt.claim.sub', '', true);
+    perform set_config('request.jwt.claims', '', true);
+    set local role anon;
+    perform public.assignment_blocked_by_consent(um_kid);
+    reset role;
+    report := array_append(report, ('FAIL  C0e  this was allowed but should have been refused')::text); failures := failures + 1;
+  exception when others then
+    reset role;
+    if sqlstate = '42501' then report := array_append(report, ('PASS  C0e  a signed-out visitor cannot call it')::text); else report := array_append(report, ('FAIL  C0e  unexpected result: ' || sqlstate || ' ' || sqlerrm)::text); failures := failures + 1; end if;
+  end;
+
+  -- C0f
+  begin
+    perform set_config('request.jwt.claim.sub', ch_acct::text, true);
+    perform set_config('request.jwt.claims', json_build_object('sub', ch_acct, 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    perform public.umpire_blocked_by_consent(um_kid);
+    reset role;
+    report := array_append(report, ('FAIL  C0f  this was allowed but should have been refused')::text); failures := failures + 1;
+  exception when others then
+    reset role;
+    if sqlstate = '42501' then report := array_append(report, ('PASS  C0f  the underlying helper stays system-only: even an administrator cannot call it directly')::text); else report := array_append(report, ('FAIL  C0f  unexpected result: ' || sqlstate || ' ' || sqlerrm)::text); failures := failures + 1; end if;
   end;
 
   -- C1
@@ -1476,9 +1565,9 @@ begin
     perform set_config('request.jwt.claim.sub', par1::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', par1, 'role', 'authenticated')::text, true);
     set local role authenticated;
-    perform public.give_consent(um_kid, '2026-11');
+    perform public.give_consent(um_kid, wv);
     reset role;
-    if exists (select 1 from public.parental_consents where umpire_id = um_kid and parent_id = par1 and withdrawn_at is null and text_version = '2026-11') and (select count(*) from public.family_log where action = 'consent_given' and detail like '%CHK Parent One%' || stamp || '%') = 1 then report := array_append(report, ('PASS  C11  a linked parent gives consent (the wording version is kept, and it is logged)')::text); else report := array_append(report, ('FAIL  C11  consent was not recorded')::text); failures := failures + 1; end if;
+    if exists (select 1 from public.parental_consents where umpire_id = um_kid and parent_id = par1 and withdrawn_at is null and text_version = wv) and (select count(*) from public.family_log where action = 'consent_given' and detail like '%CHK Parent One%' || stamp || '%') = 1 then report := array_append(report, ('PASS  C11  a linked parent gives consent (the wording version is kept, and it is logged)')::text); else report := array_append(report, ('FAIL  C11  consent was not recorded')::text); failures := failures + 1; end if;
   exception when others then
     reset role; report := array_append(report, ('FAIL  C11  consent was not recorded: ' || sqlerrm)::text); failures := failures + 1;
   end;
@@ -1488,7 +1577,7 @@ begin
     perform set_config('request.jwt.claim.sub', par1::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', par1, 'role', 'authenticated')::text, true);
     set local role authenticated;
-    perform public.give_consent(um_kid, '2026-11');
+    perform public.give_consent(um_kid, wv);
     reset role;
     if (select count(*) from public.parental_consents where umpire_id = um_kid and parent_id = par1) = 1 then report := array_append(report, ('PASS  C12  giving it again changes nothing')::text); else report := array_append(report, ('FAIL  C12  consent was recorded twice')::text); failures := failures + 1; end if;
   exception when others then
@@ -1589,7 +1678,7 @@ begin
     perform set_config('request.jwt.claim.sub', par1::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', par1, 'role', 'authenticated')::text, true);
     set local role authenticated;
-    perform public.give_consent(um_kid, '2026-11');
+    perform public.give_consent(um_kid, wv);
     reset role;
     if (select count(*) from public.parental_consents where umpire_id = um_kid and parent_id = par1) = 2 and not public.umpire_blocked_by_consent(um_kid) then report := array_append(report, ('PASS  C20  after withdrawing, a parent can consent again (a new record; the old one is kept)')::text); else report := array_append(report, ('FAIL  C20  re-consenting did not work')::text); failures := failures + 1; end if;
   exception when others then
@@ -1613,7 +1702,7 @@ begin
   perform set_config('request.jwt.claim.sub', par1::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', par1, 'role', 'authenticated')::text, true);
   set local role authenticated;
-  perform public.give_consent(um_kid, '2026-11');
+  perform public.give_consent(um_kid, wv);
   reset role;
   perform set_config('request.jwt.claim.sub', ch_acct::text, true);
   perform set_config('request.jwt.claims', json_build_object('sub', ch_acct, 'role', 'authenticated')::text, true);

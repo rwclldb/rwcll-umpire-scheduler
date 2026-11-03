@@ -219,6 +219,22 @@ revoke all on function public.parent_consent_below_age() from public, anon;
 grant execute on function public.umpire_min_age() to authenticated;
 grant execute on function public.parent_consent_below_age() to authenticated;
 
+-- The assignment rule runs as the signed-in ADMINISTRATOR (it is a trigger), so it cannot call the
+-- system-only helper above. This wrapper is what it calls: it answers only for scheduling
+-- administrators, and says "no" to everyone else, so it reveals nothing about any child.
+create or replace function public.assignment_blocked_by_consent(p_umpire_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.is_scheduling_admin() and public.umpire_blocked_by_consent(p_umpire_id);
+$$;
+
+revoke all on function public.assignment_blocked_by_consent(uuid) from public, anon;
+grant execute on function public.assignment_blocked_by_consent(uuid) to authenticated;
+
 -- ====================================================================== access
 alter table public.family_links enable row level security;
 alter table public.parental_consents enable row level security;
@@ -994,7 +1010,7 @@ begin
     raise exception 'That umpire is not active, so cannot be assigned to a game.';
   end if;
 
-  if public.umpire_blocked_by_consent(new.umpire_id) then
+  if public.assignment_blocked_by_consent(new.umpire_id) then
     raise exception 'That umpire is under % and needs a parent or guardian''s consent before they can be assigned.', public.parent_consent_below_age();
   end if;
 

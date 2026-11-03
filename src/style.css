@@ -3644,3 +3644,27 @@ input[type="radio"] {
   min-width: 0;
   max-width: 100%;
 }
+
+/* ---- Families: consent wording ---- */
+.wording-preview {
+  max-width: 100%;
+  margin: 6px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #c9d2cc;
+  border-radius: 6px;
+  background: #f8faf8;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wording-text {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: 220px;
+  margin: 6px 0 8px;
+  font: inherit;
+  line-height: 1.4;
+}

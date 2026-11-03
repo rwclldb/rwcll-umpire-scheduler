@@ -3,7 +3,7 @@ import { appNow } from "../clock";
 import { dateKey } from "../games/availability";
 import { swapHandlers, say } from "../payments/shared";
 import { familiesHtml, parentOptions } from "./family-model";
-import type { FamilyLogRow, FamilyUmpire, ParentAccount } from "./family-model";
+import type { FamilyLogRow, FamilyUmpire, ParentAccount, Wording } from "./family-model";
 
 // The Families screen (super admins and the umpire chief): link parents and guardians to youth
 // umpires, see who needs consent, and change an umpire who has turned 18 to an adult. The
@@ -11,20 +11,23 @@ import type { FamilyLogRow, FamilyUmpire, ParentAccount } from "./family-model";
 
 let flash = "";
 
-export async function renderFamiliesPage(container: HTMLElement): Promise<void> {
+export async function renderFamiliesPage(container: HTMLElement, canEditWording = false): Promise<void> {
   const controller = swapHandlers(container);
   const shell = (inner: string) => `<main class="page"><section class="auth-card admin-card families-card"><p class="eyebrow">RWCLL &middot; FAMILIES</p><h1>Families</h1>${inner}</section></main>`;
   container.innerHTML = shell(`<p>Loading&hellip;</p>`);
 
-  const [overview, parents, log, minAge, consentBelow] = await Promise.all([
+  const [overview, parents, log, minAge, consentBelow, wordingResult] = await Promise.all([
     supabase.rpc("families_overview"),
     supabase.rpc("parent_accounts"),
     supabase.from("family_log").select("action, detail, actor_name, acted_at").limit(60),
     supabase.rpc("umpire_min_age"),
     supabase.rpc("parent_consent_below_age"),
+    supabase.rpc("current_consent_wording"),
   ]);
 
-  if (overview.error || parents.error || log.error) {
+  const wordingRow = ((wordingResult.data ?? []) as Wording[])[0];
+
+  if (overview.error || parents.error || log.error || wordingResult.error || !wordingRow) {
     container.innerHTML = shell(`<p class="message error">The families could not be loaded. Refresh and try again.</p>`);
     return;
   }
@@ -40,6 +43,8 @@ export async function renderFamiliesPage(container: HTMLElement): Promise<void> 
     todayKey: dateKey(appNow()),
     minAge: Number(minAge.data ?? 13),
     consentBelow: Number(consentBelow.data ?? 13),
+    wording: wordingRow,
+    canEditWording,
   }));
 
   if (flash) {
@@ -47,7 +52,7 @@ export async function renderFamiliesPage(container: HTMLElement): Promise<void> 
     flash = "";
   }
 
-  const reload = (text: string) => { flash = text; void renderFamiliesPage(container); };
+  const reload = (text: string) => { flash = text; void renderFamiliesPage(container, canEditWording); };
   const nameOf = (id: string) => umpires.find((u) => u.umpire_id === id)?.display_name ?? "that umpire";
 
   // the list of parent accounts is only put into a box when it is opened
@@ -95,6 +100,24 @@ export async function renderFamiliesPage(container: HTMLElement): Promise<void> 
           return problem(`Could not unlink. ${error.message}`);
         }
         reload("Unlinked.");
+      })();
+      return;
+    }
+
+    if (target.closest("#wording-save")) {
+      const text = container.querySelector<HTMLTextAreaElement>("#wording-text")!.value;
+      if (!text.includes("{child}")) return problem("The wording must include {child} where the child's name should appear.");
+      if (!window.confirm("Save this as the new consent wording? Parents who have already consented are not asked again.")) return;
+      const save = target.closest<HTMLButtonElement>("#wording-save")!;
+      save.disabled = true;
+
+      void (async () => {
+        const { data, error } = await supabase.rpc("set_consent_wording", { p_body: text });
+        if (error) {
+          save.disabled = false;
+          return problem(`Could not save the wording. ${error.message}`);
+        }
+        reload(`Saved as version ${data}.`);
       })();
       return;
     }
