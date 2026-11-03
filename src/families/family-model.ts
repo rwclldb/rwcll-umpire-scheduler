@@ -4,17 +4,15 @@ import { formatMoney, PAY_PLACES } from "../payments/pay-rates-model";
 // Families and youth safeguards: the sums and the screens' HTML. (families.ts and my-family.ts
 // make them work; the database decides who may do anything and checks every rule again.)
 
-// The wording a parent agrees to. The league's board should read and approve it. Changing the
-// words means changing this version too, so each consent records which wording was agreed to.
-export const CONSENT_VERSION = "2026-11";
+// The wording a parent agrees to is kept in the database (a super admin edits it on the Families screen).
+// {child} is where the child's name goes.
+export type Wording = { version: string; body: string; is_sample: boolean };
 
-export function consentText(childName: string): string {
-  return (
-    `I am the parent or legal guardian of ${childName}. I give permission for ${childName} to umpire games ` +
-    `for Redwood City Little League. I understand that I can withdraw this permission at any time on this page, ` +
-    `and that ${childName} will not be assigned to games while it is withdrawn.`
-  );
-}
+// (a function, not a string, so a name containing $ is never read as a special code)
+export const fillWording = (body: string, childName: string): string => body.replace(/\{child\}/g, () => childName);
+
+export const SAMPLE_WARNING =
+  "The consent wording is still the SAMPLE. Parents cannot give consent until a super admin replaces the [[placeholders]] and saves it.";
 
 export type Guardian = { link_id: string; parent_id: string; name: string; email: string | null; relationship: string; consent: boolean };
 
@@ -67,12 +65,13 @@ export function attentionItems(umpires: FamilyUmpire[], todayKey: string): Atten
     const turned18 = u.age !== null && u.age >= 18;
 
     if (u.needs_consent && !u.has_consent) {
+      const reason = u.age === null ? " (their birth date is not entered, so we cannot show they are old enough: enter it, or a parent can consent)" : "";
       items.push({
         kind: "consent",
         umpire: u,
         text: u.guardians.length === 0
-          ? "Needs a parent or guardian's consent before they can be assigned, and no parent or guardian is linked yet."
-          : "Needs a parent or guardian's consent before they can be assigned.",
+          ? `Needs a parent or guardian's consent before they can be assigned, and no parent or guardian is linked yet${reason}.`
+          : `Needs a parent or guardian's consent before they can be assigned${reason}.`,
       });
     }
 
@@ -112,8 +111,11 @@ export function familiesHtml(input: {
   todayKey: string;
   minAge: number;
   consentBelow: number;
+  wording: Wording;
+  canEditWording: boolean;
 }): string {
   const attention = attentionItems(input.umpires, input.todayKey);
+  const consentOn = input.consentBelow > input.minAge || input.consentBelow > 13;
   const relSelect = (attr: string) => `<select class="rel-select" ${attr} aria-label="Relationship">${RELATIONSHIPS.map(([key, label]) => `<option value="${key}">${label}</option>`).join("")}</select>`;
   const consentRule = input.consentBelow > input.minAge
     ? `Umpires aged <strong>${input.minAge} to ${input.consentBelow - 1}</strong> need a linked parent or guardian's consent before they can be assigned.`
@@ -128,6 +130,7 @@ export function familiesHtml(input: {
         ${consentRule}
       </p>
       <p id="families-message" class="message" role="status" aria-live="polite"></p>
+      ${input.wording.is_sample && consentOn ? `<p class="message error" role="alert" id="wording-warning">${escapeHtml(SAMPLE_WARNING)}</p>` : ""}
 
       <h3>Needs attention</h3>
       ${attention.length === 0
@@ -137,6 +140,8 @@ export function familiesHtml(input: {
               <strong>${escapeHtml(a.umpire.display_name)}</strong>: ${escapeHtml(a.text)}
               ${a.kind === "turned_18" ? `<button type="button" class="secondary-button rate-copy" data-convert="${escapeHtml(a.umpire.umpire_id)}">Change to adult</button>` : ""}
             </li>`).join("")}</ul>`}
+
+      <p class="field-help">An umpire who turns 18 is changed to an adult <strong>automatically</strong> each morning (their parents, and they, are told). The button is there in case you want it done today.</p>
 
       <h3>Youth umpires</h3>
       ${input.umpires.length === 0 ? `<p class="report-none">There are no youth umpires yet.</p>` : input.umpires.map((u) => `
@@ -161,6 +166,15 @@ export function familiesHtml(input: {
         <li data-parent="${escapeHtml(p.profile_id)}"><strong>${escapeHtml(p.display_name)}</strong> <span class="family-meta">${escapeHtml(p.email ?? "")}</span>
           ${p.children === 0 ? `<span class="family-badge family-badge-wait">not linked to a child</span>` : `<span class="family-meta">${p.children} ${p.children === 1 ? "child" : "children"}</span>`}
           ${p.registration_note ? `<br><span class="family-meta">Said: ${escapeHtml(p.registration_note)}</span>` : ""}</li>`).join("")}</ul>`}
+
+      <h3>Consent wording</h3>
+      <p class="field-help">This is what a parent reads and agrees to. <code>{child}</code> is replaced by the child's name. Current version: <strong>${escapeHtml(input.wording.version)}</strong>${input.wording.is_sample ? " (a sample)" : ""}.
+        ${input.canEditWording ? "Parents who have already given consent are <strong>not</strong> asked again when you change it; the version they agreed to is kept with their consent." : "Only a super admin can change it."}</p>
+      ${input.canEditWording ? `
+        <label for="wording-text" class="visually-hidden">Consent wording</label>
+        <textarea id="wording-text" class="wording-text" rows="14" maxlength="4000">${escapeHtml(input.wording.body)}</textarea>
+        <div class="rates-actions"><button type="button" class="secondary-button" id="wording-save">Save as new wording</button></div>`
+        : `<pre class="wording-preview">${escapeHtml(input.wording.body)}</pre>`}
 
       <h3 class="rates-log-title">Recent activity</h3>
       ${input.log.length === 0 ? `<p class="report-none">Nothing yet.</p>` : `<ul class="rates-log">${input.log.map((row) => `<li>${escapeHtml(logText(row))}</li>`).join("")}</ul>`}
@@ -227,15 +241,17 @@ export function earningTotals(rows: EarningRow[]): Record<string, number> {
 
 const signed = (cents: number) => (cents < 0 ? `-${formatMoney(-cents)}` : formatMoney(cents));
 
-function consentPanel(child: MyChild): string {
+function consentPanel(child: MyChild, wording: Wording): string {
   if (!child.needs_consent) return "";
 
   if (!child.has_consent) {
     return `
       <div class="consent-box consent-needed" role="group" aria-label="Consent for ${escapeHtml(child.display_name)}">
         <p><strong>${escapeHtml(child.display_name)} cannot be assigned to games until you give consent.</strong></p>
-        <p class="consent-text">${escapeHtml(consentText(child.display_name))}</p>
-        <button type="button" class="primary-button" data-give-consent="${escapeHtml(child.umpire_id)}">I give consent</button>
+        ${wording.is_sample
+          ? `<p>The league has not finished the consent wording yet, so consent cannot be given. Please ask the league.</p>`
+          : `<p class="consent-text">${escapeHtml(fillWording(wording.body, child.display_name))}</p>
+        <button type="button" class="primary-button" data-give-consent="${escapeHtml(child.umpire_id)}" data-version="${escapeHtml(wording.version)}">I give consent</button>`}
       </div>`;
   }
 
@@ -251,6 +267,7 @@ export function myFamilyHtml(input: {
   earnings: Record<string, EarningRow[]>;
   payments: PaymentRow[];
   nowIso: string;
+  wording: Wording;
 }): string {
   const paid = input.payments.filter((p) => p.status === "paid").reduce((t, p) => t + p.amount_cents, 0);
   const coming = input.payments.filter((p) => p.status !== "paid").reduce((t, p) => t + p.amount_cents, 0);
@@ -288,7 +305,7 @@ export function myFamilyHtml(input: {
             <h3>${escapeHtml(child.display_name)} <span class="family-meta">${child.age === null ? "" : `age ${child.age}, `}you are their ${escapeHtml(relLabel(child.relationship).toLowerCase())}</span>
               ${child.needs_consent && !child.has_consent ? `<span class="family-badge family-badge-wait">Waiting for consent</span>` : child.eligibility_status !== "active" ? `<span class="family-badge family-badge-wait">${escapeHtml(child.eligibility_status)}</span>` : `<span class="family-badge family-badge-ok">Active</span>`}
             </h3>
-            ${consentPanel(child)}
+            ${consentPanel(child, input.wording)}
             <h4>Coming up</h4>
             ${table(upcoming, `${child.display_name}'s upcoming games`)}
             <h4>Earlier games</h4>

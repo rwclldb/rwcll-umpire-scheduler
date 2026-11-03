@@ -194,8 +194,11 @@ whenever the league's needs change.
 - ✅ **Parent consent** for younger umpires, as a **rule you set** (a minimum age, and an age below which a linked parent must consent); it blocks assigning and self-assigning; unlinking withdraws it
 - ✅ **Read-only access for parents**: their own children's games, earnings and the payments to them
 - ✅ **Turning 18**: flagged, and one step changes them to an adult (roles, rates, pay, links)
-- ⬜ For the board: keep the 13+ rule, or allow younger with consent? what the consent wording should say; should parents get email copies of notices?
-- ⬜ Later: parents getting copies of assignment and rainout notices, and a parent "set up payments" button (with Stripe)
+- ✅ **Younger umpires with consent** (minimum age 10, consent below 13; both are settings), with an unknown birth date counting as needing consent
+- ✅ **Editable consent wording** (a super admin edits it; it starts as a sample that cannot be consented to; each consent records the version)
+- ✅ **Parents copied on every notice** to their child; **turning 18 happens by itself** with notices to the parents, the new adult (set up your own payment account) and the administrators; the administrators are told when consent is withdrawn
+- ⬜ For the board: the real consent wording (the sample has [[placeholders]] for the league's legal name, supervision, insurance and safety-officer details), and the minimum age (10 is a starting point)
+- ⬜ Later: a parent "set up payments" button and the new adult's "set up payments" button (with Stripe); a heads-up notice a month before someone turns 18; parents choosing which notices they get
 
 ### Phase 10: Game day 🔧 ← we are here
 

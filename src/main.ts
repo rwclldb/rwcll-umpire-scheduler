@@ -171,8 +171,10 @@ function renderAuthForm() {
                       I am 13 or older
                     </label>
                     <p class="season-dates">
-                      If you are under 13, a parent or the league has to set
-                      up your account. Please contact your league
+                      If you are under 13, you cannot sign yourself up. A parent
+                      or guardian can sign up as a parent (choose "A parent or
+                      guardian" above), and the league will set you up and ask
+                      for their consent. Please contact your league
                       administrator.
                     </p>
                   </div>
@@ -929,7 +931,7 @@ function pagesFor(
     pages.push({
       id: "families",
       label: "Families",
-      render: (container) => renderFamiliesPage(container),
+      render: (container) => renderFamiliesPage(container, flags.isSuperAdmin),
     });
   }
 

@@ -113,6 +113,8 @@ begin
   -- under the consent age cannot be assigned without consent, so, INSIDE this run only (it is rolled back), the consent age is
   -- set to its lowest value. (If the Phase 9 migration is not applied, this changes nothing.)
   update public.app_settings set value = '5' where key = 'parent_consent_below_age';
+  -- (and the minimum age is pinned to 13, so a youth with no birth date does not count as needing consent either)
+  update public.app_settings set value = '13' where key = 'umpire_min_age';
 
   -- These tests are about the AGE rule (a youth umpire cannot umpire a division whose players
   -- start at their age or older). Since the 'division they play in' rule was added, a youth

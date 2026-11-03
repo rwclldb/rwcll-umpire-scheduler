@@ -76,6 +76,8 @@ nothing in fees, only volunteer time, and is always possible.)
 - **Tax paperwork (1099s, W-9s)** and **work-permit rules**: you said your league management handles these. Nothing is needed
   in the system for now.
 
+**Umpires who turn 18** are changed to adult umpires automatically, and told they must set up their own payment account (their own Stripe account, not a parent's). That is why Stripe needs both flows: a parent's account for each youth family, and an adult's own account.
+
 **Before parents can be paid:** each parent signs up as a **parent or guardian** in the app, an administrator approves them and links them to their children (the **Families** tab), and the treasurer chooses them as the payee (**Payments, Who is paid**).
 
 ## What umpires and parents will see (so you can explain it)

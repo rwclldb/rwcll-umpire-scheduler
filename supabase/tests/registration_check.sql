@@ -53,6 +53,10 @@ declare
   v_ts timestamptz;
   v_status text;
 begin
+  -- This script tests the minimum-age rule at 13, so (INSIDE this run only: it is rolled back) the minimum is pinned to 13.
+  -- (The league's real setting may be lower: umpires can then be approved younger, with a parent's consent.)
+  update public.app_settings set value = '13' where key = 'umpire_min_age';
+
   select p.id into t_admin
   from public.profiles p
   join public.user_roles ur on ur.user_id = p.id

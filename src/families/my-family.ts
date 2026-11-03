@@ -1,8 +1,8 @@
 import { supabase } from "../supabase";
 import { appNow } from "../clock";
 import { swapHandlers, say } from "../payments/shared";
-import { CONSENT_VERSION, myFamilyHtml } from "./family-model";
-import type { EarningRow, MyChild, PaymentRow, ScheduleRow } from "./family-model";
+import { myFamilyHtml } from "./family-model";
+import type { EarningRow, MyChild, PaymentRow, ScheduleRow, Wording } from "./family-model";
 
 // The parent's page: their own children's games, earnings and payments, read-only, and the one
 // thing they can do, give or withdraw consent. The database only ever returns THEIR children.
@@ -14,8 +14,9 @@ export async function renderMyFamilyPage(container: HTMLElement): Promise<void> 
   const shell = (inner: string) => `<main class="page"><section class="auth-card admin-card family-page">${inner}</section></main>`;
   container.innerHTML = shell(`<p>Loading&hellip;</p>`);
 
-  const [family, payments] = await Promise.all([supabase.rpc("my_family"), supabase.rpc("my_payments")]);
-  if (family.error || payments.error) {
+  const [family, payments, wordingResult] = await Promise.all([supabase.rpc("my_family"), supabase.rpc("my_payments"), supabase.rpc("current_consent_wording")]);
+  const wording = ((wordingResult.data ?? []) as Wording[])[0];
+  if (family.error || payments.error || wordingResult.error || !wording) {
     container.innerHTML = shell(`<p class="message error">Your family page could not be loaded. Refresh and try again.</p>`);
     return;
   }
@@ -39,6 +40,7 @@ export async function renderMyFamilyPage(container: HTMLElement): Promise<void> 
     earnings,
     payments: (payments.data ?? []) as PaymentRow[],
     nowIso: appNow().toISOString(),
+    wording,
   }));
 
   if (flash) {
@@ -58,7 +60,7 @@ export async function renderMyFamilyPage(container: HTMLElement): Promise<void> 
       give.disabled = true;
 
       void (async () => {
-        const { error } = await supabase.rpc("give_consent", { p_umpire_id: id, p_text_version: CONSENT_VERSION });
+        const { error } = await supabase.rpc("give_consent", { p_umpire_id: id, p_text_version: give.dataset.version ?? "" });
         if (error) {
           give.disabled = false;
           return say(container, "#family-message", `Could not record your consent. ${error.message}`);
