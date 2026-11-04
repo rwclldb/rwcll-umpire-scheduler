@@ -87,6 +87,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 54. [Payments, part 2: who is paid, earnings and payroll](#54-payments-part-2-who-is-paid-earnings-and-payroll)
 55. [Families: parents and guardians, consent, and turning 18](#55-families-parents-and-guardians-consent-and-turning-18)
 56. [Families, part 2: younger umpires, parents copied on notices, and turning 18 by itself](#56-families-part-2-younger-umpires-parents-copied-on-notices-and-turning-18-by-itself)
+57. [The live test day: a day in the life, with several people](#57-the-live-test-day-a-day-in-the-life-with-several-people)
 
 ---
 
@@ -1852,3 +1853,50 @@ The administrators (super admins, the umpire chief and schedulers) are **emailed
 ### Good to know
 - **Database changes:** `20261110100000_add_family_notices_and_wording.sql` (needs the families migrations and the email sending migration first). **Check script:** `family_notices_check.sql` (section 6).
 - If a payment is owed to a youth when they turn 18, it is paid to **them** once they have a payment account; their parent is no longer the payee.
+
+## 57. The live test day: a day in the life, with several people
+
+A **minimum-capabilities test** that several people run live on a **video call**, on the **TEST** database (never live). It follows one simulated game day from
+people joining, through scheduling, reminders, game day, reports, payroll and a youth turning 18, and ends with things that **must not** work.
+89 steps in 11 phases, about 3 hours, in **two sessions** (they can be run back to back).
+
+### What is in it, and where it lives
+| Where | What |
+|---|---|
+| `docs\testday\Print\` | PDFs, landscape, ready to print: **`00_MASTER_Test_Day_Script.pdf`** (the facilitator's master: every step, who does it, what to expect, and the database checks) and one sheet for each of **seven roles** A to G (only that person's steps, with a notes page for each session) |
+| `docs\testday\Edit\` | The same files as Word documents, to change a step |
+| `docs\testday\README.txt` | A one-page how-to |
+| `docs\testday\SOLO_SELF_TEST.txt` | How to run the whole test **by yourself first** (a rehearsal): getting the database ready, setting up browsers, and what changes when one person plays every role |
+| `supabase\testday\testday_db_checks.sql` | Every **database check**, labelled by step number. **Read-only**: nothing in it changes data |
+| `supabase\testday\testday_actions.sql` | The **three steps that change data** (0.3 email safe mode, 4.2 queue the reminders, 8.5 make a youth turn 18). Run **one section at a time**, only at its step, **never the whole file** |
+| `supabase\testday\testday_cleanup.sql` | **TEST ONLY.** Puts TEST back the way the seed leaves it, so the test can be run again |
+| `seed.sql` (not in the repository) | The test data. It was extended for this: working **parent logins**, a younger umpire needing consent (Sam Young), more parents so a payroll can be approved, and a **turning-18 stand-in** (Casey Turner) |
+
+The SQL files are in `supabase\testday`, **not** `supabase\tests`, on purpose: `run-all-checks.ps1` runs everything in `supabase\tests`, and it must never run the cleanup script.
+
+### The cast (seven roles; five or six people can combine them)
+A Super Admin, who is also the **facilitator** and the **database checker**; B Umpire Chief; C Scheduler; D Treasurer; E Adult Umpire; F Youth Umpire; G Parent. Each uses a
+seed login (shown on their sheet). E also signs up as a brand-new umpire with a real email address, to try joining.
+
+### Two sessions
+- **Session 1: Setting up** (phases 0 to 3, about 65 minutes): sign in, a new umpire joins, a parent is approved and linked, Saturday Nov 14 is scheduled, and an 11-year-old needs his mother's consent. The Treasurer can skip it.
+- **Session 2: Game day and after** (phases 4 to 10, about 2 hours): reminders with parent copies, game day (running late, a decline and replacement, notes, a rainout), reports, **payroll** from last month's seeded games, consent withdrawn, a youth turning 18, then the things that must not work and a wrap-up.
+- **Session 2 depends on Session 1.** If they are on different days, **do not run the cleanup in between.** The facilitator runs the **Session 2 starting check** (step 4.0a) first.
+
+### How to run it
+1. **Before the call (the facilitator, about 30 minutes):** make sure the TEST site shows the newest version (look for the Families and Payments tabs); run the updated `seed.sql` on TEST; do **phase 0** of the master (starting-state check, **email safe mode**, a test message to yourself); send everyone their sheet and the TEST address.
+2. **Email is in safe mode:** every message goes only to the facilitator's inbox, marked **[TEST for ...]**, so the group can see what each person would have received. No real person receives anything from the app. (The one exception is the sign-up email in step 1.1, which is the real sign-up system.)
+3. **The facilitator runs the sender by hand** (the PowerShell command is in the master) when a step says so, instead of waiting five minutes.
+4. **Pretend time** (the bar at the top of the page) lets the group compress a game day: each person sets their own clock where a step says so. It only changes that person's browser.
+5. **Rules of the day:** it is a test of the app, not the person; write down anything confusing; stuck for 3 minutes means note it and move on; do not fix anything.
+6. **Afterwards:** collect the notes pages, count how many of the **starred (must-pass) steps** failed, and list the problems by how many people hit them. To run the test again: `testday_cleanup.sql`, then the starting-state check (step 0.2).
+
+### What "pass" means
+**39 steps are starred.** They are the minimum the app has to do (sign-up and approval, assigning, the consent block, reminders and copies, check-in, a replacement, a rainout, payroll approval and recording a payment, turning 18, and the privacy checks). If any starred step fails, the app is not ready for real people.
+
+### Known limits
+- **Pretend time does not change everything.** A few database rules use the real date. For example, the treasurer cannot work out earnings for a date that has not really happened, so **payroll uses the earlier games already in the seed**, not the pretend game day.
+- **Stripe is not built.** One step is a boxed placeholder where people write what they would expect to see.
+- The consent wording in the test data is **demo wording**.
+- The step wording was written from the app's code and tests, so do a **solo rehearsal** first and fix the Word files.
+- The database queries and the cleanup script have not been run against a real database by their author.

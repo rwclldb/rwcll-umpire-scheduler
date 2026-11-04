@@ -1,0 +1,53 @@
+SOLO SELF-TEST: running the test day by yourself (a rehearsal)
+==============================================================
+
+Use this before the board members' sessions. You play every role, one after another, and fix the wording in the
+Word files as you go. Expect about 2.5 to 3 hours (no waiting for other people, but you switch roles).
+
+1. GET THE TEST DATABASE READY (TEST ONLY: check the project name in the Supabase dashboard each time)
+   a. Everything applied?      npx supabase db push --linked --dry-run     (nothing should be pending)
+   b. Everything passing?      scripts\run-all-checks.ps1                  (every script PASS, including family_notices_check)
+   c. Newest app on TEST site? Push to main, wait for the GitHub Pages build, then sign in as the super admin and
+                               look for the Families and Payments tabs.
+   d. Run seed.sql             SQL Editor, TEST project, paste the whole file, Run. It only ADDS data and is safe to run
+                               again: it never deletes your other data. The last result lists every account; all say OK
+                               except Rita Miller (parent5@rwcll.test), who says PROBLEM: profile not approved. That is
+                               expected (she is the waiting registration you approve in step 1.5).
+   e. Run testday_cleanup.sql  (SQL Editor, TEST). It removes anything left from an earlier test day (messages, earnings,
+                               payrolls, consents, test assignments and so on). It is harmless on a fresh seed.
+                               Always run the seed FIRST, then the cleanup.
+   f. Run the starting-state check (step 0.2, in testday_db_checks.sql). Every row must show n = expected.
+      The SQL editor shows only the LAST query's result: select just the query you want and press Run.
+      testday_db_checks.sql is read-only. The three steps that CHANGE data (0.3, 4.2, 8.5) are in testday_actions.sql:
+      run ONE section at a time, only when its step says so, never the whole file.
+      If a row is wrong, something outside the test day changed your TEST data. Tell me which row and I will give you the fix.
+   There is no script that wipes the whole database, on purpose: a wipe would also delete your accounts and settings.
+
+2. SET UP YOUR BROWSERS
+   Each person is a separate sign-in, and both the sign-in and the Pretend time are kept per browser PROFILE. Two tabs
+   in the same profile share them, so signing in as someone else in one tab signs out the other.
+   Use: your normal browser window, a private/incognito window (they share one session), and a second browser (for example
+   Edge or Firefox, with its own private window). That gives you 3 to 4 independent sign-ins, which is enough: the steps where
+   several roles interleave (phase 5) involve Youth, Chief, Adult Umpire and Scheduler. Otherwise just sign out and in.
+   Phone testing: do a few steps on your phone too (steps 0.6, 2.6, 5.4, 7.9).
+
+3. FOLLOW THE MASTER SCRIPT, NOT THE SHEETS
+   Work down 00_MASTER_Test_Day_Script.pdf (or the Word file) in order. Each step says who does it: sign in as that person
+   (login on the cast page) and do it. Mark Pass or Fail and write notes on the page.
+   Differences from a group session:
+     * Steps for ALL (0.6, 0.7, 4.0b, 7.11, 10.1): do them once, as one person (0.6: quickly sign in as each role to see the tabs).
+     * "Listen" steps (4.4, 4.5) and the group wrap-up (10.2): read the emails yourself and write what you think; skip the call parts.
+     * Step 1.1 (E signs up as a new umpire): use your own address with a plus, for example yourname+testumpire@rwcll.org.
+       The sign-up email goes to your inbox (it is the real sign-up system). Click the link, then carry on.
+     * Email: safe mode (step 0.3) sends everything to your address. Run the sender by hand when a step says so.
+     * Pretend time: set it in the browser of the person who needs it, when the step says (Pretend time bar, top of the page).
+       Press Use real time before Phase 7.
+
+4. BETWEEN THE TWO SESSIONS
+   Do NOT run the cleanup. Run step 4.0a first (Session 2 starting check).
+
+5. WHEN YOU FINISH
+   a. Fix the wording in the Word files wherever the real screens differ; note any real bugs.
+   b. To run it again for the group: seed.sql is already there, so just run testday_cleanup.sql and the starting-state check.
+   c. Delete the test accounts you created by signing up (Supabase dashboard: Authentication, Users).
+   d. Tell me what failed, and which steps were unclear: I will fix the app and the script.

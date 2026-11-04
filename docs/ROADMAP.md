@@ -59,6 +59,8 @@ whenever the league's needs change.
 
 ---
 
+- **Testing with real people:** a live **test day** for 5 to 7 board members on a video call is written (a master script and a sheet for each of seven roles, with database checks and a cleanup script). It is in `docs\testday`. The next step is a solo rehearsal, then Session 1 and Session 2 (see "Testing with real people" below and FAQ section 57).
+
 ## The phases
 
 ### Phase 0: Foundations ✅
@@ -289,6 +291,20 @@ The league pays its **youth umpires** (about **monthly**); adult umpires are not
 
 - Start a new season from the last one
 - Reports and statistics across seasons
+
+---
+
+## Testing with real people 🟡 *(written; not yet run)*
+
+A **minimum-capabilities test**: board members play seven roles on a video call, on the TEST database, following one simulated game day. **89 steps in two sessions** (about 65 minutes, then about 2 hours; they can run back to back). Email is in safe mode, so every message goes to the facilitator.
+
+- ✅ The **master script**, a **sheet for each role**, a **database check file** and a **cleanup script** (`docs\testday`, `supabase\testday`), and a seed extended with parent logins, a younger umpire, more parents and a turning-18 stand-in
+- ⬜ A **solo rehearsal** by one person, fixing the wording in the Word files
+- ⬜ **Session 1**, then **Session 2**, with the board members
+- ⬜ Collect the notes pages and list the problems by how many people hit them; fix the **must-pass** failures first
+- ⬜ Add each new phase to the test (for example **Stripe**: step 7.11 is a placeholder) and run it again before going live
+
+**Already noticed:** after only one family is paid, that family's individual earning lines still say "Approved: payment coming" until every family is paid (the page shows the payment itself as paid). The test asks people whether that confuses them.
 
 ---
 
