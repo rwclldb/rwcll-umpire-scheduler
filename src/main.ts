@@ -19,6 +19,7 @@ import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
 import { renderOutbox } from "./outbox";
 import { renderBackup } from "./backup/backup";
+import { appUrl } from "./app-url";
 import { renderGames, resetGamesView } from "./games";
 import { renderMySchedule } from "./games/my-schedule";
 import { describeRoles } from "./role-names";
@@ -332,7 +333,7 @@ async function submitAuthForm() {
             signup_kind: signupKind,
             ...(signupKind === "parent_guardian" ? { registration_note: registrationNote } : {})
           },
-          emailRedirectTo: `${window.location.origin}/`
+          emailRedirectTo: appUrl()
         }
       });
 
@@ -1191,7 +1192,7 @@ async function submitForgotPassword() {
 
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/`
+      redirectTo: appUrl()
     });
 
     if (error) throw error;

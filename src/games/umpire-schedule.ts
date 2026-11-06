@@ -93,7 +93,18 @@ export function renderScheduleView(
 
   const statusCell = (game: UmpireGame): string => {
     if (game.status === "canceled") return "&mdash;";
-    if (game.myStatus === "confirmed") return `<span class="sv-status sv-status-confirmed">Confirmed</span>`;
+
+    if (game.myStatus === "confirmed") {
+      const badge = `<span class="sv-status sv-status-confirmed">Confirmed</span>`;
+      if (!canAnswer(game)) return badge;
+
+      // Confirmed is not final: until the game starts an umpire can still back out (illness, a broken-down car,
+      // or a game they took for themselves and cannot make after all). It frees the place and tells the administrators.
+      return `${badge}
+        <div class="sv-actions">
+          <button type="button" class="secondary-button" data-sv-decline="${escapeHtml(game.id)}">Decline</button>
+        </div>`;
+    }
 
     if (canAnswer(game)) {
       return `<span class="sv-status sv-status-pending">Needs your answer</span>
