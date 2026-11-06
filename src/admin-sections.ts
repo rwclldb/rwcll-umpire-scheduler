@@ -41,6 +41,11 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     help: "Messages waiting to be sent, such as invitations, assignments and reminders.",
   },
   {
+    id: "backup",
+    label: "Backup and export",
+    help: "Download a copy of all the league's data, and see when it was last done.",
+  },
+  {
     id: "details",
     label: "My details",
     help: "Your own phone number, and whether you want text messages.",

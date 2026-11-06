@@ -59,6 +59,7 @@ whenever the league's needs change.
 
 ---
 
+- **Suggest umpires** (the first part of Phase 13) and **Download everything** (Backup and export, in Administration) are built and tested here; their database changes (`20261111100000` and `20261111110000`) are waiting for a first run on your test database. See FAQ sections 58 and 59.
 - **Testing with real people:** a live **test day** for 5 to 7 board members on a video call is written (a master script and a sheet for each of seven roles, with database checks and a cleanup script). It is in `docs\testday`. The next step is a solo rehearsal, then Session 1 and Session 2 (see "Testing with real people" below and FAQ section 57).
 
 ## The phases
@@ -283,9 +284,12 @@ The league pays its **youth umpires** (about **monthly**); adult umpires are not
 - Test mode first, with pretend money; then, after approval, the money is sent (the app checks the Stripe balance first), and each payment is marked paid by Stripe
 - Needs your Stripe account with Connect switched on (see `STRIPE-SETUP.md`); parents need a sign-in to the app. Phase 9 (linking parents to their children, and parent access) will build on the payee link
 
-### Phase 13: Scheduling help ⬜
+### Phase 13: Scheduling help 🟡 *(suggestions built; the rest is next)*
 
-- Suggestions for who to assign to a game
+- ✅ **Suggest umpires** for an open place: ranked, with the reasons, leaving out anyone busy, unavailable, blocked by the age rules or needing consent (FAQ section 58)
+- ⬜ Suggest for **every open game of a day** at once, with a preview you accept
+- ⬜ A **workload view**: games per umpire this season, so unfairness is visible
+- ⬜ Let the board **tune the scoring** (for example how much a fair share of games counts) without a code change
 
 ### Phase 14: Season management ⬜
 
@@ -296,7 +300,7 @@ The league pays its **youth umpires** (about **monthly**); adult umpires are not
 
 ## Testing with real people 🟡 *(written; not yet run)*
 
-A **minimum-capabilities test**: board members play seven roles on a video call, on the TEST database, following one simulated game day. **89 steps in two sessions** (about 65 minutes, then about 2 hours; they can run back to back). Email is in safe mode, so every message goes to the facilitator.
+A **minimum-capabilities test**: board members play seven roles on a video call, on the TEST database, following one simulated game day. **91 steps in two sessions** (about 70 minutes, then about 2 hours; they can run back to back). Email is in safe mode, so every message goes to the facilitator.
 
 - ✅ The **master script**, a **sheet for each role**, a **database check file** and a **cleanup script** (`docs\testday`, `supabase\testday`), and a seed extended with parent logins, a younger umpire, more parents and a turning-18 stand-in
 - ⬜ A **solo rehearsal** by one person, fixing the wording in the Word files
@@ -307,6 +311,13 @@ A **minimum-capabilities test**: board members play seven roles on a video call,
 **Already noticed:** after only one family is paid, that family's individual earning lines still say "Approved: payment coming" until every family is paid (the page shows the payment itself as paid). The test asks people whether that confuses them.
 
 ---
+
+## Keeping the data safe 🟡 *(built; waiting for a first run)*
+
+- ✅ **Download everything** (Administration > Backup and export): a super admin's zip of spreadsheets and JSON files, a log of each download, and a warning after 30 days (FAQ section 59)
+- ✅ The full backup script now checks **every table** against the schema, and `RECOVERY.md` covers the email sender, its secrets and the scheduled jobs
+- ⬜ Decide whether the live project should move to **Supabase Pro** (daily backups kept for 7 days; the free plan has no automatic backups)
+- ⬜ A **practice restore** of a recent backup into a temporary project, to prove the recovery guide still works. **Needed:** the restore script was fixed in November 2026 (it now clears every table the migrations pre-fill), and that fix has not been practiced (`RECOVERY.md`, "Practicing a restore")
 
 ## Smaller things on the list
 

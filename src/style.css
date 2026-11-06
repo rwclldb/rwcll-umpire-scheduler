@@ -3668,3 +3668,112 @@ input[type="radio"] {
   font: inherit;
   line-height: 1.4;
 }
+
+/* scheduling suggestions in the assignment panel */
+.assign-suggest-row {
+  margin: 4px 0 8px;
+}
+
+.assign-suggest {
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+}
+
+.suggest {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  background: #f4f7f5;
+  border: 1px solid #d6ddd8;
+  border-radius: 8px;
+}
+
+.suggest-help {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+
+.suggest-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suggest-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-top: 1px solid #d6ddd8;
+}
+
+.suggest-who {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.suggest-reasons {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.suggest-reason {
+  display: inline-block;
+  margin: 2px 6px 2px 0;
+  padding: 1px 8px;
+  color: #3c4a42;
+  background: #e9eeeb;
+  border-radius: 999px;
+}
+
+.suggest-good {
+  color: #14532d;
+  background: #e1f1e6;
+}
+
+.suggest-warn {
+  color: #5c3300;
+  background: #fff1d6;
+}
+
+.suggest-use {
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+}
+
+.suggest-leftout {
+  margin: 6px 0 0;
+}
+
+/* Administration > Backup and export */
+.backup-last {
+  margin: 8px 0;
+  padding: 8px 10px;
+  background: #f4f7f5;
+  border: 1px solid #d6ddd8;
+  border-radius: 8px;
+}
+
+.backup-warn {
+  color: #5c3300;
+  background: #fff1d6;
+  border-color: #8a4b00;
+}
+
+.backup-list {
+  margin: 0 0 12px;
+  padding-left: 1.2rem;
+}
+
+.backup-privacy {
+  padding: 8px 10px;
+  color: #5c3300;
+  background: #fff1d6;
+  border-left: 4px solid #8a4b00;
+  border-radius: 4px;
+}

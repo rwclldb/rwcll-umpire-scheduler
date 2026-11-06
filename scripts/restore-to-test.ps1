@@ -135,7 +135,7 @@ try {
 
   Write-Host ""
   Write-Host "About to load the backup's data into the TEST project ($TestRef)."
-  Write-Host "The 9 seeded roles will be replaced by the backup's copy."
+  Write-Host "The rows your migrations pre-fill (roles, settings, the sample consent wording) will be replaced by the backup's copy."
   $answer = Read-Host "Type RESTORE to continue"
   if ($answer -ne "RESTORE") {
     Write-Host "Cancelled. Nothing was changed."
@@ -150,7 +150,13 @@ try {
     "--single-transaction",
     "--variable", "ON_ERROR_STOP=1",
     "--command", "SET session_replication_role = replica",
+    # The migrations pre-fill these tables, and the backup holds its own copy of the same rows, so they
+    # are cleared first (the project was checked to be empty of real data above). If a future migration
+    # inserts default rows into another table, add a DELETE line for it here.
     "--command", "DELETE FROM public.roles",
+    "--command", "DELETE FROM public.app_settings",
+    "--command", "DELETE FROM public.sending_settings",
+    "--command", "DELETE FROM public.consent_wordings",
     "--file", $dataFile
   )
   Write-Host $restore.Output

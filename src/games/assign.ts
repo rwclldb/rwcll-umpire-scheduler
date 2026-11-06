@@ -16,6 +16,7 @@ import {
   umpiresNeeded,
   workload,
 } from "./staffing";
+import { suggestUmpires, suggestionsHtml } from "./suggest";
 import type { Assignment, Game, GamesContext, Position } from "./types";
 
 export type AssignOptions = {
@@ -69,6 +70,15 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
   // who the age rule does not allow on this game, and what could not be checked
   let eligibility = new Map<string, Eligibility>();
 
+  // whether the database could be asked about the age and division rules (suggestions say so if not)
+  let eligibilityKnown = false;
+
+  // umpires who still need a parent's consent (null until asked, or if it cannot be asked)
+  let needsConsent: Set<string> | null = null;
+
+  // the place whose suggestions are showing, if any
+  let suggestFor: Position | null = null;
+
   container.innerHTML = `
     <form id="assign-form" class="create-umpire-form game-form assign-panel" novalidate>
       <h3>Umpires for this game</h3>
@@ -118,6 +128,35 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
     /division they play in/.test(eligibility.get(umpireId)?.problem ?? "");
 
   const gamesText = (n: number) => `${n} ${n === 1 ? "game" : "games"}`;
+
+  // "Suggest umpires" for an open place: a button, and (when pressed) the ranked list with reasons.
+  const suggestHtml = (position: Position): string => {
+    if (selection[position]) return "";
+
+    const open = suggestFor === position;
+    const result = open
+      ? suggestUmpires({
+          game,
+          umpires: context.umpires,
+          games: options.games,
+          assignments: options.assignments,
+          availability,
+          problems: eligibilityKnown
+            ? new Map([...eligibility].map(([id, found]) => [id, found.problem] as [string, string | null]))
+            : null,
+          needsConsent,
+          taken: new Set(POSITIONS.map((place) => selection[place]).filter(Boolean)),
+        })
+      : null;
+
+    return `
+      <div class="assign-suggest-row">
+        <button type="button" class="secondary-button assign-suggest" data-suggest="${position}" aria-expanded="${open}">
+          ${open ? "Hide suggestions" : "Suggest umpires"}
+        </button>
+      </div>
+      ${result ? suggestionsHtml(position, result) : ""}`;
+  };
 
   // The choices for one place: open, or any active umpire (with how many
   // games they have, and whether they are busy at this time). An umpire the
@@ -229,6 +268,7 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
           <label for="assign-${position}">${POSITION_NAME[position]} umpire</label>
           <select id="assign-${position}" data-position="${position}">${optionsFor(position)}</select>
           ${statusFor(position)}
+          ${suggestHtml(position)}
         `).join("")
       : `<p class="directory-description">No umpire is needed for this game. Change the number above if one is.</p>`;
 
@@ -250,6 +290,21 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
         { problem: row.problem ?? null, note: row.note ?? null },
       ])
     );
+    eligibilityKnown = true;
+
+    if (container.contains(form)) drawSlots();
+  })();
+
+  // Who still needs a parent's consent (the database answers; scheduling administrators only).
+  // If it cannot be asked (for example before it has been installed), suggestions say so, and
+  // the database still refuses the assignment when you save.
+  void (async () => {
+    const { data, error } = await supabase.rpc("umpires_needing_consent");
+    if (error || !Array.isArray(data)) return;
+
+    needsConsent = new Set(
+      (data as unknown[]).map((row) => (typeof row === "string" ? row : String(Object.values((row ?? {}) as Record<string, unknown>)[0] ?? "")))
+    );
 
     if (container.contains(form)) drawSlots();
   })();
@@ -267,7 +322,29 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
   });
 
   slots.addEventListener("click", (event) => {
-    const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-confirm-umpire]");
+    const clicked = event.target as HTMLElement;
+
+    // open or close the suggestions for a place
+    const suggest = clicked.closest<HTMLButtonElement>("[data-suggest]");
+    if (suggest) {
+      const position = suggest.dataset.suggest as Position;
+      suggestFor = suggestFor === position ? null : position;
+      drawSlots();
+      return;
+    }
+
+    // use a suggestion: it fills the place (nothing is saved until Save umpires)
+    const use = clicked.closest<HTMLButtonElement>("[data-use-umpire]");
+    if (use) {
+      const position = use.dataset.usePosition as Position;
+      selection[position] = use.dataset.useUmpire ?? "";
+      suggestFor = null;
+      drawSlots();
+      slots.querySelector<HTMLSelectElement>(`#assign-${position}`)?.focus();
+      return;
+    }
+
+    const button = clicked.closest<HTMLButtonElement>("[data-confirm-umpire]");
     if (!button) return;
 
     const umpireId = button.dataset.confirmUmpire!;
@@ -311,6 +388,7 @@ export function renderAssignPanel(container: HTMLElement, options: AssignOptions
     }
 
     selection[position] = target.value;
+    if (suggestFor === position) suggestFor = null;
     drawSlots();
   });
 

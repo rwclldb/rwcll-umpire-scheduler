@@ -88,6 +88,9 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 55. [Families: parents and guardians, consent, and turning 18](#55-families-parents-and-guardians-consent-and-turning-18)
 56. [Families, part 2: younger umpires, parents copied on notices, and turning 18 by itself](#56-families-part-2-younger-umpires-parents-copied-on-notices-and-turning-18-by-itself)
 57. [The live test day: a day in the life, with several people](#57-the-live-test-day-a-day-in-the-life-with-several-people)
+58. [Suggesting umpires for a game](#58-suggesting-umpires-for-a-game)
+59. [Downloading a copy of everything](#59-downloading-a-copy-of-everything)
+60. [Backups: taking one, keeping it, and getting back from a disaster](#60-backups-taking-one-keeping-it-and-getting-back-from-a-disaster)
 
 ---
 
@@ -1858,7 +1861,7 @@ The administrators (super admins, the umpire chief and schedulers) are **emailed
 
 A **minimum-capabilities test** that several people run live on a **video call**, on the **TEST** database (never live). It follows one simulated game day from
 people joining, through scheduling, reminders, game day, reports, payroll and a youth turning 18, and ends with things that **must not** work.
-89 steps in 11 phases, about 3 hours, in **two sessions** (they can be run back to back).
+91 steps in 11 phases, about 3 hours, in **two sessions** (they can be run back to back).
 
 ### What is in it, and where it lives
 | Where | What |
@@ -1879,7 +1882,7 @@ A Super Admin, who is also the **facilitator** and the **database checker**; B U
 seed login (shown on their sheet). E also signs up as a brand-new umpire with a real email address, to try joining.
 
 ### Two sessions
-- **Session 1: Setting up** (phases 0 to 3, about 65 minutes): sign in, a new umpire joins, a parent is approved and linked, Saturday Nov 14 is scheduled, and an 11-year-old needs his mother's consent. The Treasurer can skip it.
+- **Session 1: Setting up** (phases 0 to 3, about 70 minutes): sign in, a new umpire joins, a parent is approved and linked, Saturday Nov 14 is scheduled, and an 11-year-old needs his mother's consent. The Treasurer can skip it.
 - **Session 2: Game day and after** (phases 4 to 10, about 2 hours): reminders with parent copies, game day (running late, a decline and replacement, notes, a rainout), reports, **payroll** from last month's seeded games, consent withdrawn, a youth turning 18, then the things that must not work and a wrap-up.
 - **Session 2 depends on Session 1.** If they are on different days, **do not run the cleanup in between.** The facilitator runs the **Session 2 starting check** (step 4.0a) first.
 
@@ -1900,3 +1903,120 @@ seed login (shown on their sheet). E also signs up as a brand-new umpire with a 
 - The consent wording in the test data is **demo wording**.
 - The step wording was written from the app's code and tests, so do a **solo rehearsal** first and fix the Word files.
 - The database queries and the cleanup script have not been run against a real database by their author.
+
+## 58. Suggesting umpires for a game
+
+**What it is.** When you choose the umpires for a game (**Games**, then the **Umpires** button on the game), every place that is still open has a
+**Suggest umpires** button. It lists the five best choices for that place, best first, and says **why** in plain words. It only advises: **nothing is
+saved until you press Save umpires**, and the database still checks every rule when you save.
+
+**How to use it**
+1. Open the game's **Umpires** panel and press **Suggest umpires** under an open place.
+2. Read the list. Each person has short reasons, for example "Said they can umpire at this time", "Already at this field that day (9:00 AM game)",
+   "0 games this season (the others average 3)" or "Already has 2 other games that day".
+3. Press **Use** beside the person you want. They fill the place (the suggestions close). Do the same for the other places, then **Save umpires**.
+4. Press **Hide suggestions** to close the list without choosing. Choosing someone from the dropdown instead also closes it.
+
+**Who is left out (and counted)**, because the database would refuse them or they cannot do it:
+- already on another game that **overlaps** this one (back to back is fine)
+- marked themselves **unavailable** at this time
+- **not allowed by the age or division rules** (the youth age rule, or the division they play in)
+- still needs a **parent's consent** (see sections 55 and 56)
+- not active, or already chosen for another place on this game
+
+The line under the list says how many were left out and why, so it is clear why someone you expected is missing.
+
+**How the ranking works.** Everyone starts at 50, and the score moves like this. Ties go to whoever has fewer games, then by name.
+
+| Reason | Points |
+|---|---|
+| Said they can umpire at this time (their availability covers the whole game) | +25 |
+| Has entered other times, but not this one | -20 |
+| Fewer games this season than the others being considered | +4 for each game below the average, at most +20 |
+| More games than the others | -4 for each game above the average, at most -20 |
+| Already umpiring at this field that day, within 2 hours of this game | +12 |
+| Already has 2 other games that day | -10 |
+| Already has 3 or more other games that day | -20 |
+
+"No availability entered" is shown as a plain note and costs nothing: most umpires have not entered any, and that is not a warning.
+
+**What it does not know.** It does not know about driving distance, who works well together, or an umpire's skill. It is a starting point, not a decision.
+If you want the weights changed (for example to value the fair share of games more), they are in one place in the code: `src/games/suggest.ts`.
+
+**If it says it "could not check" something.** The age and division rules and the parental consent rule come from the database. If the latest database
+update has not been applied (`20261111100000_add_scheduling_suggestion_helpers.sql` for consent), the panel says so under the list and does not leave
+those people out. The database still refuses them when you save, with its own message.
+
+**If no one fits.** The list says "No one fits this place right now" and why. Look at the **Left out** line: if many are busy, the game overlaps others;
+if many are unavailable, the date is a hard one.
+
+## 59. Downloading a copy of everything
+
+**What it is.** **Administration**, then **Backup and export** (super admins only). Press **Download everything** and you get a zip file with a spreadsheet (CSV)
+and a JSON copy of **every table** of the league's data, plus a README that lists each table and its row count. It is your own copy, in a form you can open
+without this app. It takes a few seconds.
+
+**What it is not.** It is **not** the disaster-recovery backup. It holds no sign-in accounts or passwords (people would have to reset them), no dashboard
+settings and no email secrets, and nothing in it can be loaded back by itself. The full backup is `scripts\backup-live.ps1` (see `RECOVERY.md`): take it
+before every database update and weekly during the season. This download is an extra copy that does not need Docker.
+
+**Keep it private.** The file contains personal information about people, **including children**: names, contact details, birth dates, families, reports and
+payments. Keep it off GitHub, out of email and out of shared folders. Store it on an encrypted drive and delete copies you no longer need.
+
+**The record.** Each download is recorded in the database (who, when, how many tables and rows) in a log that only super admins can read. The screen shows the
+last one, and **warns when it has been 30 days** or more (or if no one has ever downloaded one).
+
+**If it goes wrong**
+- *"Has the latest database update been applied?"* Apply `20261111110000_add_data_export.sql` (`npx supabase db push --linked`), then try again.
+- *"Nothing was downloaded. games: statement timeout"* (or another table): that table could not be read in time. Try again; if it repeats, tell Claude which table.
+- *"...could not be recorded in the log, but the file is complete."* The file is fine; only the log entry failed.
+- Only a super admin can use it. Everyone else gets "Only a super admin can download everything."
+
+**Check script:** `supabase\tests\data_export_check.sql` (and `scheduling_suggestions_check.sql` for section 58). `scripts\run-all-checks.ps1` runs them with the others.
+
+## 60. Backups: taking one, keeping it, and getting back from a disaster
+
+There are two kinds of copy. The **full backup** (`scripts\backup-live.ps1`) is what rebuilds everything after a disaster. **Download everything** (in the app, section 59) is an
+extra, readable copy that needs no Docker. Details are in `RECOVERY.md`.
+
+### When to take the full backup
+- **Before applying any database update to LIVE** (every time)
+- Before a bulk import, a season change, or approving a payroll
+- **Weekly during the season**
+
+### Taking the full backup (about 5 minutes)
+1. **Start Docker Desktop** and wait until it says it is running.
+2. Open a terminal in the project folder (in VS Code: Terminal, New Terminal), then link the tool to the **live** project:
+   ```powershell
+   cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
+   npx supabase link --project-ref tayveudoxrdkqnmcjrtu
+   ```
+3. Run the backup:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\scripts\backup-live.ps1
+   ```
+4. **Read what it prints.** A good backup says: `Docker is running`, then three steps (`roles`, `schema`, `data`), then **`All expected tables are present`** and
+   **`Every table in the schema has a data block in the backup`**. A yellow **WARNING** means something is missing: do not trust that backup, and tell Claude what it listed.
+5. **Link back to the test project** (this matters: otherwise the next `db push` would go to LIVE):
+   ```powershell
+   npx supabase link --project-ref mucsujjpfefrfxystxse
+   ```
+6. The backup is a dated folder in `D:\sandbox\RWCLL-backups` with `roles.sql`, `schema.sql`, `data.sql` and `checksums.txt`. The script refuses to write inside the project, so it cannot be committed by accident.
+
+### Keeping it
+- It holds **personal information, including children, and the sign-in records**. Keep it **off GitHub, out of email, out of shared folders**. Store it on an encrypted drive or in an encrypted archive.
+- Keep the last several weekly backups and **every backup taken just before a LIVE database update**. Delete the rest.
+- Copy the latest one to a **second place** (for example an encrypted external drive), so one broken computer does not lose both the app and its backup.
+- Also write down, in a safe place, what the backup cannot hold: the Supabase **dashboard settings** (email templates, sign-in URLs), the **email secrets** (`SMTP_USER`, `SMTP_PASS`, `SENDER_SECRET`), and the project's database password.
+
+### Download everything (monthly, any super admin)
+**Administration, Backup and export, Download everything.** Store the zip the same careful way. The screen warns after 30 days without one.
+
+### If the live project is lost (a disaster)
+Follow **"Rebuilding after a disaster" in `RECOVERY.md`**. In short: create a new project; link the tool to it; `npx supabase db push --linked` to rebuild the structure; run
+`scripts\restore-to-test.ps1` (change the `$TestRef` line to the new project's Reference ID) to load the newest backup; compare the row counts; re-create the dashboard settings;
+**restore email sending** (secrets, `send-outbox`, the two schedule files); point the app at the new project; test. Keep email in **safe mode** until it is checked.
+
+### Practice before you need it
+The restore script was practiced in October. It has since been fixed for the newer tables (it now clears the rows the migrations pre-fill), but **that fix has not been practiced.** Do one practice restore
+before going live, following **"Practicing a restore" in `RECOVERY.md`** (it needs a temporary project, because the script only loads into an empty one).

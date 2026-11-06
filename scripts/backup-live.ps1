@@ -119,6 +119,27 @@ if ($missing.Count -gt 0) {
   Write-Host "All expected tables are present, including auth.users." -ForegroundColor Green
 }
 
+# Every table the schema defines in "public" should also have a data block in the backup. This
+# reads the table names from schema.sql itself, so tables added later are covered automatically
+# (the fixed list above only names the oldest tables).
+$schemaTables = @(
+  Select-String -Path (Join-Path $dir "schema.sql") -Pattern '^CREATE TABLE (IF NOT EXISTS )?"?public"?\."?([A-Za-z0-9_]+)"?' |
+    ForEach-Object { "public." + $_.Matches[0].Groups[2].Value }
+)
+$notInData = @($schemaTables | Where-Object { $copied -notcontains $_ })
+
+Write-Host ""
+Write-Host "Tables in schema.sql: $($schemaTables.Count). With a data block in data.sql: $($schemaTables.Count - $notInData.Count)."
+if ($schemaTables.Count -eq 0) {
+  Write-Host "WARNING: no tables were found in schema.sql, so this check could not run." -ForegroundColor Yellow
+} elseif ($notInData.Count -gt 0) {
+  Write-Host "WARNING: these tables are defined but have NO data block in the backup:" -ForegroundColor Yellow
+  $notInData | ForEach-Object { Write-Host "   $_" -ForegroundColor Yellow }
+  Write-Host "If a table listed here should hold rows, treat this backup as incomplete." -ForegroundColor Yellow
+} else {
+  Write-Host "Every table in the schema has a data block in the backup." -ForegroundColor Green
+}
+
 # Record checksums so a damaged copy can be detected later.
 Get-ChildItem $dir -Filter *.sql |
   Get-FileHash -Algorithm SHA256 |

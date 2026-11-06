@@ -223,6 +223,12 @@ test on the league's own database.
 - Games coming up with umpires who have not confirmed get a warning ("Not confirmed yet: Ann Lee"), counted in the summary. Each league sets how many days ahead (7 to begin with; 0 turns it off), in League Setup
 - A history records who was assigned, confirmed, declined or removed, and when
 
+**Suggesting umpires** 🆕
+
+- Every open place on the assignment panel has a **Suggest umpires** button: the five best choices, best first, each with plain reasons (said they can, a fair share of games, already at that field that day, how full their day is)
+- It leaves out, and counts, anyone busy, marked unavailable, blocked by the age or division rules, or still needing a parent's consent
+- **Use** fills the place; nothing is saved until Save umpires, and the database still checks every rule
+
 ## 8. Printing and downloading schedules
 
 - **Print the schedule** for the games on screen, day by day, with the field's address under its name. An option starts each day on a new page. Open places are boxed as OPEN, places that need no umpire are left out, and canceled games are struck through
@@ -242,7 +248,8 @@ test on the league's own database.
 ## 10. Keeping the data safe
 
 - A **test** database separate from the live one, with a test mode for the app
-- A **backup** tool for the live data, and a tool that restores a backup into the test database
+- A **backup** tool for the live data (it now checks every table, including newer ones), and a tool that restores a backup into the test database
+- **Download everything** (Administration > Backup and export): a super admin downloads a zip of spreadsheets and JSON files of all the league's data, the database records who did it and when, and the screen warns when it has been 30 days
 - A scheduled **keep-alive** so the free database plan does not pause
 - Eleven **check scripts** that try the database's rules from every kind of account and always undo themselves, and **one command that runs them all**, showing pass or fail for each
 - A **FAQ** of every routine task, a **recovery guide**, and an **email setup guide**
