@@ -73,4 +73,13 @@ delete from public.game_notes where body like 'TEST:%';
 delete from public.game_reports where body like 'TEST:%';
 delete from public.outside_reports where body like 'TEST:%';
 
+-- the log of "Download everything" (the table only exists once 20261111110000 has been applied)
+do $$
+begin
+  if to_regclass('public.export_log') is not null then
+    delete from public.export_log;
+  end if;
+end
+$$;
+
 commit;

@@ -121,6 +121,12 @@ from public.running_late_reports m join public.umpires u on u.id = m.umpire_id;
 select author_name, category, left(body, 60) as report from public.game_reports order by created_at desc limit 5;
 select entered_by_name, source_role, left(body, 60) as report from public.outside_reports order by created_at desc limit 5;
 
+-- ============================================================ 6.6  the download is recorded
+select status, tables_count, rows_count, exported_by_name,
+       started_at at time zone 'America/Los_Angeles' as started_local, finished_at at time zone 'America/Los_Angeles' as finished_local
+from public.export_log order by started_at desc limit 3;
+-- The newest row: status finished, the same number of tables and rows as the message on the screen, and your name.
+
 -- ============================================================ 7.2  earnings worked out
 select count(*) as earnings, sum(amount_cents) / 100.0 as dollars
 from public.earnings where voided_at is null;

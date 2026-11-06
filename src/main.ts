@@ -18,6 +18,7 @@ import { logoHtml } from "./logo";
 import { renderMyDetails } from "./my-details";
 import { renderUmpireRegistrations } from "./registrations";
 import { renderOutbox } from "./outbox";
+import { renderBackup } from "./backup/backup";
 import { renderGames, resetGamesView } from "./games";
 import { renderMySchedule } from "./games/my-schedule";
 import { describeRoles } from "./role-names";
@@ -630,6 +631,10 @@ function renderAdminPage(
       document.addEventListener("outbox:changed", outboxChangedListener);
       break;
     }
+
+    case "backup":
+      void renderBackup(holder);
+      break;
 
     case "details":
       void renderMyDetails(holder);
