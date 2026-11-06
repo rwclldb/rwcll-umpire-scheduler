@@ -62,6 +62,17 @@ You need the Supabase command-line tool (you already use it for migrations).
      password named `RWCLL sender` (Google: myaccount.google.com/apppasswords, signed in as that mailbox),
      rather than reusing the one in Supabase Auth, so that you can cancel one without breaking the other.
    - `SENDER_SECRET` is a password only the schedule and you know. Keep a copy: you need it again in Part 4.
+     It is **not** the Google app password (that one is `SMTP_PASS`): you make `SENDER_SECRET` up yourself.
+   - **If you lose it:** Supabase never shows a secret again, **but** once Part 4 is done the same value is also kept in the project's Vault.
+     Run this in the SQL Editor of that project to read it (treat the result like a password):
+     ```sql
+     select decrypted_secret from vault.decrypted_secrets where name = 'sender_secret';
+     ```
+     If Part 4 has not been done, just make a new one and set it again with `supabase secrets set SENDER_SECRET=...`.
+     If you ever change it after Part 4, change **both** places, or the sender answers "Forbidden":
+     ```sql
+     select vault.update_secret((select id from vault.secrets where name = 'sender_secret'), 'THE-NEW-VALUE');
+     ```
    - Optional: `SMTP_HOST` (default `smtp.gmail.com`) and `SMTP_PORT` (default `465`).
 
 ## Part 3: Safe mode, and a test

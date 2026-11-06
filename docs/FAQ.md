@@ -1670,6 +1670,19 @@ secrets; and the sender can be stopped with one line of SQL.
 **Database change:** `20261106100000_add_email_sending.sql`. **Check script:** `email_sending_check.sql` (section 6).
 **Setup:** `EMAIL-SENDING.md`; the schedule: `schedule_email_jobs.sql`.
 
+### Pausing all messages while you test (TEST project only)
+
+The TEST project has **scheduled jobs** that run by themselves: one queues day-before reminders **every hour**, two more queue daily warnings and a digest, and one sends the queue every few minutes.
+Because the sample games are always in the near future, testing can bury you in reminder emails. To stop it and start clean, run **`supabase\testday\testing_pause_messages.sql`**
+in the SQL Editor of the **test** project (the whole file; it can be run again any time):
+
+- email and text sending go **off** (nothing is sent; anything queued just stays "Waiting")
+- the three message-creating jobs are **stopped** (the hourly reminders, the daily unconfirmed warnings, the daily digest)
+- every queued or sent message is **deleted**, and "already reminded" is cleared, so reminders can be tested again
+
+It **refuses to run** if `email_mode` is `live`, so it cannot be used on a project that sends to real people. To turn everything back on, run **`testing_resume_messages.sql`**
+(it puts email in **safe mode**, so everything goes to your redirect address, and schedules the three jobs again). While paused, the test day still works: step 4.2 queues the reminders by hand.
+
 ## 53. Payments, part 1: pay rates
 
 The **Payments** tab is for the **treasurer** and **super admins**. This section covers its first part, **Pay rates**: what each place pays per game.
@@ -1861,7 +1874,7 @@ The administrators (super admins, the umpire chief and schedulers) are **emailed
 
 A **minimum-capabilities test** that several people run live on a **video call**, on the **TEST** database (never live). It follows one simulated game day from
 people joining, through scheduling, reminders, game day, reports, payroll and a youth turning 18, and ends with things that **must not** work.
-91 steps in 11 phases, about 3 hours, in **two sessions** (they can be run back to back).
+92 steps in 11 phases, about 3 hours, in **two sessions** (they can be run back to back).
 
 ### What is in it, and where it lives
 | Where | What |
@@ -1899,6 +1912,7 @@ seed login (shown on their sheet). E also signs up as a brand-new umpire with a 
 
 ### Known limits
 - **Pretend time does not change everything.** A few database rules use the real date. For example, the treasurer cannot work out earnings for a date that has not really happened, so **payroll uses the earlier games already in the seed**, not the pretend game day.
+- **Confirm email may be OFF on the TEST project** (the docs say it was switched off while email did not work). Then signing up goes straight to "Awaiting approval" with no email (step 0.8 asks you to check; the live project must always have it ON).
 - **Stripe is not built.** One step is a boxed placeholder where people write what they would expect to see.
 - The consent wording in the test data is **demo wording**.
 - The step wording was written from the app's code and tests, so do a **solo rehearsal** first and fix the Word files.
@@ -1995,28 +2009,28 @@ extra, readable copy that needs no Docker. Details are in `RECOVERY.md`.
    ```powershell
    powershell -ExecutionPolicy Bypass -File .\scripts\backup-live.ps1
    ```
-4. **Read what it prints.** A good backup says: `Docker is running`, then three steps (`roles`, `schema`, `data`), then **`All expected tables are present`** and
-   **`Every table in the schema has a data block in the backup`**. A yellow **WARNING** means something is missing: do not trust that backup, and tell Claude what it listed.
+4. **Read what it prints.** A good backup says: `Docker is running`, then three steps (`roles`, `schema`, `data`), then **`All expected tables are present`**,
+   **`Every table in the schema has a data block in the backup`** and **`Row counts saved in row-counts.txt`**. A yellow **WARNING** means something is missing: do not trust that backup, and tell Claude what it listed.
 5. **Link back to the test project** (this matters: otherwise the next `db push` would go to LIVE):
    ```powershell
    npx supabase link --project-ref mucsujjpfefrfxystxse
    ```
-6. The backup is a dated folder in `D:\sandbox\RWCLL-backups` with `roles.sql`, `schema.sql`, `data.sql` and `checksums.txt`. The script refuses to write inside the project, so it cannot be committed by accident.
+6. The backup is a dated folder in `D:\sandbox\RWCLL-backups` with `roles.sql`, `schema.sql`, `data.sql`, **`row-counts.txt`** (how many rows each table had in that backup) and `checksums.txt`. `checksums.txt` is written **last**: a folder without it is a backup that stopped part way and must not be used. The script refuses to write inside the project, so it cannot be committed by accident.
 
 ### Keeping it
 - It holds **personal information, including children, and the sign-in records**. Keep it **off GitHub, out of email, out of shared folders**. Store it on an encrypted drive or in an encrypted archive.
 - Keep the last several weekly backups and **every backup taken just before a LIVE database update**. Delete the rest.
 - Copy the latest one to a **second place** (for example an encrypted external drive), so one broken computer does not lose both the app and its backup.
-- Also write down, in a safe place, what the backup cannot hold: the Supabase **dashboard settings** (email templates, sign-in URLs), the **email secrets** (`SMTP_USER`, `SMTP_PASS`, `SENDER_SECRET`), and the project's database password.
+- Fill in the **dashboard settings sheet** in `RECOVERY.md` ("Dashboard settings: write them down now"): sign-in URLs, email (SMTP) settings, templates, extensions. Keep it with your backups. Put the **secrets** (the email app password, `SENDER_SECRET`) and the database password in a **password manager**, not on the sheet.
 
 ### Download everything (monthly, any super admin)
 **Administration, Backup and export, Download everything.** Store the zip the same careful way. The screen warns after 30 days without one.
 
 ### If the live project is lost (a disaster)
 Follow **"Rebuilding after a disaster" in `RECOVERY.md`**. In short: create a new project; link the tool to it; `npx supabase db push --linked` to rebuild the structure; run
-`scripts\restore-to-test.ps1` (change the `$TestRef` line to the new project's Reference ID) to load the newest backup; compare the row counts; re-create the dashboard settings;
+`scripts\restore-to-test.ps1 -ProjectRef <the new project's Reference ID>` to load the newest finished backup (it compares what it loaded with `row-counts.txt` and prints **ROW COUNTS MATCH** or lists every table that differs); re-create the dashboard settings (`RECOVERY.md` has the checklist and the steps in order);
 **restore email sending** (secrets, `send-outbox`, the two schedule files); point the app at the new project; test. Keep email in **safe mode** until it is checked.
 
 ### Practice before you need it
-The restore script was practiced in October. It has since been fixed for the newer tables (it now clears the rows the migrations pre-fill), but **that fix has not been practiced.** Do one practice restore
-before going live, following **"Practicing a restore" in `RECOVERY.md`** (it needs a temporary project, because the script only loads into an empty one).
+The restore was practiced in October, and again in **November 2026** into a temporary project with today's structure (**80 tables, 488 rows, every count matched** the backup's `row-counts.txt`). Practice again after any change to how the data is stored,
+following **"Practicing a restore" in `RECOVERY.md`** (it needs a temporary project, because the script only loads into an empty one).

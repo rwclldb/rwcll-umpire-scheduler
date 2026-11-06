@@ -300,7 +300,7 @@ The league pays its **youth umpires** (about **monthly**); adult umpires are not
 
 ## Testing with real people 🟡 *(written; not yet run)*
 
-A **minimum-capabilities test**: board members play seven roles on a video call, on the TEST database, following one simulated game day. **91 steps in two sessions** (about 70 minutes, then about 2 hours; they can run back to back). Email is in safe mode, so every message goes to the facilitator.
+A **minimum-capabilities test**: board members play seven roles on a video call, on the TEST database, following one simulated game day. **92 steps in two sessions** (about 70 minutes, then about 2 hours; they can run back to back). Email is in safe mode, so every message goes to the facilitator.
 
 - ✅ The **master script**, a **sheet for each role**, a **database check file** and a **cleanup script** (`docs\testday`, `supabase\testday`), and a seed extended with parent logins, a younger umpire, more parents and a turning-18 stand-in
 - ⬜ A **solo rehearsal** by one person, fixing the wording in the Word files
