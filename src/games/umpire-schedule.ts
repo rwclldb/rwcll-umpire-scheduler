@@ -150,6 +150,9 @@ export function renderScheduleView(
           ${escapeHtml(game.home)} vs ${escapeHtml(game.away)}<br>
           ${escapeHtml(formatDate(game.startsAt))}, ${escapeHtml(game.time)} (${escapeHtml(game.position)}, ${escapeHtml(game.field)})
         </p>
+        ${game.myStatus === "confirmed"
+          ? `<p class="directory-description sv-decline-note">You already confirmed this game. If you decline, the place is open again and the administrators are told straight away. If the game is soon, please also let the scheduler know directly.</p>`
+          : ""}
         <label for="sv-reason">Reason (optional)</label>
         <textarea id="sv-reason" rows="3" maxlength="500"></textarea>
         <div class="account-actions">
