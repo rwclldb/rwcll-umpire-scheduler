@@ -317,7 +317,8 @@ A **minimum-capabilities test**: board members play seven roles on a video call,
 - ✅ **Download everything** (Administration > Backup and export): a super admin's zip of spreadsheets and JSON files, a log of each download, and a warning after 30 days (FAQ section 59)
 - ✅ The full backup script now checks **every table** against the schema, and `RECOVERY.md` covers the email sender, its secrets and the scheduled jobs
 - ⬜ Decide whether the live project should move to **Supabase Pro** (daily backups kept for 7 days; the free plan has no automatic backups)
-- ⬜ A **practice restore** of a recent backup into a temporary project, to prove the recovery guide still works. **Needed:** the restore script was fixed in November 2026 (it now clears every table the migrations pre-fill), and that fix has not been practiced (`RECOVERY.md`, "Practicing a restore")
+- ✅ A **practice restore** of a recent backup into a temporary project: done in November 2026 (**80 tables, 488 rows, every count matched**), including the fix that clears every table the migrations pre-fill. Repeat after any change to how the data is stored (`RECOVERY.md`, "Practicing a restore")
+- ⬜ **Fill in the dashboard settings sheet** in `RECOVERY.md` (sign-in URLs, email settings, extensions) while LIVE works
 
 ## Smaller things on the list
 

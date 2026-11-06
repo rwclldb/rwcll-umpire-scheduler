@@ -1,4 +1,3 @@
-
 {
   "name": "rwcll-umpire-scheduler",
   "version": "1.0.0",
@@ -15,7 +14,7 @@
     "url": "git+https://github.com/rwclldb/rwcll-umpire-scheduler.git"
   },
   "devDependencies": {
-    "supabase": "^2.122.0",
+    "supabase": "^3.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
   },
