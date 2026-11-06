@@ -7,7 +7,8 @@
 #   1. Start Docker Desktop and wait until it says it is running.
 #   2. Link the CLI to the live project:
 #        npx supabase link --project-ref tayveudoxrdkqnmcjrtu
-#   3. Run from the project folder:
+#   3. Run from the project folder (it makes a dated folder holding roles.sql, schema.sql, data.sql,
+#      row-counts.txt and checksums.txt; a backup is finished only when checksums.txt exists):
 #        powershell -ExecutionPolicy Bypass -File .\scripts\backup-live.ps1
 #   4. Afterwards, link the CLI back to the test project:
 #        npx supabase link --project-ref mucsujjpfefrfxystxse
@@ -140,8 +141,32 @@ if ($schemaTables.Count -eq 0) {
   Write-Host "Every table in the schema has a data block in the backup." -ForegroundColor Green
 }
 
-# Record checksums so a damaged copy can be detected later.
-Get-ChildItem $dir -Filter *.sql |
+# How many rows each table has in THIS backup, counted from data.sql and saved as row-counts.txt.
+# After a restore, restore-to-test.ps1 compares what it loaded with this file, table by table.
+$rowCounts = [ordered]@{}
+$currentTable = $null
+foreach ($dataLine in [System.IO.File]::ReadLines((Join-Path $dir "data.sql"))) {
+  if ($null -eq $currentTable) {
+    if ($dataLine.StartsWith("COPY ")) {
+      $currentTable = (($dataLine -split ' ')[1]) -replace '"', ''
+      $rowCounts[$currentTable] = 0
+    }
+  } elseif ($dataLine -eq '\.') {
+    $currentTable = $null
+  } else {
+    $rowCounts[$currentTable] = $rowCounts[$currentTable] + 1
+  }
+}
+$countLines = @("# Rows in each table of this backup, counted from data.sql ($stamp). Each line: the table, a tab, the row count.")
+foreach ($tableName in $rowCounts.Keys) { $countLines += ("{0}`t{1}" -f $tableName, $rowCounts[$tableName]) }
+Set-Content -Path (Join-Path $dir "row-counts.txt") -Value $countLines
+$totalRows = ($rowCounts.Values | Measure-Object -Sum).Sum
+Write-Host ""
+Write-Host "Row counts saved in row-counts.txt: $($rowCounts.Count) tables, $totalRows rows."
+
+# Record checksums so a damaged copy can be detected later (row-counts.txt is covered too).
+Get-ChildItem $dir -File |
+  Where-Object { $_.Extension -eq ".sql" -or $_.Name -eq "row-counts.txt" } |
   Get-FileHash -Algorithm SHA256 |
   ForEach-Object { "$($_.Hash)  $(Split-Path $_.Path -Leaf)" } |
   Set-Content (Join-Path $dir "checksums.txt")

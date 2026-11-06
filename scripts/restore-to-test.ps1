@@ -8,7 +8,9 @@
 #
 # Run from the project folder:
 #   powershell -ExecutionPolicy Bypass -File .\scripts\restore-to-test.ps1
-# Optional: -BackupFolder "D:\sandbox\RWCLL-backups\2026-10-24_1518"
+# Optional: -ProjectRef "abcdefghijklmnop"   the project to load into (default: the TEST project).
+#                                             Use this for a practice or replacement project.
+#           -BackupFolder "D:\sandbox\RWCLL-backups\2026-10-24_1518"
 #           -PsqlPath "C:\path\to\psql.exe"
 #
 # Safety:
@@ -21,18 +23,37 @@
 param(
   [string]$BackupRoot = "D:\sandbox\RWCLL-backups",
   [string]$BackupFolder = "",
+  [string]$ProjectRef = "mucsujjpfefrfxystxse",
   [string]$PsqlPath = "C:\Program Files\PostgreSQL\17\bin\psql.exe"
 )
 
 $ErrorActionPreference = "Stop"
-$TestRef = "mucsujjpfefrfxystxse"
+$LiveRef = "tayveudoxrdkqnmcjrtu"
+if ($ProjectRef -eq $LiveRef) {
+  throw "Refusing to restore into the LIVE project ($LiveRef). This script loads into the test project, or a practice or replacement project."
+}
+$TestRef = $ProjectRef
 
 # --- Find and verify the backup ----------------------------------------
 
 if (-not $BackupFolder) {
-  $latest = Get-ChildItem $BackupRoot -Directory | Sort-Object Name | Select-Object -Last 1
-  if (-not $latest) { throw "No backup folders found in $BackupRoot." }
-  $BackupFolder = $latest.FullName
+  # A backup is only finished when its checksums.txt has been written (the last thing the backup does).
+  # A folder from a backup that stopped part way has no checksums.txt, so it is skipped, and said so.
+  $folders = @(Get-ChildItem $BackupRoot -Directory | Sort-Object Name)
+  if ($folders.Count -eq 0) { throw "No backup folders found in $BackupRoot." }
+
+  $finished = @($folders | Where-Object {
+    (Test-Path (Join-Path $_.FullName "data.sql")) -and (Test-Path (Join-Path $_.FullName "checksums.txt"))
+  })
+  if ($finished.Count -eq 0) {
+    throw "No finished backup was found in $BackupRoot (a finished one has data.sql and checksums.txt). The newest folder, $($folders[-1].Name), probably holds a backup that stopped part way. Take a new backup with backup-live.ps1 and read what it prints."
+  }
+
+  $newest = $folders[-1]
+  $BackupFolder = $finished[-1].FullName
+  if ($finished[-1].Name -ne $newest.Name) {
+    Write-Host "NOTE: the newest folder ($($newest.Name)) is not a finished backup (no checksums.txt), so the newest FINISHED one is used instead: $($finished[-1].Name)." -ForegroundColor Yellow
+  }
 }
 $dataFile = Join-Path $BackupFolder "data.sql"
 $sumFile = Join-Path $BackupFolder "checksums.txt"
@@ -134,7 +155,7 @@ try {
   Write-Host "Connected to the test project; it is empty, as required."
 
   Write-Host ""
-  Write-Host "About to load the backup's data into the TEST project ($TestRef)."
+  Write-Host "About to load the backup's data into project $TestRef."
   Write-Host "The rows your migrations pre-fill (roles, settings, the sample consent wording) will be replaced by the backup's copy."
   $answer = Read-Host "Type RESTORE to continue"
   if ($answer -ne "RESTORE") {
@@ -167,11 +188,65 @@ try {
   # --- Row counts to compare with the live project ---------------------------
 
   Write-Host ""
-  Write-Host "Restore finished. Row counts in the TEST project:"
-  $counts = Invoke-Psql @("--no-psqlrc", "-c", $countQuery)
-  Write-Host $counts.Output
-  Write-Host ""
-  Write-Host "Now run the same count query on the LIVE project and compare."
+  Write-Host "Restore finished."
+
+  # Compare what was loaded with row-counts.txt from the backup (made by backup-live.ps1), table by table.
+  $countsFile = Join-Path $BackupFolder "row-counts.txt"
+  $compared = $false
+  if (Test-Path $countsFile) {
+    try {
+      $expectedCounts = [ordered]@{}
+      foreach ($countLine in Get-Content $countsFile) {
+        if ($countLine.Trim() -eq "" -or $countLine.StartsWith("#")) { continue }
+        $pieces = $countLine -split "`t"
+        if ($pieces.Count -eq 2 -and $pieces[0] -match '^[a-z0-9_]+\.[a-z0-9_]+$') { $expectedCounts[$pieces[0]] = [int64]$pieces[1] }
+      }
+      if ($expectedCounts.Count -eq 0) { throw "row-counts.txt has no table lines." }
+
+      $selects = @($expectedCounts.Keys | ForEach-Object {
+        $schemaName, $tableName = $_ -split '\.', 2
+        'select ''{0}'' as t, count(*) as n from "{1}"."{2}"' -f $_, $schemaName, $tableName
+      })
+      $counted = Invoke-Psql @("--no-psqlrc", "-t", "-A", "-F", "|", "-c", ($selects -join " union all "))
+      if ($counted.ExitCode -ne 0) { throw "The count query failed: $($counted.Output)" }
+
+      $actualCounts = @{}
+      foreach ($resultLine in ($counted.Output -split "\r?\n")) {
+        $cells = $resultLine -split '\|'
+        if ($cells.Count -eq 2) { $actualCounts[$cells[0].Trim()] = [int64]$cells[1] }
+      }
+
+      $differences = @()
+      foreach ($name in $expectedCounts.Keys) {
+        $got = if ($actualCounts.ContainsKey($name)) { $actualCounts[$name] } else { "(missing)" }
+        if ($got -ne $expectedCounts[$name]) {
+          $differences += ("  {0}: backup {1}, restored {2}" -f $name, $expectedCounts[$name], $got)
+        }
+      }
+
+      $totalExpected = ($expectedCounts.Values | Measure-Object -Sum).Sum
+      Write-Host ""
+      if ($differences.Count -eq 0) {
+        Write-Host "ROW COUNTS MATCH the backup: all $($expectedCounts.Count) tables, $totalExpected rows." -ForegroundColor Green
+      } else {
+        Write-Host "ROW COUNTS DIFFER from the backup for $($differences.Count) of $($expectedCounts.Count) tables:" -ForegroundColor Yellow
+        $differences | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
+        Write-Host "A difference means rows were not restored. Do not rely on this restore until it is explained." -ForegroundColor Yellow
+      }
+      $compared = $true
+    } catch {
+      Write-Host "Could not compare the counts automatically: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+  } else {
+    Write-Host "This backup has no row-counts.txt (backups made before November 2026 do not)."
+  }
+
+  if (-not $compared) {
+    Write-Host ""
+    Write-Host "Row counts in the project (compare them with the live project by hand: see RECOVERY.md):"
+    $counts = Invoke-Psql @("--no-psqlrc", "-c", $countQuery)
+    Write-Host $counts.Output
+  }
 } finally {
   Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
   Remove-Item Env:PGHOST -ErrorAction SilentlyContinue
