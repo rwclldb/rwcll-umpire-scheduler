@@ -31,6 +31,13 @@ Word files as you go. Expect about 2.5 to 3 hours (no waiting for other people, 
    several roles interleave (phase 5) involve Youth, Chief, Adult Umpire and Scheduler. Otherwise just sign out and in.
    Phone testing: do a few steps on your phone too (steps 0.6, 2.6, 5.4, 7.9).
 
+   Auto sign-out: the app signs people out after 30 idle minutes, which is a nuisance in a slow rehearsal. Turn it OFF in the TEST
+   project (SQL Editor), and reload each browser tab afterwards:
+       update public.app_settings set value = '0' where key in ('idle_logout_minutes', 'idle_logout_minutes_umpire');
+   (0 means never sign out.) PUT IT BACK when you finish, and before the board's sessions, so people see what real users will see:
+       update public.app_settings set value = '30' where key in ('idle_logout_minutes', 'idle_logout_minutes_umpire');
+   (30 is the starting value. If you had changed it, use your own: run  select key, value from public.app_settings where key like 'idle%';  first.)
+
 3. FOLLOW THE MASTER SCRIPT, NOT THE SHEETS
    Work down 00_MASTER_Test_Day_Script.pdf (or the Word file) in order. Each step says who does it: sign in as that person
    (login on the cast page) and do it. Mark Pass or Fail and write notes on the page.

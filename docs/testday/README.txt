@@ -2,7 +2,7 @@ RWCLL TEST DAY PACKAGE
 ======================
 
 A live "day in the life" test for 5 to 7 people on a video call, on the TEST database (never LIVE).
-91 steps in 11 phases, in TWO SESSIONS (they can also be run back to back). No real emails are sent and no money moves.
+92 steps in 11 phases, in TWO SESSIONS (they can also be run back to back). No real emails are sent and no money moves.
 
   Session 1: Setting up              phases 0 to 3    about 70 minutes   (the Treasurer can skip it)
   Session 2: Game day and after      phases 4 to 10   about 2 hours      (everyone)

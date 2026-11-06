@@ -80,7 +80,7 @@ your backups (not in Git). **Secrets go in a password manager, never in the shee
 | 7 | **Confirm email** | Authentication, Sign In / Providers, Email | it must be **ON for live**. Write down any other switch you changed on that page |
 | 8 | Email templates, **if you changed any** | Authentication, Emails, Templates | copy the subject and body of each template you changed (if you never changed them, write "default") |
 | 9 | Extensions | Database, Extensions | `pg_cron` and `pg_net` are **on** |
-| 10 | Edge Function secrets | `npx supabase secrets list` shows names only | `SMTP_USER`, `SMTP_PASS` (the app password) and `SENDER_SECRET` (password manager). The values cannot be read back from Supabase |
+| 10 | Edge Function secrets | `npx supabase secrets list` shows names only | `SMTP_USER`, `SMTP_PASS` (the Google app password) and `SENDER_SECRET` (a value you made up). Put all three in a password manager. Supabase cannot show them again, except that `SENDER_SECRET` is also in the Vault: read it now with `select decrypted_secret from vault.decrypted_secrets where name = 'sender_secret';` |
 | 11 | GitHub secrets | the repository, Settings, Secrets and variables, Actions | the names (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`); the values come from the new project after a recovery |
 | 12 | Anything else you changed | Authentication or Project Settings | note it here |
 
