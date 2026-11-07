@@ -99,8 +99,15 @@ If step 3 fails, check **Authentication**, then **Logs** in Supabase for the err
 When the test project works, repeat Part 2 on the **live** project. **Keep "Confirm email" ON for live.** Then
 repeat Part 3 against live: register from a personal address, confirm, and reset a password.
 
-Also add your website address (once it exists) to **Authentication**, **URL Configuration**, so email links come back
-to the right place. Until the site is deployed, only `http://localhost:5173/**` works for testing.
+**Also set the web addresses, on each project.** In **Authentication**, **URL Configuration**:
+
+- **Site URL**: the app's address **including its folder**. For the test project that is
+  `https://rwclldb.github.io/rwcll-umpire-scheduler/` (a new project starts with `http://localhost:3000`, which is why a
+  confirmation link then goes to a page that does not exist). Use the live address on the live project.
+- **Redirect URLs**: add `https://rwclldb.github.io/rwcll-umpire-scheduler/**` (the same address, with `/**` on the end) and keep
+  `http://localhost:5173/**` for testing on your own computer.
+
+Supabase only sends a link to an address on this list, and otherwise falls back to the Site URL. The app asks for its own address, folder included.
 
 ## Part 5: If Google will not give an app password
 

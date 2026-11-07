@@ -91,6 +91,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 58. [Suggesting umpires for a game](#58-suggesting-umpires-for-a-game)
 59. [Downloading a copy of everything](#59-downloading-a-copy-of-everything)
 60. [Backups: taking one, keeping it, and getting back from a disaster](#60-backups-taking-one-keeping-it-and-getting-back-from-a-disaster)
+61. [Small things you will notice: the clock, canceled games, approval details](#61-small-things-you-will-notice-the-clock-canceled-games-approval-details)
 
 ---
 
@@ -450,7 +451,7 @@ The version number is the 14-digit prefix of the file name. Check that you copie
   VITE_SUPABASE_URL=https://mucsujjpfefrfxystxse.supabase.co
   VITE_SUPABASE_PUBLISHABLE_KEY=paste-the-TEST-publishable-key-here
   ```
-- **Allow the app's address for email links** (password reset): Authentication, then URL Configuration, then Redirect URLs. Add `http://localhost:5173/**`. Do this on **both** projects. A website address is added here later too.
+- **Allow the app's address for email links** (sign-up confirmation and password reset): Authentication, then URL Configuration. Set the **Site URL** to the app's address **with its folder** (test: `https://rwclldb.github.io/rwcll-umpire-scheduler/`), and under **Redirect URLs** add that address with `/**` on the end, and keep `http://localhost:5173/**`. Do this on **both** projects (the live one with the live address).
 - **Reset a database password:** Project Settings, then Database, then Reset database password.
 - **Approve an account:** sign in to the app as super admin, open **Administration**, then **Approvals**; pending accounts and umpire registrations are there. Then use **Roles** to give it roles.
 
@@ -538,6 +539,8 @@ The version number is the 14-digit prefix of the file name. Check that you copie
 | League Setup (or another screen) says `Unable to load setup records` | The app asked the database for something it does not have yet, almost always because the newest migration has not been applied to the database in use. The page now shows the database's own message underneath: *column ... does not exist* means exactly this. Check which database you are on (sections 1 and 9: test mode shows `mucsujj` in the browser's Network tab), then apply the migration (section 3) and run the checks (section 7). You can also see the message in the browser console (F12), on the line starting `League setup load failed` |
 | The season import says "A season called ... already exists" | You chose **Create a new season** but one with that name is already there | In the **Season** list, choose **Add to: that season** (to add teams to it), or give the new season a different name. |
 | Signing up on **live** says the email "cannot be used as it is not authorized" | Supabase's built-in email sender only reaches your own team's addresses (error code `email_address_not_authorized`). Sign-up needs a confirmation email, so everyone else is refused. | A real email provider has to be connected (see section 27). Until then only team members can register on live. |
+| A **confirmation or reset link goes to `localhost:3000`** (or a page that does not exist) | The project's **Site URL** was never set (a new project starts with `http://localhost:3000`), or the app's address is not in the Redirect URLs, so Supabase falls back to the Site URL | Authentication, URL Configuration: set the Site URL to the app's address including its folder, and add it with `/**` to Redirect URLs (see EMAIL-SETUP.md and section 17 of this FAQ). The link you already received still **confirms the account** (that happens before the redirect): just sign in at the app's address. |
+| Signing up says *Registration submitted. Check your email...* but **no email arrives**, and you used an address that has signed up before (even one that was refused in the app) | **The address already exists** in Supabase. For safety, Supabase then sends **nothing** and still reports success, so nobody can find out which addresses are registered. Refusing someone in the app does not delete their sign-in account. | In the dashboard, open **Authentication, Users**, find the address and **delete the user** (the three dots, then Delete user), or use a **new address** (for example `erik+umpire2@rwcll.org`), then sign up again. A new, unconfirmed account shows **Waiting for verification** in that list. If the address is not in the list at all, open **Logs, Auth** in the dashboard and look for the sign-up and any email error, then check **Authentication, Emails, SMTP Settings** and your spam folder. |
 | Someone signed up as an umpire but is not in **Umpire registrations** | They must confirm their email and then sign in once; the record is created at that sign-in | Ask them to confirm the email and sign in. People who never confirm never appear (this keeps spam out). |
 | An invited person registered but was not approved automatically | The email must match the invitation exactly, be **confirmed**, and the invitation must be open (not expired or revoked) and the record not already linked. They must also **sign in once** after confirming. | Open Edit on their umpire record: the Invitation panel shows the status. Renew it if it expired. |
 
@@ -1058,7 +1061,7 @@ Who made each assignment is recorded.
 **What an umpire does.** On their **Home** page, **My schedule** says how many games are waiting for their answer. Each such game has two buttons:
 
 - **Confirm:** the game shows Confirmed.
-- **Decline:** asks first, with an optional reason (up to 500 characters). Declining removes the umpire from the game, so the place is **open** again, and the administrators are told. An umpire can decline up to the moment the game starts; after that they must contact an administrator. They can decline even after confirming.
+- **Decline:** asks first, with an optional reason (up to 500 characters). Declining removes the umpire from the game, so the place is **open** again, and the administrators are told. An umpire can decline up to the moment the game starts; after that they must contact an administrator. They can decline even after confirming: a confirmed game keeps its **Decline** button until the game starts, and the question reminds the umpire that they already confirmed it (and to let the scheduler know directly if the game is soon).
 
 An umpire can only answer for themselves, and only through these buttons. A game that has been played, or canceled, shows no buttons.
 
@@ -1512,7 +1515,7 @@ On the **Field board**, open **Rainout: close a field**.
 3. Choose a **reason** (Rain, Wet field, Unsafe conditions, Other) and add details if you like (they are needed for Other).
 4. A line shows exactly what will happen: *This will cancel 2 games (9:00 AM, 12:00 PM) and tell 3 umpires.* Press **Cancel these games** and confirm.
 
-Each game is **canceled**, gets a **note** saying why (*Canceled: Rain*), and its umpires are sent a **message** (see the Outbox). Games already played or canceled are left alone. The field shows **Closed: Rain** and the closing is listed under **Closed today**.
+Each game is **canceled**, gets a **note** saying why (*Canceled: Rain*), and its umpires are sent a **message** (see the Outbox). Games already played or canceled are left alone. The field shows **Closed: Rain**, and a **red "Closed today" box** appears at the top of the Field board, **above** the rainout section, so it is visible even when that section is folded. It names the field, the time and the reason, and has the **Reopen** button. The rainout section itself has a blue bar with a rain-cloud icon; opened with nothing closed it says *No fields are closed today*, and a closing that has been reopened is listed in it under **Reopened today**.
 
 If the weather clears, press **Reopen**: the games it canceled go **back to what they were**, the umpires are told, and the closing is marked reopened. A game you changed by hand in the meantime is left alone. A closing can be at most 7 days.
 
@@ -2034,3 +2037,12 @@ Follow **"Rebuilding after a disaster" in `RECOVERY.md`**. In short: create a ne
 ### Practice before you need it
 The restore was practiced in October, and again in **November 2026** into a temporary project with today's structure (**80 tables, 488 rows, every count matched** the backup's `row-counts.txt`). Practice again after any change to how the data is stored,
 following **"Practicing a restore" in `RECOVERY.md`** (it needs a temporary project, because the script only loads into an empty one).
+
+## 61. Small things you will notice: the clock, canceled games, approval details
+
+- **The clock in the top bar.** The time is shown to the right of the logo, in the league's own time zone (Pacific), on every page, so everyone is looking at the same time. On a phone only the time is shown (the date is dropped to make room, and so are the words "Signed in as", so the name is never cut off). When a **pretend time** is set (see the demo clock), the clock shows the pretend time with an amber **PRETEND** tag, so you cannot mistake it for the real one.
+- **Canceled games on My family.** A parent's schedule shows a canceled game in **red** (a pale red row, a cross and bold red words **Game canceled**), so it is not missed. It is not only a color: the words are always there.
+- **Who approved an account, and when.** An administrator opening an umpire's **Edit Umpire** form sees a line at the top, for example *Account approved on Thursday, November 5, 2026 at 3:12 PM by Pat Admin.* It also says if the account is still **waiting**, if the registration was **refused** (and by whom), or if the umpire has **no sign-in account** yet. Accounts approved before approvers were recorded (and the sample data) say *Who approved it was not recorded.*
+
+- **Decline and report on game day.** On an umpire's **Home** page, each game in the **Game day** card has the two things an umpire may need at the field: **I can't make it** (until the game starts, and only if they have not already checked in) frees the place and tells the administrators, the same decline as on the schedule; and **Write a report about this game** (once the game has started) is the same report as the form further down the page, with the same guidance and the same readers (only the umpire chief and super admins). They are also still in the schedule and in the reports section.
+- **The Field board's rainout area.** A **red Closed today box** is shown above the rainout section whenever a field is closed, even if the section is folded. The rainout section has a blue bar and a rain-cloud icon, and its form now lines up from the left (side by side when there is room).

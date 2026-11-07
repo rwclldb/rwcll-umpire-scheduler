@@ -58,6 +58,55 @@ export function wireGameDay(
       return;
     }
 
+    // "I can't make it"
+    const decline = target.closest<HTMLButtonElement>("[data-gd-decline-send]");
+    if (decline) {
+      decline.disabled = true;
+      const reason = decline.closest(".gd-decline-body")?.querySelector<HTMLTextAreaElement>(".gd-decline-reason")?.value ?? "";
+
+      void (async () => {
+        const { error } = await supabase.rpc("decline_assignment", { p_game_id: decline.dataset.gdDeclineSend, p_reason: reason });
+
+        if (error) {
+          decline.disabled = false;
+          return say(`That did not work. ${error.message}`);
+        }
+
+        refresh("You have declined this game, and the administrators have been told.");
+      })();
+
+      return;
+    }
+
+    // a report about the game
+    const report = target.closest<HTMLButtonElement>("[data-gd-report-send]");
+    if (report) {
+      const body = report.closest(".gd-report-body")!;
+      const text = body.querySelector<HTMLTextAreaElement>(".gd-report-text")!.value.trim();
+      if (!text) return say("Write what happened.");
+
+      report.disabled = true;
+
+      void (async () => {
+        const pretend = demoNowIso();
+        const { error } = await supabase.rpc("file_game_report", {
+          p_game_id: report.dataset.gdReportSend,
+          p_category: body.querySelector<HTMLSelectElement>(".gd-report-category")!.value,
+          p_body: text,
+          ...(pretend ? { p_now: pretend } : {}),
+        });
+
+        if (error) {
+          report.disabled = false;
+          return say(`Could not send the report. ${error.message}`);
+        }
+
+        refresh("Your report was sent. Only the umpire chief and super admins can read it.");
+      })();
+
+      return;
+    }
+
     const button = target.closest<HTMLButtonElement>("[data-checkin]");
     if (!button) return;
 

@@ -34,9 +34,9 @@ from public.umpires where display_name = 'Casey Turner' and classification = 'yo
 -- ============================================================ 1.7  the new people
 select p.display_name, p.email, p.account_status, string_agg(ur.role_id, ', ') as roles
 from public.profiles p left join public.user_roles ur on ur.user_id = p.id
-where p.display_name like 'Test %' or p.display_name = 'Rita Miller'
+where (p.registration_kind = 'adult_umpire' and p.email not like '%@rwcll.test') or p.display_name = 'Rita Miller'
 group by p.display_name, p.email, p.account_status order by 1;
--- The new umpire (named "Test ..."): approved, with the adult_umpire role.  Rita Miller: approved, parent_guardian.
+-- The new umpire (the one who signed up in step 1.1, whatever name you typed): approved, with the adult_umpire role.  Rita Miller: approved, parent_guardian.
 
 select u.display_name as child, p.display_name as parent, l.relationship, l.created_by_name
 from public.family_links l join public.umpires u on u.id = l.umpire_id join public.profiles p on p.id = l.parent_id
@@ -77,8 +77,8 @@ where u.display_name = 'Sam Young' and (g.starts_at at time zone 'America/Los_An
 union all select 'Rita Miller is approved and linked to Oliver Miller', count(*), 1
 from public.family_links l join public.umpires u on u.id = l.umpire_id join public.profiles p on p.id = l.parent_id
 where u.display_name = 'Oliver Miller' and p.display_name = 'Rita Miller' and p.account_status = 'approved' and l.ended_at is null
-union all select 'the new Test umpire is approved', count(*), 1
-from public.profiles where display_name like 'Test %' and account_status = 'approved'
+union all select 'the new umpire who signed up in step 1.1 is approved', least(count(*), 1), 1
+from public.profiles where registration_kind = 'adult_umpire' and email not like '%@rwcll.test' and account_status = 'approved'
 union all select 'email is in safe mode', count(*), 1
 from public.sending_settings where key = 'email_mode' and value = 'safe';
 -- Every row: n = expected. A row that is wrong means a Session 1 step did not happen (or the test was cleaned up

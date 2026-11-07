@@ -227,6 +227,12 @@ export function scheduleStatus(row: ScheduleRow): string {
   return "Assigned: not confirmed yet";
 }
 
+// The status as it is shown: a canceled game stands out (red, with a cross), the rest is plain text.
+export function scheduleStatusHtml(row: ScheduleRow): string {
+  const text = escapeHtml(scheduleStatus(row));
+  return row.game_status === "canceled" ? `<span class="family-status-canceled">${text}</span>` : text;
+}
+
 export const STATE_LABEL: Record<string, string> = {
   waiting: "Waiting to be paid",
   approved: "Approved: payment coming",
@@ -297,7 +303,7 @@ export function myFamilyHtml(input: {
           <div class="rates-table-wrap"><table class="rates-table sched-table">
             <caption class="visually-hidden">${escapeHtml(caption)}</caption>
             <thead><tr><th scope="col">When</th><th scope="col">Game</th><th scope="col">Field</th><th scope="col">Place</th><th scope="col">Status</th></tr></thead>
-            <tbody>${rows.map((g) => `<tr><th scope="row">${escapeHtml(gameWhen(g.starts_at))}</th><td>${escapeHtml(g.home_team ?? "?")} vs ${escapeHtml(g.away_team ?? "?")}${g.division_name ? ` <span class="family-meta">(${escapeHtml(g.division_name)})</span>` : ""}</td><td>${escapeHtml(g.location_name ?? "")}</td><td>${escapeHtml(placeLabel(g.place))}</td><td>${escapeHtml(scheduleStatus(g))}</td></tr>`).join("")}</tbody>
+            <tbody>${rows.map((g) => `<tr${g.game_status === "canceled" ? ' class="sched-row-canceled"' : ""}><th scope="row">${escapeHtml(gameWhen(g.starts_at))}</th><td>${escapeHtml(g.home_team ?? "?")} vs ${escapeHtml(g.away_team ?? "?")}${g.division_name ? ` <span class="family-meta">(${escapeHtml(g.division_name)})</span>` : ""}</td><td>${escapeHtml(g.location_name ?? "")}</td><td>${escapeHtml(placeLabel(g.place))}</td><td>${scheduleStatusHtml(g)}</td></tr>`).join("")}</tbody>
           </table></div>`;
 
         return `

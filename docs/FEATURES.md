@@ -216,12 +216,20 @@ test on the league's own database.
 **Confirming and declining** 🆕
 
 - Each assignment is **Assigned** until the umpire answers, then **Confirmed**; the games list shows the status beside each umpire
-- On their own schedule, an umpire sees which games are waiting for their answer and can **Confirm** or **Decline** each one. Declining asks for an optional reason, frees the place, and tells the administrators
+- On their own schedule, an umpire sees which games are waiting for their answer and can **Confirm** or **Decline** each one. A confirmed game keeps its Decline button until the game starts, so an umpire who falls ill can still back out. Declining asks for an optional reason, frees the place, and tells the administrators
 - A place that was given up is shown on the games list ("Declined: Ann Lee") while the game is still to come
 - An administrator can **Mark as confirmed** for an umpire who answered another way, from the Umpires panel
 - An umpire who stays on a game keeps their confirmation when other places are changed or they move to another place
 - Games coming up with umpires who have not confirmed get a warning ("Not confirmed yet: Ann Lee"), counted in the summary. Each league sets how many days ahead (7 to begin with; 0 turns it off), in League Setup
 - A history records who was assigned, confirmed, declined or removed, and when
+
+**Small improvements from the first test run** 🆕
+
+- The **time** is shown in the top bar next to the logo (Pacific time; the pretend time, tagged PRETEND, when one is set)
+- A **canceled game** is shown in red on a parent's My family schedule
+- An umpire's details show **when and by whom** their account was approved
+- The umpire's **Game day** card has **I can't make it** (before the game) and **Write a report about this game** (after it starts)
+- On the Field board a red **Closed today** box is always visible when a field is closed, and the rainout section stands out (blue bar, rain-cloud icon)
 
 **Suggesting umpires** 🆕
 
