@@ -73,8 +73,8 @@ your backups (not in Git). **Secrets go in a password manager, never in the shee
 |---|---|---|---|
 | 1 | Project reference and web address | Project Settings, General | `tayveudoxrdkqnmcjrtu` and `https://tayveudoxrdkqnmcjrtu.supabase.co` |
 | 2 | Database password; **Session pooler host** | Project Settings, Database; the **Connect** button, Session pooler | the password (password manager); the host (it looks like `aws-1-us-east-2.pooler.supabase.com`) |
-| 3 | **Site URL** | Authentication, URL Configuration | the live website address |
-| 4 | **Redirect URLs** | Authentication, URL Configuration | every address in the list (the live site, and `http://localhost:5173/**` for testing) |
+| 3 | **Site URL** | Authentication, URL Configuration | the live website address **including its folder, if it has one** (a new project starts with `http://localhost:3000`, which sends confirmation links to a page that does not exist) |
+| 4 | **Redirect URLs** | Authentication, URL Configuration | every address in the list: the live site **with `/**` on the end** (for example `https://example.org/app/**`), and `http://localhost:5173/**` for testing |
 | 5 | **Custom SMTP** (the sign-up and password emails) | Authentication, Emails, SMTP Settings | sender email address and name, host, port, username. The password is the Google **app password** of the sender mailbox (password manager). The sender mailbox is `umpiresched@rwcll.org` (check it against the dashboard: the example in `EMAIL-SETUP.md` uses a different address) |
 | 6 | Email rate limit | Authentication, Rate Limits | the "emails sent" number |
 | 7 | **Confirm email** | Authentication, Sign In / Providers, Email | it must be **ON for live**. Write down any other switch you changed on that page |

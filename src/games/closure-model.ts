@@ -62,6 +62,11 @@ function closureWhen(closure: FieldClosure): string {
   return `${formatTime(closure.closes_from)} to ${formatTime(closure.closes_to)}`;
 }
 
+// Two small icons (drawn here so they look the same everywhere; the words always say the same thing).
+const ICON_ATTRS = `class="closure-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"`;
+const ICON_RAIN = `<svg ${ICON_ATTRS}><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><line x1="12" y1="15" x2="12" y2="23"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>`;
+const ICON_CLOSED = `<svg ${ICON_ATTRS}><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+
 export function closurePanelHtml(board: DayBoard, closures: FieldClosure[]): string {
   const fields = board.fields
     .map((field) => ({ field, count: gamesToCancel(field, -Infinity, Infinity).length }))
@@ -69,24 +74,31 @@ export function closurePanelHtml(board: DayBoard, closures: FieldClosure[]): str
 
   const fieldName = (id: string) => board.fields.find((field) => field.locationId === id)?.name ?? "A field";
 
-  const list = closures.length === 0
-    ? ""
-    : `
-      <h3 class="closure-list-title">Closed today</h3>
-      <ul class="closure-list">
-        ${closures.map((closure) => `
+  const item = (closure: FieldClosure) => `
           <li class="closure-item${closure.reopened_at ? " closure-reopened" : ""}">
             <span><strong>${escapeHtml(fieldName(closure.location_id))}</strong>, ${escapeHtml(closureWhen(closure))}:
               ${escapeHtml(closure.reason)}
               (${escapeHtml(plural(closure.games, "game", "games"))} canceled by ${escapeHtml(closure.created_by_name)})
               ${closure.reopened_at ? `<em>Reopened by ${escapeHtml(closure.reopened_by_name ?? "an administrator")}.</em>` : ""}</span>
             ${closure.reopened_at ? "" : `<button type="button" class="secondary-button" data-reopen="${escapeHtml(closure.id)}">Reopen</button>`}
-          </li>`).join("")}
-      </ul>`;
+          </li>`;
 
-  return `
-    <details class="board-closure" id="board-closure-box"${closures.some((closure) => !closure.reopened_at) ? " open" : ""}>
-      <summary>Rainout: close a field</summary>
+  const active = closures.filter((closure) => !closure.reopened_at);
+  const reopened = closures.filter((closure) => closure.reopened_at);
+
+  // Whenever a field is closed this is shown ABOVE the rainout section, so it cannot be hidden by closing that section.
+  const banner = active.length === 0
+    ? ""
+    : `
+    <section class="closure-banner" aria-labelledby="closure-banner-title">
+      <h3 id="closure-banner-title">${ICON_CLOSED}<span>Closed today</span></h3>
+      <ul class="closure-list">${active.map(item).join("")}
+      </ul>
+    </section>`;
+
+  return `${banner}
+    <details class="board-closure" id="board-closure-box">
+      <summary>${ICON_RAIN}<span>Rainout: close a field</span></summary>
       ${fields.length === 0
         ? `<p class="closure-none">There are no games left to cancel on this day.</p>`
         : `
@@ -108,6 +120,12 @@ export function closurePanelHtml(board: DayBoard, closures: FieldClosure[]): str
           <p id="closure-preview" class="closure-preview" role="status" aria-live="polite"></p>
           <button type="submit" class="primary-button">Cancel these games</button>
         </form>`}
-      ${list}
+      ${active.length === 0 ? `<p class="closure-today-none">No fields are closed today.</p>` : ""}
+      ${reopened.length === 0
+        ? ""
+        : `
+      <h3 class="closure-list-title">Reopened today</h3>
+      <ul class="closure-list">${reopened.map(item).join("")}
+      </ul>`}
     </details>`;
 }

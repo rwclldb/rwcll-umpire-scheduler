@@ -1,9 +1,11 @@
 import { escapeHtml } from "../ui";
+import { appNowMs } from "../clock";
 import { dateKey } from "./availability";
 import { arrivedText, checkInState } from "./attendance";
 import type { CheckInState } from "./attendance";
 import { formatTime, localDateKey } from "./format";
 import { notesHtml } from "./game-notes-model";
+import { GAME_REPORT_CATEGORIES, REPORT_GUIDANCE, SAFETY_NOTICE } from "./reports-model";
 import type { UmpireGame } from "./schedule";
 import { POSITION_LABEL } from "./staffing";
 import type { Assignment, GameNote, Position, RunningLate } from "./types";
@@ -81,6 +83,55 @@ function lateHtml(entry: GameDayEntry, extras?: GameDayExtras): string {
     </details>`;
 }
 
+// "I can't make it": until the game starts (and if the umpire has not already arrived). It is the same decline as on the schedule:
+// the place is freed and the administrators are told, here at the place where an umpire is when it matters.
+function declineHtml(entry: GameDayEntry): string {
+  const { state, game } = entry;
+  if (state.kind !== "early" && state.kind !== "open") return "";
+  if (Date.parse(game.startsAt) <= appNowMs()) return "";
+
+  const id = escapeHtml(game.id);
+
+  return `
+    <details class="gd-decline">
+      <summary>I can't make it</summary>
+      <div class="gd-decline-body">
+        <p class="gd-help">${game.myStatus === "confirmed" ? "You already confirmed this game. " : ""}Declining frees your place and tells the administrators straight away. If the game is soon, please also let the scheduler know directly.</p>
+        <label>Reason (optional)
+          <textarea class="gd-decline-reason" rows="2" maxlength="500"></textarea>
+        </label>
+        <button type="button" class="primary-button" data-gd-decline-send="${id}">Decline this game</button>
+      </div>
+    </details>`;
+}
+
+// A report about this game, once it has started (the same report as the form further down the page, with the same wording).
+function reportHtml(entry: GameDayEntry): string {
+  const { game } = entry;
+  if (Date.parse(game.startsAt) > appNowMs()) return "";
+
+  const id = escapeHtml(game.id);
+
+  return `
+    <details class="gd-report">
+      <summary>Write a report about this game</summary>
+      <div class="gd-report-body">
+        <p class="report-guidance">${escapeHtml(REPORT_GUIDANCE)}</p>
+        <p class="report-guidance">${escapeHtml(SAFETY_NOTICE)}</p>
+        <label>What is it about?
+          <select class="gd-report-category">
+            ${GAME_REPORT_CATEGORIES.map(([key, label]) => `<option value="${key}">${escapeHtml(label)}</option>`).join("")}
+          </select>
+        </label>
+        <label>What happened
+          <textarea class="gd-report-text" rows="4" maxlength="4000"></textarea>
+        </label>
+        <p class="report-guidance"><strong>Only the umpire chief and super admins can read this.</strong> You can read what you send and add follow-ups, but you cannot change it afterwards.</p>
+        <button type="button" class="primary-button" data-gd-report-send="${id}">Send report</button>
+      </div>
+    </details>`;
+}
+
 function actionHtml(entry: GameDayEntry): string {
   const { state, game } = entry;
 
@@ -127,6 +178,7 @@ export function gameDayHtml(entries: GameDayEntry[], notes?: Map<string, GameNot
                 ${extras?.access?.get(game.id) ? `<span class="gd-access"><strong>Gate or access:</strong> ${escapeHtml(extras.access.get(game.id)!)}</span>` : ""}
               </div>
               <div class="gd-action">${actionHtml(entry)}${lateHtml(entry, extras)}</div>
+              <div class="gd-more">${declineHtml(entry)}${reportHtml(entry)}</div>
               <div class="gd-notes">${notesHtml(game.id, notes?.get(game.id) ?? [], { canRemove: false })}</div>
             </li>`;
         }).join("")}

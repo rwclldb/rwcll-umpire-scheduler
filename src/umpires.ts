@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { approvalNoteHtml, loadApprovalInfo } from "./approval-note";
 import { queueEmail } from "./email";
 import { sortDivisions } from "./division-order";
 import { renderAvailabilityEditor } from "./games/availability-editor";
@@ -812,9 +813,13 @@ async function showEditForm(umpireId: string) {
           </option>`)
         .join("");
 
+  // when and by whom their account was approved (left out if it cannot be read)
+  const approval = await loadApprovalInfo(umpire.profile_id ?? null);
+
   showEditor(`
     <form id="edit-umpire-form" class="create-umpire-form">
       <h3>Edit Umpire</h3>
+      ${approval ? approvalNoteHtml(approval) : ""}
 
       <label for="edit-display-name">Display Name</label>
       <input id="edit-display-name" name="display_name" required

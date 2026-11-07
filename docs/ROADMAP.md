@@ -312,6 +312,19 @@ A **minimum-capabilities test**: board members play seven roles on a video call,
 
 ---
 
+## Feedback from the first test run (November 2026) 🟡
+
+Nine points came out of working through Sessions 1 and 2 of the test day.
+
+- ✅ **The time in the top bar**, next to the logo
+- ✅ **Canceled games in red** on My family
+- ✅ **When and by whom** an account was approved, in an umpire's details
+- ✅ **Decline and Report on game day:** in the umpire's Game day card for today's games (also kept in the schedule and the reports section)
+- ⬜ **Urgent messages sent at once:** declines, closures and cancellations within two hours of a game go out straight away (sender every minute, urgent first); everything else stays batched. **Decided:** urgent messages should also go **by text** when texting is switched on.
+- ✅ **The Field board's rainout area:** blue bar with a rain-cloud icon; a red **Closed today** box whenever any field is closed, even when the rainout section is folded
+- ⬜ **Optional photos of umpires**, so coaches know who is coming. **Decided:** a **parent uploads and controls** a youth umpire's photo (youth cannot upload their own); adults are optional; only the coaches and administrators of games the umpire is assigned to can see it; it can be removed at once.
+- ⬜ **Coach accounts tied to teams.** **Decided:** one role, "coach" (assistant coaches and team managers are all just coaches), and **several coaches per team**. A coach sees only **their team's games** and the **confirmed** umpires on them (full names, youth included), can add **comments and reports**, and gets **no emails from this system** about cancellations (the main system sends those). Never: contact details, birth dates, families, payments, other teams, or anyone else's reports.
+
 ## Keeping the data safe 🟡 *(built; waiting for a first run)*
 
 - ✅ **Download everything** (Administration > Backup and export): a super admin's zip of spreadsheets and JSON files, a log of each download, and a warning after 30 days (FAQ section 59)
