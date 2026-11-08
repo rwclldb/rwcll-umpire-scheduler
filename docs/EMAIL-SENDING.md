@@ -141,6 +141,8 @@ Do this on the **live** project only when the test project has behaved for a whi
 
 ## Part 6: Text messages (optional, later)
 
+> **Planning to switch texting on?** Read `TEXTING-SETUP.md` first: it has the costs, the timing (plan on two to three weeks for the carrier registration), the decisions the board needs to make, and draft wording for the registration.
+
 Text reminders are built but **off**, and they only go to umpires whose own account agreed to text messages
 (the account setting) and has a phone number. They need a texting service. The sender is written for
 **Twilio**, but you can choose another later.
@@ -161,6 +163,21 @@ When you are ready:
    (or `TWILIO_MESSAGING_SERVICE_SID` instead of `TWILIO_FROM`)
 3. Start in safe mode: `update public.sending_settings set value = 'safe' where key = 'sms_mode';` and put your own
    number in `sms_safe_allowlist` (several separated by commas). Then `live` when happy.
+
+## Part 7: Urgent messages (every minute)
+
+A message about a game that starts within two hours (an umpire declining, a field closed, a game canceled or moved) is **urgent**:
+the sender takes it first, and an extra job runs **every minute** and sends only urgent messages. If texting is on, an urgent email is
+also sent as a text to people who agreed to texts (umpires, youth umpires' parents, administrators). Texts are switched with `sms_mode`
+(`off` leaves email exactly as it was). See FAQ section 62.
+
+To set it up, after Part 4: apply `20261112100000_add_urgent_messages.sql`, redeploy the function
+(`npx supabase functions deploy send-outbox --no-verify-jwt`), then run `supabase/jobs/schedule_urgent_jobs.sql` once (nothing to replace).
+
+To ask for urgent messages by hand (the same command as Part 3, with a body):
+```
+Invoke-RestMethod -Method Post -Uri "https://<YOUR-PROJECT-REF>.supabase.co/functions/v1/send-outbox" -Headers @{"x-sender-secret"="<YOUR SENDER_SECRET>"} -ContentType "application/json" -Body '{"only":"urgent"}'
+```
 
 ## If something goes wrong
 

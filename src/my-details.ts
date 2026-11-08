@@ -87,13 +87,16 @@ export async function renderMyDetails(
         <label class="season-checkbox-label">
           <input name="sms_opt_in" type="checkbox"
             ${contact?.sms_opt_in ? "checked" : ""} />
-          I would like text message (SMS) notifications when they
-          become available
+          Text me about my games (or, for a parent, my child's games): a
+          reminder the day before, and urgent changes within two hours of a
+          game, such as a cancellation, a closed field or an umpire dropping
+          out.
         </label>
         <p class="season-dates">
-          Text messages are not available yet. Choosing this only records
-          your preference. Nothing will be sent until the feature is
-          turned on, and you can change your mind here at any time.
+          Message frequency varies with the games. Message and data rates may
+          apply. Reply STOP to cancel any text, or HELP for help. Texts are
+          only sent once the league has turned texting on; until then nothing
+          is sent. You can change your mind here at any time.
         </p>
 
         <button id="my-details-save" class="primary-button" type="submit">

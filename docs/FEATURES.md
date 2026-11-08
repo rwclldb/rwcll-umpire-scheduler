@@ -223,6 +223,11 @@ test on the league's own database.
 - Games coming up with umpires who have not confirmed get a warning ("Not confirmed yet: Ann Lee"), counted in the summary. Each league sets how many days ahead (7 to begin with; 0 turns it off), in League Setup
 - A history records who was assigned, confirmed, declined or removed, and when
 
+**Urgent messages** 🆕
+
+- A change to a game within two hours (a decline, a closure, a cancellation, a move, an umpire added or removed, someone running late) is sent **first**, by a job that runs **every minute**; everything else stays in the 5-minute batch
+- If **texting is on**, urgent emails are also sent as texts to umpires, youth umpires, the parents of youth umpires and administrators **who agreed on their own account**; **one switch** (`sms_mode`) turns texting on and off, and email carries on regardless
+
 **Small improvements from the first test run** 🆕
 
 - The **time** is shown in the top bar next to the logo (Pacific time; the pretend time, tagged PRETEND, when one is set)

@@ -169,3 +169,16 @@ export function classifyTwilioError(status: number, code: number | undefined, me
   if ([21211, 21214, 21610, 21612, 21614, 21408].includes(code ?? 0) || (status >= 400 && status < 500)) return { result: "failed", error: text };
   return { result: "retry", error: text };
 }
+
+// The every-minute job sends the function a body of {"only": "urgent"}: then it takes ONLY urgent messages.
+// The usual every-5-minutes job sends {} (and also takes the urgent ones, first).
+export function wantsUrgentOnly(body: unknown): boolean {
+  return typeof body === "object" && body !== null && (body as { only?: unknown }).only === "urgent";
+}
+
+// The database functions that hand the sender its next messages.
+export function claimNames(urgentOnly: boolean): { email: string; sms: string } {
+  return urgentOnly
+    ? { email: "claim_urgent_outbox_batch", sms: "claim_urgent_sms_batch" }
+    : { email: "claim_outbox_batch", sms: "claim_sms_batch" };
+}

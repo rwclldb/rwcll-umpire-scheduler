@@ -1,6 +1,7 @@
 // The sender: sends the messages waiting in the Outbox.
 //
-// It runs every few minutes (see supabase/jobs/schedule_email_jobs.sql), claims
+// It runs every few minutes (see supabase/jobs/schedule_email_jobs.sql), and every MINUTE for urgent
+// messages only (supabase/jobs/schedule_urgent_jobs.sql), claims
 // waiting messages through the database, decides what to do with each one (see
 // logic.ts: nothing is sent while the mode is "off", and in "safe" mode only to the
 // safe list), sends it, and reports back what happened.
@@ -14,6 +15,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.14";
 import {
   classifySmtpError,
+  claimNames,
   classifyTwilioError,
   dailyBudget,
   decideEmail,
@@ -22,6 +24,7 @@ import {
   parseMode,
   positiveNumber,
   safeEqual,
+  wantsUrgentOnly,
 } from "./logic.ts";
 
 const BATCH = 20;
@@ -39,11 +42,24 @@ Deno.serve(async (request) => {
   if (loaded.error) return Response.json({ error: `Could not read the settings: ${loaded.error.message}` }, { status: 500 });
   const settings = Object.fromEntries((loaded.data ?? []).map((row) => [row.key, row.value]));
 
-  const summary = { email: await sendEmails(supabase, settings), sms: await sendTexts(supabase, settings) };
+  // the every-minute job asks for urgent messages only ({"only": "urgent"})
+  const urgentOnly = wantsUrgentOnly(await request.json().catch(() => ({})));
+
+  if (urgentOnly) {
+    // nothing urgent is waiting: do nothing at all (not even connect to the mailbox)
+    const waiting = await supabase.rpc("urgent_waiting_count");
+    if (!waiting.error && Number(waiting.data ?? 0) === 0) return Response.json({ urgent: true, note: "Nothing urgent is waiting." });
+  }
+
+  const summary = {
+    ...(urgentOnly ? { urgent: true } : {}),
+    email: await sendEmails(supabase, settings, urgentOnly),
+    sms: await sendTexts(supabase, settings, urgentOnly),
+  };
   return Response.json(summary);
 });
 
-async function sendEmails(supabase, settings) {
+async function sendEmails(supabase, settings, urgentOnly = false) {
   if (parseMode(settings.email_mode) === "off") return { mode: "off" };
 
   const user = Deno.env.get("SMTP_USER");
@@ -68,7 +84,7 @@ async function sendEmails(supabase, settings) {
   const budget = dailyBudget(positiveNumber(settings.email_daily_limit, 400), Number(sentToday.data ?? 0), BATCH);
   if (budget === 0) return { mode: settings.email_mode, note: "The daily limit has been reached." };
 
-  const claimed = await supabase.rpc("claim_outbox_batch", { p_limit: budget });
+  const claimed = await supabase.rpc(claimNames(urgentOnly).email, { p_limit: budget });
   if (claimed.error) return { mode: settings.email_mode, error: claimed.error.message };
 
   const from = fromHeader(settings.email_from_name ?? "RWCLL Umpires", user);
@@ -114,7 +130,7 @@ async function sendEmails(supabase, settings) {
   return result;
 }
 
-async function sendTexts(supabase, settings) {
+async function sendTexts(supabase, settings, urgentOnly = false) {
   if (parseMode(settings.sms_mode) === "off") return { mode: "off" };
 
   const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -123,7 +139,7 @@ async function sendTexts(supabase, settings) {
   const service = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID");
   if (!sid || !token || (!fromNumber && !service)) return { mode: settings.sms_mode, error: "The text message keys are not set." };
 
-  const claimed = await supabase.rpc("claim_sms_batch", { p_limit: BATCH });
+  const claimed = await supabase.rpc(claimNames(urgentOnly).sms, { p_limit: BATCH });
   if (claimed.error) return { mode: settings.sms_mode, error: claimed.error.message };
 
   const result = { mode: settings.sms_mode, sent: 0, skipped: 0, retry: 0, failed: 0 };

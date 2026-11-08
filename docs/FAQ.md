@@ -92,6 +92,7 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 59. [Downloading a copy of everything](#59-downloading-a-copy-of-everything)
 60. [Backups: taking one, keeping it, and getting back from a disaster](#60-backups-taking-one-keeping-it-and-getting-back-from-a-disaster)
 61. [Small things you will notice: the clock, canceled games, approval details](#61-small-things-you-will-notice-the-clock-canceled-games-approval-details)
+62. [Urgent messages, and texting on and off](#62-urgent-messages-and-texting-on-and-off)
 
 ---
 
@@ -2046,3 +2047,34 @@ following **"Practicing a restore" in `RECOVERY.md`** (it needs a temporary proj
 
 - **Decline and report on game day.** On an umpire's **Home** page, each game in the **Game day** card has the two things an umpire may need at the field: **I can't make it** (until the game starts, and only if they have not already checked in) frees the place and tells the administrators, the same decline as on the schedule; and **Write a report about this game** (once the game has started) is the same report as the form further down the page, with the same guidance and the same readers (only the umpire chief and super admins). They are also still in the schedule and in the reports section.
 - **The Field board's rainout area.** A **red Closed today box** is shown above the rainout section whenever a field is closed, even if the section is folded. The rainout section has a blue bar and a rain-cloud icon, and its form now lines up from the left (side by side when there is room).
+
+## 62. Urgent messages, and texting on and off
+
+**What counts as urgent.** A change to a game that **starts within two hours** (or has started and is not over): an umpire **declining** or being added or taken off, a game **canceled, put back or moved**, a field **closed or reopened**, or an umpire **running late**. A game two days away is not urgent: those messages go in the usual batch.
+
+**What happens to an urgent message**
+- It is marked **priority**, and the sender sends priority messages **first**.
+- An extra job runs **every minute** and sends **only urgent** messages (when none are waiting it does nothing at all). Everything else still goes in the 5-minute batch. So an urgent email goes out within about a minute.
+- If **texting is on**, an urgent email is **also sent as a text** to the same person, if their **own account agreed to texts** and has a phone number. That covers **umpires (youth too)**, the **parents of a youth umpire** (they get the "Copy for ..." email, so they get the text too, and each parent needs to have agreed on their own account), and the **administrators** who must react to a decline.
+
+**Texting on and off.** One switch: `sms_mode` in the sending settings (`off`, `safe` or `live`).
+
+| To do this | Run in the SQL Editor |
+|---|---|
+| Texting **off** (email carries on exactly as before) | `update public.sending_settings set value = 'off' where key = 'sms_mode';` |
+| Texting **in test** (only the numbers in the safe list) | `update public.sending_settings set value = 'safe' where key = 'sms_mode';` (and put your own number in `sms_safe_allowlist`) |
+| Texting **on** for real | `update public.sending_settings set value = 'live' where key = 'sms_mode';` |
+
+While `sms_mode` is `off` **no text is even queued**, so nothing piles up. Email is controlled separately by `email_mode`.
+
+**Setting it up**
+1. Apply `20261112100000_add_urgent_messages.sql` (`npx supabase db push --linked`).
+2. Redeploy the sender: `npx supabase functions deploy send-outbox --no-verify-jwt`.
+3. Run `supabase\jobs\schedule_urgent_jobs.sql` once in each project's SQL Editor (after `schedule_email_jobs.sql`; nothing to replace).
+4. Check it with `supabase\tests\urgent_messages_check.sql`.
+
+**Trying it out.** Real urgency depends on the real clock, so for a test set `urgent_test_mode` to `on` (`update public.sending_settings set value = 'on' where key = 'urgent_test_mode';`): then **every** such change counts as urgent, whatever the time. Close a field, then ask the sender for urgent messages only (the same command as in `EMAIL-SENDING.md`, with the body `{"only":"urgent"}`). **Put it back to `off` afterwards.** The window can be changed with `urgent_window_minutes` (120).
+
+**What a text says.** The email's subject line, after "RWCLL umpires:", and "Reply STOP to opt out" is added by the sender. For a youth umpire's parent it starts "Copy for (the child's name):". Texts older than `sms_max_age_hours` (6) are not sent.
+
+**If you are not paying for texting.** Leave `sms_mode` at `off`. Urgent **email** works fully without it. See `TEXTING-SETUP.md` for what texting needs.
