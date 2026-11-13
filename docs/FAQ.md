@@ -93,6 +93,8 @@ cd D:\sandbox\GitHubRepos\rwcll-umpire-scheduler
 60. [Backups: taking one, keeping it, and getting back from a disaster](#60-backups-taking-one-keeping-it-and-getting-back-from-a-disaster)
 61. [Small things you will notice: the clock, canceled games, approval details](#61-small-things-you-will-notice-the-clock-canceled-games-approval-details)
 62. [Urgent messages, and texting on and off](#62-urgent-messages-and-texting-on-and-off)
+63. [The master calendar sync (Sports Connect)](#63-the-master-calendar-sync-sports-connect)
+64. [Keeping it running: the upkeep checklist](#64-keeping-it-running-the-upkeep-checklist)
 
 ---
 
@@ -585,12 +587,15 @@ If the same file already exists, **overwrite it**.
 | The file | Goes in |
 |---|---|
 | A `.sql` whose name starts with a 14-digit number, like `20261024180000_...sql` | `supabase\migrations` |
-| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `reports_check.sql`, `email_sending_check.sql`, `pay_rates_check.sql`, `payroll_check.sql`, `families_check.sql`, `family_notices_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
-| `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs` | `scripts` |
+| `rls_check_...sql`, `role_rules_check.sql`, `account_details_check.sql`, `registration_check.sql`, `email_outbox_check.sql`, `games_rules_check.sql`, `games_master_id_check.sql`, `import_games_check.sql`, `import_season_check.sql`, `umpire_assignments_check.sql`, `assignment_confirmation_check.sql`, `self_assignment_check.sql`, `availability_check.sql`, `availability_patterns_check.sql`, `further_rules_check.sql`, `league_field_check.sql`, `attendance_check.sql`, `demo_clock_check.sql`, `game_notes_check.sql`, `idle_logout_check.sql`, `day_of_extras_check.sql`, `reports_check.sql`, `email_sending_check.sql`, `pay_rates_check.sql`, `payroll_check.sql`, `families_check.sql`, `family_notices_check.sql`, `calendar_sync_check.sql`, `schema_fingerprint.sql` | `supabase\tests` |
+| `index.ts`, `ics.ts`, `match.ts`, `names.ts`, `sync-plan.ts`, `sync.test.ts` (the master calendar sync, section 63). Careful: `index.ts` is also the name of the email sender's file | `supabase\functions\sync-calendar` |
+| `schedule_calendar_sync.sql`, `schedule_cleanup_jobs.sql` (and the other `schedule_..._jobs.sql` files) | `supabase\jobs` |
+| `clear_season_schedule.sql` (test project only, section 64) | `supabase\test-project` |
+| `backup-live.ps1`, `restore-to-test.ps1`, `run-all-checks.ps1`, `run-checks.mjs`, `set-sender-secret.ps1` | `scripts` |
 | App files such as `main.ts`, `roles.ts`, `umpires.ts`, `my-details.ts`, `registrations.ts`, `email.ts`, `outbox.ts`, `shell.ts`, `role-names.ts`, `games.ts`, `league_setup.ts`, `ui.ts` | `src` |
 | `csv-out.ts`, `schedule.ts`, `print.ts`, `umpire-schedule.ts`, `my-schedule.ts` (printing and exporting), `staffing.ts`, `assign.ts`, `contacts.ts`, `open-games.ts`, `take-options.ts`, `availability.ts`, `availability-calendar.ts`, `board.ts`, `board-model.ts`, `attendance.ts`, `game-day.ts`, `game-day-model.ts`, `game-notes.ts`, `game-notes-model.ts`, `closure-model.ts`, `call-around-model.ts`, `reports-model.ts`, `reports.ts`, `reports-umpire.ts`; and in `src` itself `clock.ts`, `demo-clock.ts`, `idle-logic.ts`, `idle-logout.ts`, `availability-editor.ts` (assigning umpires, phone numbers, games to take, availability) | `src\games` |
 | `season-plan.ts`, `season-import.ts`, `teams.ts`, `state.ts` | `src\setup` (the folder that already holds the other setup files) |
-| `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
+| `types.ts`, `format.ts`, `warnings.ts`, `data.ts`, `form.ts`, `csv.ts`, `calendar.ts`, `matching.ts`, `plan.ts`, `importer.ts`, `calendar-sync.ts` (the files in the `games` folder; see also the next row) | `src\games` (a folder inside `src`, next to `games.ts`) |
 | The League Setup pieces (`leagues.ts`, `seasons.ts`, `divisions.ts`, `teams.ts`, ...) | `src\setup` |
 | `style.css` | `src` (it replaces `src\style.css`) |
 | `FAQ.md`, `RECOVERY.md`, `EMAIL-SETUP.md`, `ROADMAP.md`, `FEATURES.md` | `docs` |
@@ -848,7 +853,7 @@ Other roles are unchanged: an **umpire chief** still has one **Umpire Management
 
 **Who:** super admins, umpire chiefs and schedulers. Find it in the menu as **Games**.
 
-**The idea.** The master calendar belongs to the league; the umpire system holds a **copy** of it. When the master calendar changes, an administrator makes the same change here, either by editing the game on this tab or (coming next) by importing the updated spreadsheet. Games copied from the master calendar carry its **Game ID**, which is how a re-import will know which game to update instead of adding a duplicate. A game made by hand has no Game ID, and an import will never touch it.
+**The idea.** The master calendar belongs to the league; the umpire system holds a **copy** of it. When the master calendar changes, the **master calendar sync** copies the change here twice a day (section 63). Without the sync, an administrator makes the same change here, either by editing the game on this tab or by importing the updated spreadsheet. Games copied from the master calendar carry its **Game ID**, which is how a re-import will know which game to update instead of adding a duplicate. A game made by hand has no Game ID, and an import will never touch it.
 
 **Reading the list.** It opens on the current season, from **today** onward, hiding canceled games. Change **Season**, **Division**, **Field**, **From**/**To**, or **Status**, or type in **Search** (it finds teams, fields, umpires, divisions and master Game IDs). **Only games with warnings** shows just the ones that need attention. The line above the list counts what you are looking at. Times are shown in your computer's time zone. On a phone each game is a small card.
 
@@ -881,6 +886,8 @@ Canceled games never cause or receive conflicts. A game with many conflicts show
 ## 32. Importing games from the master calendar
 
 **Where:** Games tab, **Import from spreadsheet**. **Who:** super admins, umpire chiefs and schedulers.
+
+**With the master calendar sync switched on (section 63) you do not need this.** The import is still there for a first load from a spreadsheet, or if the feed is ever unavailable. The two work together: the sync recognises games that were imported.
 
 **Get the file.** Export the master calendar and save it as **CSV** (in Excel or Google Sheets: File, Save as or Download, *Comma-separated values*). Excel files (`.xlsx`) are not read directly.
 
@@ -2033,7 +2040,7 @@ extra, readable copy that needs no Docker. Details are in `RECOVERY.md`.
 ### If the live project is lost (a disaster)
 Follow **"Rebuilding after a disaster" in `RECOVERY.md`**. In short: create a new project; link the tool to it; `npx supabase db push --linked` to rebuild the structure; run
 `scripts\restore-to-test.ps1 -ProjectRef <the new project's Reference ID>` to load the newest finished backup (it compares what it loaded with `row-counts.txt` and prints **ROW COUNTS MATCH** or lists every table that differs); re-create the dashboard settings (`RECOVERY.md` has the checklist and the steps in order);
-**restore email sending** (secrets, `send-outbox`, the two schedule files); point the app at the new project; test. Keep email in **safe mode** until it is checked.
+**restore email sending** (secrets, `send-outbox`, the two schedule files) and the **master calendar sync** (`sync-calendar` and `schedule_calendar_sync.sql`, section 63); point the app at the new project; test. Keep email in **safe mode** until it is checked.
 
 ### Practice before you need it
 The restore was practiced in October, and again in **November 2026** into a temporary project with today's structure (**80 tables, 488 rows, every count matched** the backup's `row-counts.txt`). Practice again after any change to how the data is stored,
@@ -2078,3 +2085,87 @@ While `sms_mode` is `off` **no text is even queued**, so nothing piles up. Email
 **What a text says.** The email's subject line, after "RWCLL umpires:", and "Reply STOP to opt out" is added by the sender. For a youth umpire's parent it starts "Copy for (the child's name):". Texts older than `sms_max_age_hours` (6) are not sent.
 
 **If you are not paying for texting.** Leave `sms_mode` at `off`. Urgent **email** works fully without it. See `TEXTING-SETUP.md` for what texting needs.
+
+## 63. The master calendar sync (Sports Connect)
+
+**Where:** Games tab, **Master calendar sync**. **Who:** super admins, umpire chiefs and schedulers.
+
+**What it does.** Twice a day (about 6 AM and 6 PM Pacific) it downloads the master calendar's feed from Sports Connect and brings the games here up to date. Nobody has to copy changes by hand.
+
+- **New games** on the master calendar are **added** (as Scheduled).
+- **Changed games** (time, date, field, or which team is home) are **changed**. Every umpire on a changed game is **emailed what changed** (for example `Time: Sun, Nov 15, 9:00 AM - 10:45 AM → 8:00 AM - 9:45 AM`), and their assignment goes back to **not confirmed**, so they must **confirm it again**. A youth umpire's parents get the usual copy. The usual reminders and "still unconfirmed" warnings then apply. If the game is within two hours, the email is urgent (section 62).
+- **Games that disappear** from the master calendar are **not changed**. They are listed under **Here, but no longer on the master calendar**, and the administrators are emailed once. If the game is off, set it to **Canceled** as usual; it then drops off the list.
+- **Practices** and anything that is not "Team @ Team" are skipped. **`A @ B` means A is away and B is home.**
+- The sync **never cancels a game, never changes a status, never touches notes**, and never touches a game that has started. A game **canceled here** (for example a rainout) stays canceled even if the master calendar still lists it.
+
+**How it knows which game is which.** The feed has no lasting game ID (its IDs change on every download), so games are matched by what they are:
+1. **The same two teams on the same day** (the league's day, either team at home) are the same game.
+2. **One of our teams on the same day with a different opponent** is the same game with its opponent changed (there are no doubleheaders, so one of our teams plays once a day). For example "McGowan vs SB2" at 1:00 that became "PA2 @ McGowan" at 11:00. Only when it is clear-cut: if either game has more than one candidate, rule 2 is not used. Two outside teams alone never count.
+3. A game that vanished and a new one with **the same two teams within 60 days** are the same game **moved to another day**.
+4. Anything else in the feed is **new**; anything else here (from the master calendar, not canceled, not started) is **no longer on the master calendar**.
+
+A canceled game here only counts as "the same game" at exactly the same time, so a rained-out game that the master calendar replays later the same day is added as a new game. A game **made by hand** that matches rule 1 is taken over by the sync (quietly; nobody is emailed). Games made by hand that match nothing are never touched or flagged.
+
+A held-back game (for example its field is not matched yet) still counts as being on the master calendar, so the game here that it matches is not listed as missing.
+
+**The weak spot.** If the scheduler changes a game's teams **and** moves it to another day, or changes both teams, the sync sees an old game that vanished and a new game. The new game is added, and the old one is listed for a person to cancel; nothing is lost. **To change how games are matched**, everything is in one file: `supabase/functions/sync-calendar/match.ts` (rule 2 is `RULES.newOpponentSameDay`, the 60 days is `RULES.moveWindowDays`). Run its tests afterwards: `node --test supabase/functions/sync-calendar/`.
+
+**Names to match.** The master calendar's names are matched to ours by themselves when they can be: teams by the **same name**; fields by the **same name**, the **same street address**, or the **start of the name** ("Orion" → "Orion School"). A team name that does not look like ours ("PA2", "Evergreen Seniors Team") is kept on the game as an **outside team**. Anything else is listed under **Names to match**, and the games that use it are **held back** until a person chooses what it is: one of ours, a new team or field, an outside team, or **Not tracked** (for teams the league does not schedule umpires for, such as Tee Ball: their games are skipped completely, never added, held or asked about). A match is remembered (team matches belong to the season). With many names to match, choose them all and press **Save all chosen** once. **All names on the master calendar** shows every match and how it was made, and lets you change one.
+
+**The log.** Every run is listed with what it added and changed, who was told, and anything held back. A run that could not happen (the feed was down, say) is listed as **Failed**, and the administrators are emailed the first time only. Runs older than 120 days are removed. The line at the top of the Games tab shows the last run and whether anything needs a person.
+
+**Editing a synced game here.** Its time, field or teams are put back by the next sync. Make the change on the master calendar instead. Its status, notes and umpires are yours.
+
+**Seasons.** The sync fills **one season**, chosen in its settings, and ignores games outside that season's start and end dates. When a new season starts, choose it in the settings (and match any new team names).
+
+**Setting it up (once per project, test first)**
+1. Apply `20261113100000_add_calendar_feed_sync.sql`, `20261113110000_grant_calendar_sync_reads.sql` and `20261113120000_calendar_feed_ignored_teams.sql` (`npx supabase db push --linked`). The second lets the sync read the games, teams and fields; without it every run fails with "permission denied".
+2. Deploy the function, naming the project: `npx supabase functions deploy sync-calendar --no-verify-jwt --project-ref <ref>`. It uses the secret the email sender already has (`SENDER_SECRET`); there is nothing new to set. Keep `--no-verify-jwt`: the scheduled job sends no sign-in token.
+3. Run `supabase\jobs\schedule_calendar_sync.sql` once in the SQL Editor. It needs the **pg_cron** and **pg_net** extensions switched on (Database, Extensions) and the two Vault secrets (see section 64); if email sending already runs on the project, both are already there.
+4. Check it with `supabase\tests\calendar_sync_check.sql`.
+5. In the app: Games, **Master calendar sync**, **Settings**: paste the feed address (Sports Connect's `webcal://...` subscribe link), choose the season, check the time zone (Pacific), save. Press **Sync now**, match the names it lists, and press **Sync now** again. When the result looks right, tick **Sync twice a day** and save.
+
+**Keep the feed address private.** Its `key=` part works like a password for the calendar. Only scheduling administrators can see it in the app.
+
+**Stopping it.** Untick **Sync twice a day**. "Sync now" still works while it is off.
+
+## 64. Keeping it running: the upkeep checklist
+
+What needs a person now and then so the scheduled parts (sending, reminders, the master calendar sync) keep working. Live first in each list; do the same on test when you use it.
+
+**Every new season**
+- Create the season and its teams (League Setup), then in **Games, Master calendar sync, Settings** choose the new season and save. The sync only fills the season chosen there, and only between its start and end dates.
+- Press **Sync now** and match the new team names it lists (team matches belong to a season, so each season starts fresh; field matches are kept).
+
+**Every week or so (a minute)**
+- Look at the status line on the Games tab, or the **Master calendar sync** panel: anything under **Names to match**, **Held back** or **no longer on the master calendar** needs a person. The administrators are emailed when something new turns up there.
+- A game that keeps being listed wrongly is a sign a matching rule is missing. Rules live in `supabase/functions/sync-calendar/match.ts`, with tests in `sync.test.ts` (`node --test supabase/functions/sync-calendar/`). After changing them, deploy the function again (below).
+
+**When something stops**
+- **"Master calendar sync failed" email, or Failed runs in the log.** Read the message in the log. Common causes: Sports Connect changed or reset the feed link (paste the new `webcal://` link into Settings), or Sports Connect was down (it fixes itself on the next run).
+- **"permission denied for table ..." in the log.** The sync's read grant is missing on that project: run `20261113110000_grant_calendar_sync_reads.sql`.
+- **Nothing is sent, or scheduled jobs fail.** Check the jobs and their last results:
+  `select jobname, schedule, active from cron.job order by jobname;` (expect send-outbox, queue-unconfirmed-warnings, queue-self-assign-digest, queue-game-reminders, purge-expired-reports, sync-calendar and purge-cron-history, plus the jobs from `schedule_family_jobs.sql` and `schedule_urgent_jobs.sql` if those have been run), then
+  `select j.jobname, d.status, d.return_message, d.start_time from cron.job_run_details d join cron.job j on j.jobid = d.jobid order by d.start_time desc limit 20;`
+  "schema cron does not exist" means pg_cron is off (Database, Extensions: switch on **pg_cron** and **pg_net**, then run the jobs files). A function answering 401 means the sender secret on the functions and in the Vault differ: run the secret script below.
+
+**The sender secret** (the password the scheduled jobs use to call the functions)
+- It is kept in `.env.local` on the admin's computer (`SENDER_SECRET_TEST`, `SENDER_SECRET_LIVE`; git never stores that file) and copied to two places in each project: the functions' secrets and the Vault.
+- To set it, or to change it (do this if it may have been seen, and once a year anyway):
+  `powershell -ExecutionPolicy Bypass -File .\scripts\set-sender-secret.ps1 -Target live -Generate`
+  then paste what it copies into that project's SQL Editor and press Run. Without `-Generate` it re-sends the secret already in `.env.local` (for example to a rebuilt project). Do both steps close together: in between, scheduled calls are refused (nothing is lost).
+- Never type the secret into a file in the project: the repository is public.
+
+**After changing code**
+- Database change: `npx supabase db push --linked` (link test first, check, then live).
+- A function changed: `npx supabase functions deploy <name> --no-verify-jwt --project-ref <ref>` for **each** project. Test is `mucsujjpfefrfxystxse`, live is `tayveudoxrdkqnmcjrtu`. Deploying to one does not update the other.
+- The app: build and deploy as usual. Apply the database change **before** the app that needs it.
+
+**Housekeeping that runs by itself** (nothing to do, but good to know)
+- `purge-cron-history` keeps 30 days of job history (`supabase\jobs\schedule_cleanup_jobs.sql`, run once per project).
+- The sync log keeps 120 days. Reports are removed a year after their season ends (`purge-expired-reports`).
+- On Supabase's free plan, a project is paused after about a week with no use. Live is used every day; if test is paused, restore it from the dashboard.
+
+**Starting the test project's schedule over** (test only)
+- `supabase\test-project\clear_season_schedule.sql` deletes the games of the season chosen in the sync settings (with their assignments, notes, reports and earnings) and the sync log. Then press **Sync now** to load the master calendar fresh. It refuses to run anywhere but the test project. Past games do not come back (the sync never adds a game that has started); set `only_future` to `true` in the file to keep them.
+- To make test a full copy of live instead, see section 60 (`scripts\restore-to-test.ps1`; it needs an empty project).

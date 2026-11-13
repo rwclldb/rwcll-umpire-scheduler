@@ -71,6 +71,7 @@ test on the league's own database.
 - **Warnings** (shown, never blocking): no umpire assigned, too few umpires 🆕, two games at one field at once, and a team in two games at once. A summary line counts each kind
 - **Import from the master calendar spreadsheet:** the file is read, divisions, teams and fields are matched, and a preview shows what is new, changed, unchanged, or a problem. The import is all-or-nothing, and handles seasons of thousands of games
 - The master calendar's game ID is kept with each game, so a later import updates the right game
+- **Master calendar sync:** twice a day the Sports Connect calendar feed is read and the games are brought up to date by themselves. New games are added and changed games are changed; umpires on a changed game are emailed what changed and asked to confirm again. Games that leave the master calendar are flagged for a person to cancel, never canceled by themselves. Names the sync cannot match (teams, fields) are matched once by a person and remembered. Every run is logged, and administrators are emailed when something needs them
 
 ## 7. Assigning umpires 🆕
 

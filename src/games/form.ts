@@ -87,6 +87,15 @@ export function renderGameForm(
           </p>`
         : ""}
 
+      ${game?.master_source === "feed"
+        ? `<p class="season-dates">
+            This game is kept up to date from the master calendar by the sync.
+            A change to its time, field or teams made here is put back the next
+            time the sync runs: make that change on the master calendar instead.
+            Its status and notes are never changed by the sync.
+          </p>`
+        : ""}
+
       <label for="game-season">Season</label>
       <select id="game-season">
         ${context.seasons.map((season) => `
@@ -392,9 +401,11 @@ export function renderGameForm(
     const extra = options.assignmentCount
       ? ` Its ${options.assignmentCount} umpire assignment${options.assignmentCount === 1 ? "" : "s"} will be removed too.`
       : "";
-    const advice = game.external_game_id
-      ? " This game is on the master calendar, so importing the spreadsheet again would add it back. Setting the status to Canceled is usually better."
-      : "";
+    const advice = game.master_source === "feed"
+      ? " This game came from the master calendar, so the next sync would add it back while it is still there. Setting the status to Canceled is usually better."
+      : game.external_game_id
+        ? " This game is on the master calendar, so importing the spreadsheet again would add it back. Setting the status to Canceled is usually better."
+        : "";
 
     if (!window.confirm(`Delete this game for good?${extra}${advice}`)) return;
 

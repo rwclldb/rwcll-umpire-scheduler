@@ -20,6 +20,9 @@ export type Game = {
   external_game_id: string | null;
   // 0 to 4 for this game; null means "use the division's default"
   umpires_needed: number | null;
+  // where it came from: "spreadsheet" (imported), "feed" (kept up to date by the master calendar
+  // sync), or null (made by hand)
+  master_source?: "spreadsheet" | "feed" | null;
 };
 
 export type NamedOption = { id: string; name: string; is_active: boolean };

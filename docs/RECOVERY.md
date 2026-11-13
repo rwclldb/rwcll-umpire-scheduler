@@ -14,6 +14,7 @@ Practiced successfully on the test project on 2026-10-24 (row counts matched liv
 | Uploaded files (Storage) | Supabase Storage | **No** (nothing is stored yet) |
 | The app itself | Git repository + web host | In Git |
 | The email sender (Edge Function `send-outbox`) | `supabase/functions/send-outbox` (in Git) | Redeploy it (step 6 below) |
+| The master calendar sync (Edge Function `sync-calendar`) | `supabase/functions/sync-calendar` (in Git); its settings and matched names are table data | Redeploy it and run its schedule file (step 6 below) |
 | Email sending secrets (`SMTP_USER`, `SMTP_PASS`, `SENDER_SECRET`) | Supabase secrets | **No. Write these down separately.** They cannot be read back. |
 | Scheduled jobs (sending email every few minutes, day-before reminders, the turning-18 check) | The database's `cron` schema | **No.** Run the schedule files again (step 6 below) |
 | A readable copy of the league's data | Administration > Backup and export | Separate, extra copy (see below) |
@@ -129,12 +130,18 @@ Do this after the data is restored (step 5 of "Rebuilding after a disaster" belo
    (Step 6 below, restoring the email sender, comes after it.)
 6. **Restore email sending.** Neither the secrets nor the scheduled jobs are in the backup:
    ```powershell
-   npx supabase secrets set SMTP_USER=... SMTP_PASS=... SENDER_SECRET=...
+   npx supabase secrets set SMTP_USER=... SMTP_PASS=...
+   powershell -ExecutionPolicy Bypass -File .\scripts\set-sender-secret.ps1 -Target live
    npx supabase functions deploy send-outbox
    ```
+   (The script reads `SENDER_SECRET_LIVE` from `.env.local`, sets it on the functions, and puts the Vault SQL on the
+   clipboard: paste it into the new project's SQL Editor. If the project reference changed, update `$LiveRef` in the script first.)
    Then run `schedule_email_jobs.sql` and `schedule_family_jobs.sql` (both in `supabase\jobs`) in the SQL Editor, following
    the instructions at the top of each, and send a test message (see `EMAIL-SENDING.md`). Keep email in **safe mode** until
    you have checked it.
+   Then the master calendar sync: `npx supabase functions deploy sync-calendar --no-verify-jwt`, and run
+   `schedule_calendar_sync.sql` and `schedule_cleanup_jobs.sql` (also in `supabase\jobs`). Its settings came back with the data; press **Sync now** on the
+   Games tab (Master calendar sync) to check it.
 7. **Point everything at the new project:** `.env` (URL and publishable key), the
    GitHub secrets `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, and the web
    host's environment variables.

@@ -29,7 +29,7 @@ const PAGE_SIZE = 1000;
 export const GAME_COLUMNS =
   "id, season_id, division_id, game_type, home_team_id, away_team_id, " +
   "home_label, away_label, location_id, starts_at, ends_at, status, notes, " +
-  "external_game_id, umpires_needed";
+  "external_game_id, umpires_needed, master_source";
 
 // The database sends at most 1,000 rows per request, so longer lists are
 // read in pages until there are no more.
