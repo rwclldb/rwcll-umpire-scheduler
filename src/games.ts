@@ -7,6 +7,7 @@ import type { ContactNumbers } from "./games/contacts";
 import { renderAssignPanel } from "./games/assign";
 import { renderGameForm } from "./games/form";
 import { renderImporter } from "./games/importer";
+import { renderCalendarSync, syncStatusHtml } from "./games/calendar-sync";
 import { downloadText, safeFileName, toCsv } from "./games/csv-out";
 import { formatDate, formatPrinted, formatTime, localDateKey } from "./games/format";
 import { printHtml } from "./games/print";
@@ -39,6 +40,10 @@ let pagePerDay = false;
 // A message to show once, at the top, after the page is drawn again (for
 // example "Imported 45 games").
 let flash: string | null = null;
+
+// Open the master calendar sync panel again after the page is drawn again (it was open when
+// something in it was saved).
+let reopenSync = false;
 
 const STATUS_LABELS: Record<GameStatus, string> = {
   draft: "Draft",
@@ -141,10 +146,13 @@ export async function renderGames(container: HTMLElement): Promise<void> {
     <section class="games-page">
       <h2>Games</h2>
       <p class="directory-description">
-        This is a copy of the master calendar. When the master calendar
-        changes, change the game here too (or import the updated spreadsheet).
+        This is a copy of the master calendar. When the master calendar sync
+        is on, changes there are copied here twice a day. Otherwise, change the
+        game here too (or import the updated spreadsheet).
         Times are shown in your computer's time zone.
       </p>
+
+      <div id="sync-status"></div>
 
       <div class="game-filters">
         <div>
@@ -212,6 +220,7 @@ export async function renderGames(container: HTMLElement): Promise<void> {
 
       <div class="account-actions">
         <button id="add-game" class="primary-button" type="button">Add game</button>
+        <button id="calendar-sync" class="secondary-button" type="button">Master calendar sync</button>
         <button id="import-games" class="secondary-button" type="button">Import from spreadsheet</button>
         <button id="print-games" class="secondary-button" type="button">Print schedule</button>
         <button id="download-games" class="secondary-button" type="button">Download CSV</button>
@@ -656,6 +665,34 @@ export async function renderGames(container: HTMLElement): Promise<void> {
 
     importer.scrollIntoView({ behavior: "smooth", block: "start" });
   });
+
+  const openSync = (scroll: boolean) => {
+    closeForm();
+    get<HTMLElement>("umpire-schedule-container").innerHTML = "";
+
+    const panel = get<HTMLElement>("importer-container");
+    void renderCalendarSync(panel, {
+      context,
+      onClose: () => { panel.innerHTML = ""; },
+      onChanged: (text) => {
+        // Everything is read again, so new teams, fields and synced games show.
+        flash = text;
+        reopenSync = true;
+        void renderGames(container);
+      },
+    });
+
+    if (scroll) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  get<HTMLElement>("calendar-sync").addEventListener("click", () => { say(""); openSync(true); });
+
+  // the line about the last sync (quietly empty if it cannot be read)
+  void syncStatusHtml().then((html) => {
+    const holder = container.querySelector<HTMLElement>("#sync-status");
+    if (holder) holder.innerHTML = html;
+  }).catch(() => undefined);
+
   get<HTMLElement>("refresh-games").addEventListener("click", () => { say(""); void reload(); });
 
   bind("print-page-per-day", "change", (t) => { pagePerDay = t.checked; });
@@ -748,6 +785,11 @@ export async function renderGames(container: HTMLElement): Promise<void> {
   });
 
   await reload();
+
+  if (reopenSync) {
+    reopenSync = false;
+    openSync(false);
+  }
 
   if (flash) {
     say(flash);

@@ -3777,3 +3777,219 @@ input[type="radio"] {
   border-left: 4px solid #8a4b00;
   border-radius: 4px;
 }
+
+/* the time in the top bar, next to the logo */
+.topbar-brand {
+  margin-right: 0;
+}
+
+.topbar-clock {
+  margin-right: auto;
+  padding-left: 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.topbar-clock-date {
+  color: #b8c4bb;
+  font-weight: 500;
+}
+
+.topbar-clock-pretend {
+  padding: 1px 7px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #5c3300;
+  text-transform: uppercase;
+  background: #fff1d6;
+  border-radius: 999px;
+}
+
+@media (max-width: 560px) {
+  .topbar-clock-date {
+    display: none;
+  }
+
+  .topbar-clock {
+    font-size: 0.88rem;
+  }
+
+  /* the words "Signed in as" go first, so the name itself is never cut off */
+  .topbar-name-prefix {
+    display: none;
+  }
+}
+
+/* My family: a canceled game stands out */
+.sched-table .sched-row-canceled th,
+.sched-table .sched-row-canceled td {
+  background: #fdecea;
+}
+
+.family-status-canceled {
+  font-weight: 700;
+  color: #9b1c1c;
+}
+
+.family-status-canceled::before {
+  content: "\2715\00a0";
+}
+
+/* the approval line in an umpire's details */
+.umpire-approval {
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  background: #f4f7f5;
+  border-left: 4px solid #1b6b3a;
+  border-radius: 4px;
+}
+
+/* Game day: decline and report, where the umpire is on the day */
+.gd-more {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.gd-decline,
+.gd-report {
+  padding: 4px 10px;
+  background: #f4f7f5;
+  border: 1px solid #d6ddd8;
+  border-radius: 8px;
+}
+
+.gd-decline > summary,
+.gd-report > summary {
+  min-height: 40px;
+  padding: 8px 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gd-decline-body,
+.gd-report-body {
+  padding-bottom: 8px;
+}
+
+.gd-help {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+
+.gd-decline-body textarea,
+.gd-report-body textarea,
+.gd-report-body select {
+  width: 100%;
+}
+
+.gd-decline-body button,
+.gd-report-body button {
+  width: auto;
+  min-height: 44px;
+  margin: 6px 0 0;
+}
+
+/* Field board: the rainout area stands out, and Closed today is always visible when a field is closed */
+.board-closure {
+  padding: 0;
+  background: #eaf2fc;
+  border: 2px solid #2b6cb0;
+  border-radius: 10px;
+}
+
+.board-closure > summary {
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 1.05rem;
+  color: #ffffff;
+  background: #1d4f91;
+  border-radius: 8px;
+}
+
+.board-closure[open] > summary {
+  border-radius: 8px 8px 0 0;
+}
+
+.board-closure > :not(summary) {
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+.board-closure > :last-child {
+  margin-bottom: 12px;
+}
+
+.board-closure > summary + * {
+  margin-top: 10px;
+}
+
+.closure-icon {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: -5px;
+}
+
+.closure-banner {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  background: #fdecea;
+  border: 2px solid #9b1c1c;
+  border-radius: 10px;
+}
+
+.closure-banner h3 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  color: #9b1c1c;
+}
+
+.closure-banner .closure-item {
+  border-top-color: #f0c4c0;
+}
+
+.closure-today-none {
+  margin: 8px 14px;
+  color: #3d4a42;
+  font-size: 0.9rem;
+}
+
+/* the rainout form: fields side by side when there is room, stacked when there is not, always from the left */
+.closure-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px 14px;
+  align-items: end;
+}
+
+.closure-form label {
+  margin: 0;
+}
+
+.closure-form select,
+.closure-form input {
+  width: 100%;
+}
+
+.closure-form .closure-help,
+.closure-form .closure-preview,
+.closure-form button,
+.closure-form label:last-of-type {
+  grid-column: 1 / -1;
+}
+
+.closure-form button {
+  width: auto;
+  justify-self: start;
+}
+
+@media (max-width: 560px) {
+  .closure-form button {
+    width: 100%;
+  }
+}

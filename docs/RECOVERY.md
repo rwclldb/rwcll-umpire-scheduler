@@ -14,6 +14,7 @@ Practiced successfully on the test project on 2026-10-24 (row counts matched liv
 | Uploaded files (Storage) | Supabase Storage | **No** (nothing is stored yet) |
 | The app itself | Git repository + web host | In Git |
 | The email sender (Edge Function `send-outbox`) | `supabase/functions/send-outbox` (in Git) | Redeploy it (step 6 below) |
+| The master calendar sync (Edge Function `sync-calendar`) | `supabase/functions/sync-calendar` (in Git); its settings and matched names are table data | Redeploy it and run its schedule file (step 6 below) |
 | Email sending secrets (`SMTP_USER`, `SMTP_PASS`, `SENDER_SECRET`) | Supabase secrets | **No. Write these down separately.** They cannot be read back. |
 | Scheduled jobs (sending email every few minutes, day-before reminders, the turning-18 check) | The database's `cron` schema | **No.** Run the schedule files again (step 6 below) |
 | A readable copy of the league's data | Administration > Backup and export | Separate, extra copy (see below) |
@@ -73,8 +74,8 @@ your backups (not in Git). **Secrets go in a password manager, never in the shee
 |---|---|---|---|
 | 1 | Project reference and web address | Project Settings, General | `tayveudoxrdkqnmcjrtu` and `https://tayveudoxrdkqnmcjrtu.supabase.co` |
 | 2 | Database password; **Session pooler host** | Project Settings, Database; the **Connect** button, Session pooler | the password (password manager); the host (it looks like `aws-1-us-east-2.pooler.supabase.com`) |
-| 3 | **Site URL** | Authentication, URL Configuration | the live website address |
-| 4 | **Redirect URLs** | Authentication, URL Configuration | every address in the list (the live site, and `http://localhost:5173/**` for testing) |
+| 3 | **Site URL** | Authentication, URL Configuration | the live website address **including its folder, if it has one** (a new project starts with `http://localhost:3000`, which sends confirmation links to a page that does not exist) |
+| 4 | **Redirect URLs** | Authentication, URL Configuration | every address in the list: the live site **with `/**` on the end** (for example `https://example.org/app/**`), and `http://localhost:5173/**` for testing |
 | 5 | **Custom SMTP** (the sign-up and password emails) | Authentication, Emails, SMTP Settings | sender email address and name, host, port, username. The password is the Google **app password** of the sender mailbox (password manager). The sender mailbox is `umpiresched@rwcll.org` (check it against the dashboard: the example in `EMAIL-SETUP.md` uses a different address) |
 | 6 | Email rate limit | Authentication, Rate Limits | the "emails sent" number |
 | 7 | **Confirm email** | Authentication, Sign In / Providers, Email | it must be **ON for live**. Write down any other switch you changed on that page |
@@ -129,12 +130,18 @@ Do this after the data is restored (step 5 of "Rebuilding after a disaster" belo
    (Step 6 below, restoring the email sender, comes after it.)
 6. **Restore email sending.** Neither the secrets nor the scheduled jobs are in the backup:
    ```powershell
-   npx supabase secrets set SMTP_USER=... SMTP_PASS=... SENDER_SECRET=...
+   npx supabase secrets set SMTP_USER=... SMTP_PASS=...
+   powershell -ExecutionPolicy Bypass -File .\scripts\set-sender-secret.ps1 -Target live
    npx supabase functions deploy send-outbox
    ```
+   (The script reads `SENDER_SECRET_LIVE` from `.env.local`, sets it on the functions, and puts the Vault SQL on the
+   clipboard: paste it into the new project's SQL Editor. If the project reference changed, update `$LiveRef` in the script first.)
    Then run `schedule_email_jobs.sql` and `schedule_family_jobs.sql` (both in `supabase\jobs`) in the SQL Editor, following
    the instructions at the top of each, and send a test message (see `EMAIL-SENDING.md`). Keep email in **safe mode** until
    you have checked it.
+   Then the master calendar sync: `npx supabase functions deploy sync-calendar --no-verify-jwt`, and run
+   `schedule_calendar_sync.sql` and `schedule_cleanup_jobs.sql` (also in `supabase\jobs`). Its settings came back with the data; press **Sync now** on the
+   Games tab (Master calendar sync) to check it.
 7. **Point everything at the new project:** `.env` (URL and publishable key), the
    GitHub secrets `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, and the web
    host's environment variables.

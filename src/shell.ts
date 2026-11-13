@@ -1,4 +1,5 @@
 import { logoHtml } from "./logo";
+import { startTopbarClock } from "./topbar-clock";
 import { escapeHtml } from "./ui";
 
 // One screen of the signed-in app. A person sees the pages their roles allow.
@@ -32,9 +33,10 @@ export function addTopBar(
         <a class="topbar-brand" href="#/" aria-label="Redwood City Little League: home">
           ${logoHtml("topbar-logo")}
         </a>
+        <span id="topbar-clock" class="topbar-clock" role="timer" aria-label="The time now (Pacific time)"></span>
         <span class="topbar-user">
           <span class="topbar-name">
-            ${name ? `Signed in as ${escapeHtml(name)}` : "Signed in"}
+            ${name ? `<span class="topbar-name-prefix">Signed in as </span>${escapeHtml(name)}` : "Signed in"}
           </span>
           ${roles
             ? `<em class="topbar-roles" title="${escapeHtml(roles)}">${escapeHtml(roles)}</em>`
@@ -47,6 +49,7 @@ export function addTopBar(
   );
 
   root.querySelector("#topbar-signout")?.addEventListener("click", onSignOut);
+  startTopbarClock(root);
 }
 
 // Only one listener at a time, even if the shell is drawn again.

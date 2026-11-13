@@ -6,10 +6,16 @@
 --   2. deploying the send-outbox function and setting its secrets
 --      (see docs/EMAIL-SENDING.md).
 --
--- BEFORE YOU RUN IT, replace the two placeholders below:
---   <PROJECT-REF>     the project's reference, for example tayveudoxrdkqnmcjrtu (it is
---                     in the project's web address and under Project Settings)
---   <SENDER-SECRET>   the SAME long random value you gave the function as SENDER_SECRET
+-- BEFORE YOU RUN IT, store the sender secret and the project's address in the Vault (the jobs below
+-- read them from there). Do not type the secret into this file. Instead run, from the project folder:
+--     powershell -ExecutionPolicy Bypass -File .\scripts\set-sender-secret.ps1               (test)
+--     powershell -ExecutionPolicy Bypass -File .\scripts\set-sender-secret.ps1 -Target live
+-- It reads SENDER_SECRET_TEST / SENDER_SECRET_LIVE from .env.local, sets the functions' SENDER_SECRET,
+-- and puts the Vault SQL on your clipboard to paste into the SQL Editor.
+--
+-- Already done once on a project? Then do not run this file again: the jobs are already scheduled.
+-- To check:  select jobname from cron.job;
+--            select name from vault.secrets where name in ('sender_secret', 'project_url');
 --
 -- Also, in the dashboard under Database > Extensions, switch ON:  pg_cron  and  pg_net
 -- (the secrets are kept in Supabase's Vault, which is on by default).
@@ -20,9 +26,7 @@
 -- TIMES: schedules are in UTC. 15:00 UTC is 8:00 AM Pacific in summer (daylight
 -- time) and 7:00 AM in winter.
 
--- ---- the two secrets the sender call needs (kept in the Vault, not in this file's jobs)
-select vault.create_secret('2xP9kL4vN8cR1yB6tHq3WfJ0dM9sK2pX5uEr7C4n', 'sender_secret');
-select vault.create_secret('https://mucsujjpfefrfxystxse.supabase.co', 'project_url');
+-- ---- the two secrets the sender call needs: stored in the Vault by scripts\set-sender-secret.ps1 (see above)
 
 -- ---- every 5 minutes: send whatever is waiting
 select cron.schedule(

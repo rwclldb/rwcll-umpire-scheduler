@@ -71,6 +71,7 @@ test on the league's own database.
 - **Warnings** (shown, never blocking): no umpire assigned, too few umpires 🆕, two games at one field at once, and a team in two games at once. A summary line counts each kind
 - **Import from the master calendar spreadsheet:** the file is read, divisions, teams and fields are matched, and a preview shows what is new, changed, unchanged, or a problem. The import is all-or-nothing, and handles seasons of thousands of games
 - The master calendar's game ID is kept with each game, so a later import updates the right game
+- **Master calendar sync:** twice a day the Sports Connect calendar feed is read and the games are brought up to date by themselves. New games are added and changed games are changed; umpires on a changed game are emailed what changed and asked to confirm again. Games that leave the master calendar are flagged for a person to cancel, never canceled by themselves. Names the sync cannot match (teams, fields) are matched once by a person and remembered. Every run is logged, and administrators are emailed when something needs them
 
 ## 7. Assigning umpires 🆕
 
@@ -216,12 +217,25 @@ test on the league's own database.
 **Confirming and declining** 🆕
 
 - Each assignment is **Assigned** until the umpire answers, then **Confirmed**; the games list shows the status beside each umpire
-- On their own schedule, an umpire sees which games are waiting for their answer and can **Confirm** or **Decline** each one. Declining asks for an optional reason, frees the place, and tells the administrators
+- On their own schedule, an umpire sees which games are waiting for their answer and can **Confirm** or **Decline** each one. A confirmed game keeps its Decline button until the game starts, so an umpire who falls ill can still back out. Declining asks for an optional reason, frees the place, and tells the administrators
 - A place that was given up is shown on the games list ("Declined: Ann Lee") while the game is still to come
 - An administrator can **Mark as confirmed** for an umpire who answered another way, from the Umpires panel
 - An umpire who stays on a game keeps their confirmation when other places are changed or they move to another place
 - Games coming up with umpires who have not confirmed get a warning ("Not confirmed yet: Ann Lee"), counted in the summary. Each league sets how many days ahead (7 to begin with; 0 turns it off), in League Setup
 - A history records who was assigned, confirmed, declined or removed, and when
+
+**Urgent messages** 🆕
+
+- A change to a game within two hours (a decline, a closure, a cancellation, a move, an umpire added or removed, someone running late) is sent **first**, by a job that runs **every minute**; everything else stays in the 5-minute batch
+- If **texting is on**, urgent emails are also sent as texts to umpires, youth umpires, the parents of youth umpires and administrators **who agreed on their own account**; **one switch** (`sms_mode`) turns texting on and off, and email carries on regardless
+
+**Small improvements from the first test run** 🆕
+
+- The **time** is shown in the top bar next to the logo (Pacific time; the pretend time, tagged PRETEND, when one is set)
+- A **canceled game** is shown in red on a parent's My family schedule
+- An umpire's details show **when and by whom** their account was approved
+- The umpire's **Game day** card has **I can't make it** (before the game) and **Write a report about this game** (after it starts)
+- On the Field board a red **Closed today** box is always visible when a field is closed, and the rainout section stands out (blue bar, rain-cloud icon)
 
 **Suggesting umpires** 🆕
 

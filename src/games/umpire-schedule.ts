@@ -93,7 +93,18 @@ export function renderScheduleView(
 
   const statusCell = (game: UmpireGame): string => {
     if (game.status === "canceled") return "&mdash;";
-    if (game.myStatus === "confirmed") return `<span class="sv-status sv-status-confirmed">Confirmed</span>`;
+
+    if (game.myStatus === "confirmed") {
+      const badge = `<span class="sv-status sv-status-confirmed">Confirmed</span>`;
+      if (!canAnswer(game)) return badge;
+
+      // Confirmed is not final: until the game starts an umpire can still back out (illness, a broken-down car,
+      // or a game they took for themselves and cannot make after all). It frees the place and tells the administrators.
+      return `${badge}
+        <div class="sv-actions">
+          <button type="button" class="secondary-button" data-sv-decline="${escapeHtml(game.id)}">Decline</button>
+        </div>`;
+    }
 
     if (canAnswer(game)) {
       return `<span class="sv-status sv-status-pending">Needs your answer</span>
@@ -139,6 +150,9 @@ export function renderScheduleView(
           ${escapeHtml(game.home)} vs ${escapeHtml(game.away)}<br>
           ${escapeHtml(formatDate(game.startsAt))}, ${escapeHtml(game.time)} (${escapeHtml(game.position)}, ${escapeHtml(game.field)})
         </p>
+        ${game.myStatus === "confirmed"
+          ? `<p class="directory-description sv-decline-note">You already confirmed this game. If you decline, the place is open again and the administrators are told straight away. If the game is soon, please also let the scheduler know directly.</p>`
+          : ""}
         <label for="sv-reason">Reason (optional)</label>
         <textarea id="sv-reason" rows="3" maxlength="500"></textarea>
         <div class="account-actions">
