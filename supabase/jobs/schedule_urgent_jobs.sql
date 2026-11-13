@@ -1,7 +1,8 @@
 -- The every-minute job for URGENT messages.
 --
 -- Run this ONCE per Supabase project (test first, then live), in the SQL Editor, AFTER:
---   1. supabase/jobs/schedule_email_jobs.sql (it stored the two secrets this job uses, in the Vault),
+--   1. the sender secret and project address are in the Vault (scripts\set-sender-secret.ps1 puts them there;
+--      check with supabase/tests/cron_jobs_check.sql),
 --   2. applying 20261112100000_add_urgent_messages.sql, and
 --   3. redeploying the send-outbox function:  npx supabase functions deploy send-outbox --no-verify-jwt
 --

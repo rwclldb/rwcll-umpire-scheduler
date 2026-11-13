@@ -2144,7 +2144,7 @@ What needs a person now and then so the scheduled parts (sending, reminders, the
 **When something stops**
 - **"Master calendar sync failed" email, or Failed runs in the log.** Read the message in the log. Common causes: Sports Connect changed or reset the feed link (paste the new `webcal://` link into Settings), or Sports Connect was down (it fixes itself on the next run).
 - **"permission denied for table ..." in the log.** The sync's read grant is missing on that project: run `20261113110000_grant_calendar_sync_reads.sql`.
-- **Nothing is sent, or scheduled jobs fail.** Check the jobs and their last results:
+- **Nothing is sent, or scheduled jobs fail.** Run `supabase\tests\cron_jobs_check.sql` in the SQL Editor: one row per job, Vault secret and recent function call, each saying OK or what to run to fix it. (A 404 answer means the function is not deployed on that project.) Or by hand:
   `select jobname, schedule, active from cron.job order by jobname;` (expect send-outbox, queue-unconfirmed-warnings, queue-self-assign-digest, queue-game-reminders, purge-expired-reports, sync-calendar and purge-cron-history, plus the jobs from `schedule_family_jobs.sql` and `schedule_urgent_jobs.sql` if those have been run), then
   `select j.jobname, d.status, d.return_message, d.start_time from cron.job_run_details d join cron.job j on j.jobid = d.jobid order by d.start_time desc limit 20;`
   "schema cron does not exist" means pg_cron is off (Database, Extensions: switch on **pg_cron** and **pg_net**, then run the jobs files). A function answering 401 means the sender secret on the functions and in the Vault differ: run the secret script below.

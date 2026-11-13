@@ -44,36 +44,33 @@ You need the Supabase command-line tool (you already use it for migrations).
 1. Put the sender's two files in your project, exactly here:
    - `supabase\functions\send-outbox\index.ts`
    - `supabase\functions\send-outbox\logic.ts`
-2. In PowerShell, in the project folder:
+2. In PowerShell, in the project folder. Every command names the project with `--project-ref`, so it can never
+   go to the wrong one: test is `mucsujjpfefrfxystxse`, live is `tayveudoxrdkqnmcjrtu`.
    ```
-   supabase login
-   supabase link --project-ref <YOUR-TEST-PROJECT-REF>
-   supabase functions deploy send-outbox --no-verify-jwt
+   npx supabase login
+   npx supabase functions deploy send-outbox --no-verify-jwt --project-ref <REF>
    ```
    (`--no-verify-jwt` is correct: the sender is protected by its own secret instead, because the schedule
-   calls it with no signed-in user.)
-3. Give it its secrets. **Never paste these into chat, a file in the project, or an email.**
+   calls it with no signed-in user.) Deploying to one project does not update the other.
+3. Give it the mailbox secrets. **Never paste these into chat, a file in the project, or an email.**
    ```
-   supabase secrets set SMTP_USER=umpiresched@rwcll.org
-   supabase secrets set SMTP_PASS=<the 16-character Google app password>
-   supabase secrets set SENDER_SECRET=<a long random value you make up: 40 or more letters and numbers>
+   npx supabase secrets set SMTP_USER=umpiresched@rwcll.org --project-ref <REF>
+   npx supabase secrets set SMTP_PASS=<the 16-character Google app password> --project-ref <REF>
    ```
    - `SMTP_PASS` is the Google **app password** for the sender mailbox. It is best to create a **second** app
      password named `RWCLL sender` (Google: myaccount.google.com/apppasswords, signed in as that mailbox),
      rather than reusing the one in Supabase Auth, so that you can cancel one without breaking the other.
-   - `SENDER_SECRET` is a password only the schedule and you know. Keep a copy: you need it again in Part 4.
-     It is **not** the Google app password (that one is `SMTP_PASS`): you make `SENDER_SECRET` up yourself.
-   - **If you lose it:** Supabase never shows a secret again, **but** once Part 4 is done the same value is also kept in the project's Vault.
-     Run this in the SQL Editor of that project to read it (treat the result like a password):
-     ```sql
-     select decrypted_secret from vault.decrypted_secrets where name = 'sender_secret';
-     ```
-     If Part 4 has not been done, just make a new one and set it again with `supabase secrets set SENDER_SECRET=...`.
-     If you ever change it after Part 4, change **both** places, or the sender answers "Forbidden":
-     ```sql
-     select vault.update_secret((select id from vault.secrets where name = 'sender_secret'), 'THE-NEW-VALUE');
-     ```
    - Optional: `SMTP_HOST` (default `smtp.gmail.com`) and `SMTP_PORT` (default `465`).
+   - To see which secrets a project has (names only, never the values): `npx supabase secrets list --project-ref <REF>`.
+4. Give it the **sender secret**: the password the schedule uses to call the sender (it is **not** the Google
+   app password). It is kept in `.env.local` in the project folder (git never stores that file) and copied to two
+   places in the project, the functions' secrets and the Vault. One script does both:
+   ```
+   powershell -ExecutionPolicy Bypass -File .\scripts\set-sender-secret.ps1 -Target test -Generate
+   ```
+   then paste what it copied into that project's **SQL Editor** and press Run. (`-Target live` for live. Without
+   `-Generate` it re-sends the secret already in `.env.local`.) If the two copies ever differ, the sender answers
+   "Forbidden": run the script again. FAQ section 64 has more.
 
 ## Part 3: Safe mode, and a test
 
@@ -96,7 +93,7 @@ can see exactly what each person would have received.
 **Test it:**
 
 1. In the app: **Administration > Outbox > Send me a test message**. The banner should say **SAFE MODE**.
-2. Run the sender once by hand (PowerShell; use your project reference and your `SENDER_SECRET`):
+2. Run the sender once by hand (PowerShell; use your project reference and the sender secret from `.env.local`):
    ```
    Invoke-RestMethod -Method Post -Uri "https://<YOUR-TEST-PROJECT-REF>.supabase.co/functions/v1/send-outbox" -Headers @{"x-sender-secret"="<YOUR SENDER_SECRET>"}
    ```
@@ -108,9 +105,9 @@ If it does not work, see **If something goes wrong** below.
 
 ## Part 4: Schedule it
 
-Open `schedule_email_jobs.sql` (it is in `supabase\jobs`), follow the instructions at the top (switch on the
-`pg_cron` and `pg_net` extensions, put your project reference and `SENDER_SECRET` in), and run it once in the
-SQL Editor. It schedules:
+First switch on the **pg_cron** and **pg_net** extensions (Database > Extensions). Then run
+`schedule_email_jobs.sql` (in `supabase\jobs`) once in the SQL Editor. There is nothing to type into it: it reads the
+sender secret and the project address from the Vault (Part 2, step 4). It schedules:
 
 | Job | When | What it does |
 |---|---|---|
@@ -120,11 +117,23 @@ SQL Editor. It schedules:
 | `queue-game-reminders` | hourly | reminds each umpire the day before their game (once each) |
 | `purge-expired-reports` | nightly | deletes reports a year after their season ends |
 
+The other job files, each run once the same way: `schedule_family_jobs.sql` (`convert-turned-18`),
+`schedule_urgent_jobs.sql` (`send-outbox-urgent`, see Part 7), `schedule_calendar_sync.sql` (`sync-calendar`, FAQ
+section 63) and `schedule_cleanup_jobs.sql` (`purge-cron-history`). Running one again just replaces its jobs.
+
+**Check it:** run `supabase\tests\cron_jobs_check.sql` in the SQL Editor. It lists every job that should be there
+(OK, MISSING with the file to run, or failing), the two Vault secrets, and how the last calls to the functions were
+answered (200 is good; 404 means the function is not deployed on that project; 401 or "Forbidden" means the sender
+secret differs, so run the script in Part 2 step 4 again).
+
 ## Part 5: Going live
 
 Do this on the **live** project only when the test project has behaved for a while.
 
-1. Repeat Parts 1 and 2 on the live project (its own migration, function and secrets).
+1. Repeat Parts 1, 2 and 4 on the live project (`--project-ref tayveudoxrdkqnmcjrtu`, `-Target live`). Run
+   `cron_jobs_check.sql` there afterwards. Messages that waited while the sender was missing or `email_mode` was
+   `off` are not sent late: anything older than `email_max_age_hours` (72) is set aside as "Too old to send".
+   Look at the Outbox first anyway, and press nothing until the mode is what you want.
 2. Check the Google side: in the Google Admin console, **Apps > Google Workspace > Gmail > Authenticate email**
    should show **SPF and DKIM** working for `rwcll.org`, and add a **DMARC** record at your domain registrar.
    Without these, messages may land in spam. Google's own guidance explains each step.
@@ -172,7 +181,7 @@ also sent as a text to people who agreed to texts (umpires, youth umpires' paren
 (`off` leaves email exactly as it was). See FAQ section 62.
 
 To set it up, after Part 4: apply `20261112100000_add_urgent_messages.sql`, redeploy the function
-(`npx supabase functions deploy send-outbox --no-verify-jwt`), then run `supabase/jobs/schedule_urgent_jobs.sql` once (nothing to replace).
+(`npx supabase functions deploy send-outbox --no-verify-jwt --project-ref <REF>`), then run `supabase/jobs/schedule_urgent_jobs.sql` once (nothing to replace).
 
 To ask for urgent messages by hand (the same command as Part 3, with a body):
 ```
@@ -190,7 +199,8 @@ Invoke-RestMethod -Method Post -Uri "https://<YOUR-PROJECT-REF>.supabase.co/func
 | Failed: "550 ... does not exist" | That address does not exist | Correct the person's email address, then **Try again** |
 | The sender answers "The daily limit has been reached" | `email_daily_limit` messages were sent in the last 24 hours | Wait, or raise the limit (but stay under Google's own) |
 | Failed after 5 tries | A lasting problem; the reason is shown | Fix the cause, then **Try again** |
-| "Forbidden" | The `x-sender-secret` does not match `SENDER_SECRET` | Check both |
+| "Forbidden", or 401 in `cron_jobs_check.sql` | The sender secret on the functions and in the Vault differ | Run `scripts\set-sender-secret.ps1` for that project (without `-Generate`) and paste its SQL |
+| 404 in `cron_jobs_check.sql` | The function is not deployed on that project | Part 2 for that project |
 
 ## What the sender will and will not do
 
